@@ -1,0 +1,159 @@
+import chess
+import pytest
+
+from llm_chess_arena.game import Game
+from llm_chess_arena.exceptions import IllegalMoveError
+from tests.conftest import (
+    IllegalMovePlayer,
+    ScriptedPlayer,
+    assert_game_terminated,
+    setup_game_from_fen,
+)
+
+
+class TestGameInitialization:
+    def test_initialization__sets_players_and_initial_state_correctly(
+        self, white_player, black_player
+    ):
+        game = Game(white_player, black_player)
+
+        assert game.white_player == white_player
+        assert game.black_player == black_player
+        assert game.board == chess.Board()
+        assert game.outcome is None
+        assert game.winner is None
+
+    def test_initialization__creates_standard_starting_chess_position(self, game):
+        standard_starting_board = chess.Board()
+        assert game.board == standard_starting_board
+        assert len(game.board.move_stack) == 0
+        assert game.board.turn == chess.WHITE
+
+    def test_initialization__raises_value_error__when_both_players_have_same_color(
+        self, white_player
+    ):
+        second_white_player = white_player
+
+        with pytest.raises(ValueError, match="wrong color"):
+            Game(white_player, second_white_player)
+
+
+class TestGameFlow:
+    def test_current_player__alternates_between_white_and_black_after_each_move(
+        self, game, white_player, black_player
+    ):
+        assert game.current_player == white_player
+
+        game.make_move()
+        assert game.current_player == black_player
+
+        game.make_move()
+        assert game.current_player == white_player
+
+    def test_make_move__updates_board_state_and_switches_turn_to_opponent(self, game):
+        initial_board_state = game.board.fen()
+
+        game.make_move()
+
+        assert game.board.fen() != initial_board_state
+        assert len(game.board.move_stack) == 1
+        assert game.board.turn == chess.BLACK
+
+    def test_make_move__raises_illegal_move_error__when_player_returns_invalid_move(
+        self, black_player
+    ):
+        illegal_move_player = IllegalMovePlayer(
+            name="Illegal", color="white", illegal_move_uci="b1e4"
+        )
+        game = Game(illegal_move_player, black_player)
+
+        with pytest.raises(IllegalMoveError):
+            game.make_move()
+
+
+class TestGameTermination:
+    def test_play__detects_checkmate__when_scholars_mate_sequence_is_played(
+        self,
+    ):
+        scholars_mate_white_moves = ["e4", "Bc4", "Qh5", "Qxf7#"]
+        scholars_mate_black_moves = ["e5", "Nc6", "Bc5"]
+
+        white_player = ScriptedPlayer("White", "white", scholars_mate_white_moves)
+        black_player = ScriptedPlayer("Black", "black", scholars_mate_black_moves)
+
+        game = Game(white_player, black_player)
+        game.play()
+
+        assert_game_terminated(game, chess.Termination.CHECKMATE, white_player)
+
+    def test_play__detects_stalemate__when_no_legal_moves_available_for_player_to_move(
+        self, common_positions
+    ):
+        game = setup_game_from_fen(common_positions["stalemate"])
+
+        assert_game_terminated(game, chess.Termination.STALEMATE, None)
+
+    def test_detects_draw_by_insufficient_material__when_only_kings_remain_on_board(
+        self, common_positions
+    ):
+        game = setup_game_from_fen(common_positions["king_vs_king"])
+
+        assert_game_terminated(game, chess.Termination.INSUFFICIENT_MATERIAL, None)
+
+    def test_board_can_claim_threefold_repetition__after_same_position_occurs_three_times(
+        self, game
+    ):
+        knight_dance_creating_repetition = [
+            "Nf3",
+            "Nf6",
+            "Ng1",
+            "Ng8",  # Return to starting position
+            "Nf3",
+            "Nf6",
+            "Ng1",
+            "Ng8",  # Second repetition
+        ]
+
+        for move_san in knight_dance_creating_repetition:
+            game.board.push_san(move_san)
+
+        assert game.board.can_claim_threefold_repetition()
+
+    def test_board_can_claim_fifty_move_rule__after_100_halfmoves_without_pawn_move_or_capture(
+        self, game
+    ):
+        halfmove_clock_after_fifty_full_moves = 100
+        game.board.halfmove_clock = halfmove_clock_after_fifty_full_moves
+
+        assert game.board.can_claim_fifty_moves()
+
+
+class TestGameResult:
+    def test_back_rank_mate__results_in_white_victory_with_score_1_0(
+        self, common_positions, white_player
+    ):
+        game = setup_game_from_fen(common_positions["back_rank_mate"])
+        game.white_player = white_player
+
+        assert game.finished
+        assert game.winner == white_player
+        assert game.outcome.result() == "1-0"
+
+    def test_fools_mate__results_in_black_victory_with_score_0_1(
+        self, common_positions, black_player
+    ):
+        game = setup_game_from_fen(common_positions["fools_mate"])
+        game.black_player = black_player
+
+        assert game.finished
+        assert game.winner == black_player
+        assert game.outcome.result() == "0-1"
+
+    def test_stalemate__results_in_draw_with_no_winner_and_score_half_half(
+        self, common_positions
+    ):
+        game = setup_game_from_fen(common_positions["stalemate"])
+
+        assert game.finished
+        assert game.winner is None
+        assert game.outcome.result() == "1/2-1/2"

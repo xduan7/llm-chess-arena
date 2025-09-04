@@ -1,0 +1,130 @@
+[project]
+name = "llm_chess_arena"
+description = "Chess Arena for Large Language Model Agents"
+readme = "README.md"
+requires-python = ">=3.12"
+license = {file = "LICENSE"}
+authors = [{name = "Xiaotian Duan"}]
+keywords = [
+  "chess",
+  "artificial intelligence", "AI",
+  "large language model", "LLM",
+  "agent",
+]
+dynamic = ["version"]
+dependencies = [
+  "chess>=1.10.0",
+  "httpx>=0.25.0",
+  "litellm>=1.40.0",
+  "pydantic>=2.5.0",
+  "rich>=13.0.0",
+  "hydra-core>=1.3.0",
+  "loguru>=0.7.0",
+  "python-dotenv>=1.0.0",
+  "tenacity>=8.2.0",
+  "google-auth>=2.20.0",
+]
+
+[project.urls]
+homepage = "https://github.com/xduan7/llm_chess_arena"
+repository = "https://github.com/xduan7/llm_chess_arena"
+
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["llm_chess_arena*"]
+exclude = ["third_party*", "tests*"]
+
+[project.optional-dependencies]
+dev = [
+  "ruff>=0.5.0",
+  "black>=24.0.0",
+  "mypy>=1.10.0",
+  "pre-commit>=3.5.0",
+  "poethepoet>=0.24.0",
+]
+
+test = [
+  "pytest>=8.0.0",
+  "pytest-xdist>=3.5.0",
+  "pytest-asyncio>=0.23.0",
+  "pytest-cov>=4.0.0",
+  "pytest-mock>=3.12.0",
+  "pytest-vcr>=1.0.0",
+  "vcrpy>=6.0.0",
+  "hypothesis>=6.100.0",
+]
+
+
+[tool.ruff]
+line-length = 88
+
+[tool.ruff.lint]
+# Keep E203 ignored for compatibility with Black's formatting decisions.
+extend-ignore = ["E203"]
+
+[tool.black]
+line-length = 88
+target-version = ["py312"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+plugins = ["pydantic.mypy"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+norecursedirs = ["demo", "third_party", ".hypothesis"]
+markers = [
+    # Test scope (mutually exclusive)
+    "unit: Unit tests - single component in isolation",
+    "integration: Integration tests - multiple components together",
+    
+    # Dependencies (can have multiple)
+    "requires_stockfish: Test requires Stockfish engine installed",
+    "requires_llm: Test requires LLM API access or mocking",
+    "live: Test makes live API calls (requires valid API keys)",
+    "experimental: Test for unstable/in-development features",
+    
+    # Test characteristics
+    "slow: Test takes >5 seconds to run",
+    "smoke: Quick check that script/demo runs without crashing",
+]
+addopts = [
+    "--verbose",
+    "--strict-markers",
+    "--tb=short",
+]
+filterwarnings = [
+    "ignore:There is no current event loop:DeprecationWarning",
+    "ignore:Pydantic serializer warnings.*:UserWarning",
+    "ignore:Use 'content=.*' to upload raw bytes.*:DeprecationWarning",
+]
+
+[tool.poe]
+executor = { type = "simple" }
+
+[tool.poe.tasks]
+install.shell = "pip install --upgrade -e ."
+install-dev.shell = "pip install --upgrade -e .[dev]"
+install-test.shell = "pip install --upgrade -e .[test]"
+install-all.shell = "pip install --upgrade -e .[dev,test]"
+format.shell = "ruff format . && black ."
+typecheck.shell = "mypy llm_chess_arena"
+hooks.shell = "pre-commit run --all-files"
+clean.shell = "find . -name '__pycache__' -prune -exec rm -rf {} + || true && find . -name '*.pyc' -type f -delete || true && rm -rf build/ dist/ *.egg-info/ .pytest_cache/ .mypy_cache/ .ruff_cache/ .coverage htmlcov/ || true"
+ready = [
+  "format", 
+  "typecheck", 
+  "hooks", 
+  "clean",
+]
+demo = "python demo/chess_demo.py"
+test = "python -m pytest -n auto -k 'not vcr'"
+test-all = "python -m pytest -n auto"
+test-vcr = "python -m pytest tests/integration/test_llm_integration_vcr.py"
