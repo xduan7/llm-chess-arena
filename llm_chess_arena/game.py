@@ -1,7 +1,9 @@
 import chess
 from loguru import logger
+from typing import Any
 
 from llm_chess_arena.player.base_player import BasePlayer
+from llm_chess_arena.board_display import display_board_with_context
 from llm_chess_arena.exceptions import (
     InvalidMoveError,
     IllegalMoveError,
@@ -17,12 +19,14 @@ class Game:
         self,
         white_player: BasePlayer,
         black_player: BasePlayer,
+        display_board: bool = False,
     ) -> None:
         """Initialize a chess game.
 
         Args:
             white_player: Player controlling white pieces.
             black_player: Player controlling black pieces.
+            display_board: Whether to display the board after each move.
 
         Raises:
             ValueError: If players have incorrect colors assigned.
@@ -35,6 +39,7 @@ class Game:
         self.white_player = white_player
         self.black_player = black_player
         self.board = chess.Board()
+        self.display_board = display_board
         logger.info(f"Game initialized: {white_player} vs {black_player}")
         self._outcome = None
 
@@ -76,7 +81,7 @@ class Game:
         Returns:
             The winning player, or None if it's a draw or game is not over.
         """
-        if not self.finished:
+        if not self.finished or self.outcome is None:
             return None
 
         winner = self.outcome.winner  # outcome is never None if game is over
@@ -87,7 +92,7 @@ class Game:
         else:
             return None
 
-    def make_move(self):
+    def make_move(self) -> None:
         """Execute a single move in the game.
 
         Raises:
@@ -105,7 +110,7 @@ class Game:
         else:
             raise InvalidMoveError(f"Unsupported action: {decision.action}")
 
-    def _handle_resignation(self):
+    def _handle_resignation(self) -> None:
         """Handle player resignation."""
         # Note: chess library doesn't have RESIGNATION termination
         # Using VARIANT_LOSS for termination when a player resigns
@@ -117,7 +122,7 @@ class Game:
         )
         logger.info(f"{self.current_player} resigns")
 
-    def _handle_move(self, decision: PlayerDecision):
+    def _handle_move(self, decision: PlayerDecision) -> None:
         """Validate and apply a move to the board.
 
         Args:
@@ -140,7 +145,7 @@ class Game:
         logger.debug(f"{self.current_player} plays: {uci_move}")
         self.board.push(move)
 
-    def play(self, max_num_moves: int | None = None):
+    def play(self, max_num_moves: int | None = None) -> None:
         """Run the game until completion, illegal move, or max moves reached.
 
         Args:
@@ -165,6 +170,18 @@ class Game:
                 try:
                     self.make_move()
                     num_moves += 1
+
+                    # Display board after move if requested
+                    if self.display_board:
+                        current_move = (
+                            self.board.peek() if self.board.move_stack else None
+                        )
+                        display_board_with_context(
+                            self.board,
+                            current_player=self.current_player.name,
+                            move_count=(len(self.board.move_stack) + 1) // 2,
+                            last_move=current_move,
+                        )
                 except (
                     IllegalMoveError,
                     InvalidMoveError,
@@ -211,10 +228,20 @@ class Game:
             except Exception as e:
                 logger.warning(f"Error closing black player: {e}")
 
-    def __enter__(self):
-        """Context manager entry."""
+    def __enter__(self) -> "Game":
+        """Context manager entry.
+
+        Returns:
+            Self for use in with statement.
+        """
         return self
 
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        """Context manager exit - ensures cleanup."""
+    def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
+        """Context manager exit - ensures cleanup.
+
+        Args:
+            exc_type: Exception type if an exception occurred.
+            exc_val: Exception value if an exception occurred.
+            exc_tb: Exception traceback if an exception occurred.
+        """
         self._cleanup_players()
