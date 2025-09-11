@@ -10,12 +10,13 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from llm_chess_arena.config import load_env
 from llm_chess_arena.game import Game
 from llm_chess_arena.player.stockfish_player import StockfishPlayer
+from llm_chess_arena.board_display import display_board_with_context
 
 # Load environment variables
 load_env()
 
 
-def main():
+def main() -> None:
     """Run a demo game between strong and weak Stockfish players."""
 
     # Create a strong Stockfish player (roughly 2800 ELO)
@@ -50,8 +51,8 @@ def main():
         },
     )
 
-    # Create and run game
-    game = Game(strong_stockfish, weak_stockfish)
+    # Create and run game with beautiful board display
+    game = Game(strong_stockfish, weak_stockfish, display_board=True)
 
     print(f"Starting game: {strong_stockfish.name} vs {weak_stockfish.name}")
     print("-" * 60)
@@ -60,7 +61,7 @@ def main():
     game.play(max_num_moves=100)
 
     # Display results
-    if game.finished:
+    if game.finished and game.outcome:
         print(f"\nResult: {game.outcome.result()}")
         print(f"Termination: {game.outcome.termination.name}")
         if game.winner:
@@ -68,8 +69,14 @@ def main():
         else:
             print("Winner: Draw")
         print(f"Total moves: {len(game.board.move_stack)}")
-        print("\nFinal board:")
-        print(game.board)
+        print("\n" + "=" * 60)
+        print("FINAL POSITION:")
+        print("=" * 60)
+        display_board_with_context(
+            game.board,
+            current_player="Game Over",
+            move_count=len(game.board.move_stack) // 2,
+        )
 
 
 if __name__ == "__main__":

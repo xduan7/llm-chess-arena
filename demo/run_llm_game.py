@@ -10,6 +10,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from llm_chess_arena.config import load_env
 from llm_chess_arena.game import Game
 from llm_chess_arena.player.random_player import RandomPlayer
+from llm_chess_arena.board_display import display_board_with_context
 from llm_chess_arena.player.llm import (
     LLMPlayer,
     LLMConnector,
@@ -20,7 +21,7 @@ from llm_chess_arena.player.llm import (
 load_env()
 
 
-def run_llm_game(model: str = "gpt-3.5-turbo"):
+def run_llm_game(model: str = "gpt-3.5-turbo") -> Game | None:
     """Run a game with a real LLM API.
 
     Args:
@@ -50,8 +51,10 @@ def run_llm_game(model: str = "gpt-3.5-turbo"):
         # Create random player
         random_player = RandomPlayer(name="RandomBot", color="black", seed=42)
 
-        # Create and run game
-        game = Game(white_player=llm_player, black_player=random_player)
+        # Create and run game with beautiful board display
+        game = Game(
+            white_player=llm_player, black_player=random_player, display_board=True
+        )
         game.play()
 
         return game
@@ -71,7 +74,7 @@ def run_llm_game(model: str = "gpt-3.5-turbo"):
             raise
 
 
-def main():
+def main() -> None:
     """Main entry point."""
     import argparse
 
@@ -107,7 +110,7 @@ For testing without API keys, use the test suite instead.
     game = run_llm_game(args.model)
 
     # Display results
-    if game and game.finished:
+    if game and game.finished and game.outcome:
         print(f"\nResult: {game.outcome.result()}")
         print(f"Termination: {game.outcome.termination.name}")
         if game.winner:
@@ -115,8 +118,14 @@ For testing without API keys, use the test suite instead.
         else:
             print("Winner: Draw")
         print(f"Total moves: {len(game.board.move_stack)}")
-        print("\nFinal board:")
-        print(game.board)
+        print("\n" + "=" * 60)
+        print("FINAL POSITION:")
+        print("=" * 60)
+        display_board_with_context(
+            game.board,
+            current_player="Game Over",
+            move_count=len(game.board.move_stack) // 2,
+        )
 
 
 if __name__ == "__main__":
