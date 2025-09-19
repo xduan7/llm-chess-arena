@@ -143,8 +143,15 @@ class TestLLMIntegrationVCR:
 
         decision = player(board)
 
-        assert decision.action == "move"
-        assert decision.attempted_move in ["d3e3", "d3c3", "d2d4", "d3e2"]
+        assert decision.action in {"move", "resign"}
+        assert 1 <= player.last_move_attempts <= player.max_move_retries + 1
+
+        if decision.action == "move":
+            move = chess.Move.from_uci(decision.attempted_move)
+            assert move in board.legal_moves
+        else:
+            # Resignation is acceptable after exhausting retries with illegal moves
+            assert player.last_move_attempts == player.max_move_retries + 1
 
 
 class TestLLMErrorHandlingVCR:

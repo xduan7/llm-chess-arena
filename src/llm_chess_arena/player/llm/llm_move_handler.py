@@ -1,9 +1,26 @@
+"""Utilities for parsing chess moves from language model outputs."""
+
+from __future__ import annotations
+
 import re
 from abc import ABC, abstractmethod
-from typing import Optional
+from typing import Any
 
 from llm_chess_arena.exceptions import ParseMoveError
 from llm_chess_arena.types import PlayerDecision
+
+FINAL_ANSWER_MARKERS: tuple[str, ...] = (
+    "Final Answer:",
+    "final answer:",
+    "Final answer:",
+    "The final answer is",
+    "the final answer is",
+    "My final answer is",
+    "my final answer is",
+)
+
+LATEX_PREFIX_PATTERN = re.compile(r"\\{1,2}(boxed|text)\{")
+MODEL_FORMATTING_TOKENS: tuple[str, ...] = ("$", "*", "`")
 
 
 class BaseLLMMoveHandler(ABC):
@@ -12,7 +29,11 @@ class BaseLLMMoveHandler(ABC):
     prompt_template: str
     retry_prompt_templates: dict[str, str]
 
-    def parse_decision_from_response(self, response: str, **kwargs) -> PlayerDecision:
+    def parse_decision_from_response(
+        self,
+        response: str,
+        **kwargs: Any,
+    ) -> PlayerDecision:
         """Parse LLM response into a PlayerDecision without validation.
 
         This method only extracts the move text from the raw LLM response.
@@ -23,13 +44,14 @@ class BaseLLMMoveHandler(ABC):
             **kwargs: Additional context for parsing (unused in base implementation).
 
         Returns:
-            PlayerDecision with action='move' and the extracted move text.
+            PlayerDecision: Decision with ``action='move'`` and the extracted
+            move text.
 
         Raises:
             ParseMoveError: Failed to extract move from response.
         """
         decision_text = self._extract_decision_text(response, **kwargs)
-        if decision_text is None or len(decision_text) == 0:
+        if not decision_text:
             raise ParseMoveError(
                 f"Failed to extract decision from LLM response: {response}"
             )
@@ -40,16 +62,34 @@ class BaseLLMMoveHandler(ABC):
             response=response,
         )
 
-    def get_prompt(self, **kwargs) -> str:
-        """Generate move request prompt with provided context."""
+    def get_prompt(self, **kwargs: Any) -> str:
+        """Render the primary prompt for requesting a move.
+
+        Args:
+            **kwargs: Template parameters used to fill the prompt.
+
+        Returns:
+            str: Prompt text ready to be delivered to the language model.
+        """
         return self._fill_prompt_template(self.prompt_template, **kwargs)
 
     def get_retry_prompt(
         self,
         exception_name: str,
-        **kwargs,
+        **kwargs: Any,
     ) -> str:
-        """Generate retry prompt based on the specific parsing error."""
+        """Render a retry prompt tailored to the parsing failure type.
+
+        Args:
+            exception_name: Name of the exception raised by the parser.
+            **kwargs: Template parameters used to fill the prompt.
+
+        Returns:
+            str: Prompt text encouraging the model to retry.
+
+        Raises:
+            ValueError: If no retry template exists for ``exception_name``.
+        """
         if exception_name not in self.retry_prompt_templates:
             raise ValueError(
                 f"No retry prompt defined for exception type: {exception_name}"
@@ -61,18 +101,18 @@ class BaseLLMMoveHandler(ABC):
             **kwargs,
         )
 
-    def _fill_prompt_template(self, template: str, **kwargs) -> str:
-        """Fill in prompt template with dynamic values.
+    def _fill_prompt_template(self, template: str, **kwargs: Any) -> str:
+        """Render the prompt template with supplied keyword arguments.
 
         Args:
-            template: String template with {field} placeholders.
-            **kwargs: Values to fill into the template.
+            template: String containing ``str.format`` placeholders.
+            **kwargs: Values used to render the template.
 
         Returns:
-            Formatted string with placeholders replaced.
+            str: Filled-in template.
 
         Raises:
-            KeyError: If template requires a field not in kwargs.
+            KeyError: If ``template`` expects a field missing from ``kwargs``.
         """
         try:
             return template.format(**kwargs)
@@ -83,16 +123,12 @@ class BaseLLMMoveHandler(ABC):
             ) from e
 
     @abstractmethod
-    def _extract_decision_text(self, response: str, **kwargs) -> str | None:
-        """Extract move text from LLM response.
-
-        Args:
-            response: The full LLM response text.
-            **kwargs: Additional context that may be needed for extraction.
-
-        Returns:
-            Extracted move text, or None if no valid move found.
-        """
+    def _extract_decision_text(
+        self,
+        response: str,
+        **kwargs: Any,
+    ) -> str | None:
+        """Return the move text extracted from the LLM response."""
         pass
 
 
@@ -133,11 +169,14 @@ class GameArenaLLMMoveHandler(BaseLLMMoveHandler):
         "AmbiguousMoveError": GAME_ARENA_AMBIGUOUS_MOVE_TEMPLATE,
     }
 
-    def get_prompt(self, **kwargs) -> str:
-        """Generate move request prompt with provided context.
+    def get_prompt(self, **kwargs: Any) -> str:
+        """Render the Game Arena move request prompt.
 
-        Overrides base to add flattened_move_history_in_uci field.
-        Follows exactly Game Arena format for reproducibility.
+        Args:
+            **kwargs: Template parameters expected by Game Arena format.
+
+        Returns:
+            str: Prompt text following the "Final Answer" convention.
         """
         if "move_history_in_uci" in kwargs:
             move_history_in_uci = kwargs["move_history_in_uci"]
@@ -146,74 +185,48 @@ class GameArenaLLMMoveHandler(BaseLLMMoveHandler):
             )
         return super().get_prompt(**kwargs)
 
-    def _extract_decision_text(self, response: str, **kwargs) -> str:
+    def _extract_decision_text(self, response: str, **kwargs: Any) -> str:
         """Extract and sanitize move text from LLM response."""
         raw_move_text = self._extract_raw_move_text(response)
         move_text = self._sanitize_move_text(raw_move_text)
+        if move_text is None:
+            raise ParseMoveError(
+                f"Failed to sanitize move extracted from response: {response}"
+            )
         return move_text
 
     @staticmethod
-    def _extract_raw_move_text(response: str) -> Optional[str]:
-        """Extract move text after 'Final Answer:' marker or simple move notation."""
+    def _extract_raw_move_text(response: str) -> str | None:
+        """Locate the raw move text using Game Arena conventions."""
         if not response:
             return None
 
-        # Try multiple variations of the final answer marker
-        markers = [
-            "Final Answer:",
-            "final answer:",
-            "Final answer:",
-            "The final answer is",
-            "the final answer is",
-            "My final answer is",
-            "my final answer is",
-        ]
-
-        index = -1
-        marker_len = 0
+        marker_index = -1
+        marker_length = 0
         response_lower = response.lower()
 
-        for marker in markers:
+        for marker in FINAL_ANSWER_MARKERS:
             marker_lower = marker.lower()
             found_index = response_lower.rfind(marker_lower)
             if found_index != -1:
-                index = found_index
-                marker_len = len(marker)
+                marker_index = found_index
+                marker_length = len(marker)
                 break
 
-        if index == -1:
-            # Fallback: If response is very short (< 10 chars) and looks like a move, use it directly
-            # This handles models like Gemini that sometimes just return "e4" or "Nf3"
+        if marker_index == -1:
             response_stripped = response.strip()
             if (
                 len(response_stripped) <= 10
                 and response_stripped
                 and " " not in response_stripped
+                and any(c in response_stripped for c in "abcdefghNBRQKO12345678x=+-#")
             ):
-                # Likely just a move notation like "e4", "Nf3", "O-O", "O-O-O", "exd5", etc.
-                if any(c in response_stripped for c in "abcdefghNBRQKO12345678x=+-#"):
-                    return response_stripped
+                return response_stripped
             return None
 
-        text_after_marker = response[index + marker_len :]
-
-        # Remove common LLM formatting artifacts (LaTeX, markdown, HTML)
-        # Keeping exact Game Arena escape sequences for reproducibility,
-        # even though "\boxed{" creates \b control char (should be raw string).
-        # Works in practice as LLMs don't output literal \b or \t in chess moves.
-        raw_move_text = (
-            text_after_marker.strip(" .")
-            .replace("$", "")
-            .replace("\\boxed{", "")
-            .replace("\\text{", "")
-            .replace("\boxed{", "")
-            .replace("\text{", "")
-            .replace("}", "")
-            .replace("*", "")
-            .replace("`", "")
-            .replace("\n", " ")
-        )
-
+        text_after_marker = response[marker_index + marker_length :]
+        sanitized_segment = text_after_marker.strip(" .")
+        raw_move_text = _strip_model_formatting(sanitized_segment)
         raw_move_text = re.sub(r"<.*?>", "", raw_move_text)
 
         # Handle castling notation with spaces first (e.g., "O - O" or "O - O - O")
@@ -224,27 +237,53 @@ class GameArenaLLMMoveHandler(BaseLLMMoveHandler):
             # Keep the castling notation intact but remove spaces
             raw_move_text = raw_move_text.strip().replace(" ", "")
         else:
-            # For non-castling moves, take only the first word (prevents 'e4 therefore...' misparsing)
-            # Split on whitespace and common punctuation that might follow a move
-            parts = re.split(r"[\s,;.!]", raw_move_text.strip())
+            # For non-castling moves, take the first whitespace-delimited token
+            # Leaving punctuation for the sanitizer to strip preserves cases like '1...e5'
+            stripped = raw_move_text.strip()
+            parts = stripped.split()
             raw_move_text = parts[0] if parts else ""
 
         return raw_move_text
 
     @staticmethod
-    def _sanitize_move_text(raw_move_text: str) -> Optional[str]:
-        """Remove move numbers and non-chess punctuation."""
+    def _sanitize_move_text(raw_move_text: str | None) -> str | None:
+        """Strip numbering and extraneous punctuation from raw move text.
+
+        Args:
+            raw_move_text: Candidate move string emitted by the LLM handler.
+
+        Returns:
+            str | None: Sanitized move text if extraction succeeds.
+        """
         if not raw_move_text:
             return None
 
         sanitized_move_text = raw_move_text.strip()
 
+        # Trim common annotation characters from the ends before castling detection
+        while sanitized_move_text and sanitized_move_text[-1] in {"!", "?", "."}:
+            sanitized_move_text = sanitized_move_text[:-1]
+        while sanitized_move_text and sanitized_move_text[0] in {"!", "?", "."}:
+            sanitized_move_text = sanitized_move_text[1:]
+        sanitized_move_text = sanitized_move_text.strip()
+
+        # Normalize castling variations early to avoid treating leading zeros as move numbers
+        normalized_castling = sanitized_move_text.upper().replace(" ", "")
+        if normalized_castling in {"OO", "0-0", "O-O"}:
+            return "O-O"
+        if normalized_castling in {"OOO", "0-0-0", "O-O-O"}:
+            return "O-O-O"
+
         if sanitized_move_text and sanitized_move_text[0].isdigit():
-            match = re.match(r"(\d+)(\.+)\s*(.*)", sanitized_move_text)
-            if match:
-                sanitized_move_text = match.group(3)
+            # Remove leading move numbers like "12." or "1..." or "23)"
+            match = re.match(r"\d+\s*(\.+|[:\)]+)?\s*(.*)", sanitized_move_text)
+            if match and match.group(2):
+                sanitized_move_text = match.group(2)
             else:
-                return None
+                # Fall back to stripping the leading digits and any separators
+                sanitized_move_text = re.sub(r"^\d+[\.\s:-]*", "", sanitized_move_text)
+                if not sanitized_move_text:
+                    return None
 
         # Strip symbols that python-chess rejects to increase parse success
         for char in [
@@ -270,17 +309,20 @@ class GameArenaLLMMoveHandler(BaseLLMMoveHandler):
         if sanitized_move_text.endswith("ep"):
             sanitized_move_text = sanitized_move_text[:-2]
 
+        # Hyphenated SAN such as "Bf1-e2" should be normalized by dropping dashes
+        sanitized_move_text = sanitized_move_text.replace("-", "")
+
         return sanitized_move_text.strip() if sanitized_move_text else None
 
     @staticmethod
     def _flatten_move_history_in_uci(move_history_in_uci: list[str]) -> str:
-        """Format move history into Game Arena style for reproducibility.
+        """Format move history into a numbered string sequence.
 
         Args:
-            move_history_in_uci: List of moves in UCI format.
+            move_history_in_uci: Chronological list of UCI moves.
 
         Returns:
-            String with numbered moves (e.g., "1. e2e4 e7e5 2. g1h3").
+            str: Human-readable move sequence with turn numbers.
         """
         flattened_move_history_in_uci = []
         for i, move_in_uci in enumerate(move_history_in_uci):
@@ -290,3 +332,13 @@ class GameArenaLLMMoveHandler(BaseLLMMoveHandler):
             flattened_move_history_in_uci.append(move_in_uci)
 
         return " ".join(flattened_move_history_in_uci)
+
+
+def _strip_model_formatting(text: str) -> str:
+    """Remove language-model specific wrappers from the move region."""
+    cleaned = LATEX_PREFIX_PATTERN.sub("", text)
+    cleaned = cleaned.replace("}", "")
+    for artifact in MODEL_FORMATTING_TOKENS:
+        cleaned = cleaned.replace(artifact, "")
+    cleaned = cleaned.replace("\n", " ")
+    return cleaned

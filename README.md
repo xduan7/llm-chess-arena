@@ -4,11 +4,29 @@ A clean, modular platform for Large Language Models (LLMs) to play chess against
 
 This project heavily inspired by [google-deepmind/game_arena](https://github.com/google-deepmind/game_arena). Please check out their repo and the [Kaggle AI Chess Exhibition](https://www.kaggle.com/game-arena) for the original implementation and the matches.
 
-To extend the original implementation, we are planning to add the following features: 
-- [ ] **Human Player**: Allow human players to play against LLMs.
-- [ ] **Move/Game Evaluations**: Add annotations or metrics to moves and games for better analysis.
-- [ ] **Better Visualizations**: Improve the display of game states and reasoning traces.
-- [ ] **Learning Techniques**: Improve LLM performance over time using techniques like different reasoning strategies, in-context learning, and more.
+## Roadmap
+
+Primary priorities:
+
+- [ ] **Metrics & Logging Surface** — add structured events around move validation and game flow so we can record prompts, responses, retry causes, and eventually evaluation scores.
+    - Potential targets: hooks in `LLMPlayer._validate_player_decision_from_llm`, callbacks from `Game.make_move`, emitter interface for downstream storage (files, DB, analytics).
+- [ ] **Context Enrichment Pipeline** — compute optional signals (engine evals, opening tags, tactical motifs) and pass them via `PlayerDecisionContext` extras for prompts or analytics.
+    - Options: integrate Stockfish eval snapshots, reuse python-chess heuristics, log derived features for offline learning.
+- [ ] **Prompt & Decision Strategies** — introduce a strategy layer above `LLMPlayer` so multi-turn prompting, self-critique, or ICL recipes can plug in without rewiring the player loop.
+    - Options: strategy objects managing message history, few-shot exemplar loaders, self-evaluation retries.
+- [ ] **Reusable Board/Context Serialization** — expose serialization helpers (ASCII boards, annotated histories) that both prompts and UIs can consume.
+    - Options: pure-text renders, Rich tables, JSON payloads for future front-ends.
+- [ ] **Template Modularization** — move current Game Arena strings into a lightweight templating helper once multiple strategies exist.
+    - Options: simple format fragments, string.Template, Jinja2 hierarchy.
+- [ ] **Deferred Handler/Connector Factory** — create factories only after we have several handler or connector variants that share configuration knobs.
+    - Options: registry-based factory, Hydra/OmegaConf-driven configs.
+
+Second-tier initiatives — stay visible for future sprints:
+
+- [ ] **Human Player Support** — CLI or UI for humans to play against LLM/engine opponents.
+- [ ] **Move/Game Evaluations** — richer post-game reports built on top of the metrics surface.
+- [ ] **Better Visualizations** — improved terminal or web views leveraging the new serialization helpers.
+- [ ] **Learning Techniques** — experimentation playground for different prompting/ICL strategies once the strategy layer is ready.
 
 
 ---

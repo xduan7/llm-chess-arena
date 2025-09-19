@@ -1,6 +1,9 @@
+"""Unit tests for the LLM-backed player behaviors."""
+
+from unittest.mock import Mock
+
 import chess
 import pytest
-from unittest.mock import Mock
 
 from llm_chess_arena.player.llm import (
     LLMPlayer,
@@ -11,6 +14,7 @@ from tests.fixtures.mock_llm_connector import MockLLMConnector
 
 @pytest.fixture
 def mock_connector():
+    """Provide a mock connector with deterministic responses."""
     return MockLLMConnector(
         model="test-model",
         responses=["Final Answer: e4", "Final Answer: Nf3", "Final Answer: d4"],
@@ -19,11 +23,13 @@ def mock_connector():
 
 @pytest.fixture
 def handler():
+    """Return the default Game Arena move handler."""
     return GameArenaLLMMoveHandler()
 
 
 @pytest.fixture
 def llm_player(mock_connector, handler):
+    """Instantiate an LLMPlayer using the mock connector and handler."""
     return LLMPlayer(
         connector=mock_connector,
         handler=handler,
@@ -35,9 +41,12 @@ def llm_player(mock_connector, handler):
 
 
 class TestLLMPlayerInitialization:
+    """Construction-time validation for LLMPlayer."""
+
     def test_player_stores_all_configuration_parameters_provided_at_initialization(
         self,
     ):
+        """Ensure initialization stores connector, handler, and metadata."""
         test_connector = MockLLMConnector()
         game_arena_handler = GameArenaLLMMoveHandler()
 
@@ -58,6 +67,7 @@ class TestLLMPlayerInitialization:
         assert configured_player.num_votes == 3
 
     def test_initialization_raises_value_error_when_num_votes_is_zero_or_negative(self):
+        """Reject invalid voting configurations during initialization."""
         test_connector = MockLLMConnector()
         game_arena_handler = GameArenaLLMMoveHandler()
 
@@ -79,7 +89,10 @@ class TestLLMPlayerInitialization:
 
 
 class TestLLMPlayerMoveGeneration:
+    """Decision generation scenarios using the mock connector."""
+
     def test_player_returns_valid_move_decision_from_llm_response(self, llm_player):
+        """Confirm the player converts valid responses into moves."""
         starting_board = chess.Board()
         move_decision = llm_player(starting_board)
 
@@ -90,6 +103,7 @@ class TestLLMPlayerMoveGeneration:
     def test_player_consumes_llm_responses_in_sequential_order_across_multiple_calls(
         self, llm_player
     ):
+        """Verify repeated calls advance through mocked responses."""
         game_board = chess.Board()
 
         first_move_decision = llm_player(game_board)
@@ -106,7 +120,10 @@ class TestLLMPlayerMoveGeneration:
 
 
 class TestLLMPlayerRetryLogic:
+    """Retry and recovery behavior when LLM responses initially fail."""
+
     def test_player_resigns_after_exceeding_maximum_retry_attempts(self):
+        """Player resigns after exhausting retries without a valid move."""
         failing_connector = MockLLMConnector(
             responses=["invalid", "also invalid", "still invalid"]
         )
@@ -129,6 +146,7 @@ class TestLLMPlayerRetryLogic:
     def test_player_successfully_recovers_on_second_attempt_after_initial_invalid_move(
         self,
     ):
+        """Player should find a legal move after initial invalid output."""
         connector_with_retry_scenario = MockLLMConnector(
             responses=["invalid move", "Final Answer: e4"]
         )
@@ -148,6 +166,7 @@ class TestLLMPlayerRetryLogic:
         assert connector_with_retry_scenario.query_count == 2
 
     def test_retry_prompt_includes_previous_invalid_move_attempt_context(self):
+        """Retry prompt should embed prior invalid move context."""
         initial_invalid_response = "I'll play knight to e5"
 
         connector_with_invalid_first_response = MockLLMConnector(
@@ -178,6 +197,7 @@ class TestLLMPlayerRetryLogic:
         assert initial_invalid_response in retry_prompt_sent_to_llm
 
     def test_illegal_move_triggers_retry_with_specific_illegal_move_context(self):
+        """Illegal initial move should trigger context-aware retry prompt."""
         illegal_move_response = "Final Answer: e5"  # Illegal for white from start
         legal_move_response = "Final Answer: e4"
 

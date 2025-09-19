@@ -1,4 +1,9 @@
-from typing import Optional, Dict, Any, List
+"""Test double for the LLM connector to avoid network access."""
+
+from __future__ import annotations
+
+from typing import Any
+
 from llm_chess_arena.player.llm.llm_connector import LLMConnector
 
 
@@ -8,8 +13,8 @@ class MockLLMConnector(LLMConnector):
     def __init__(
         self,
         model: str = "mock-model",
-        responses: Optional[List[str]] = None,
-        raise_on_query: Optional[Exception] = None,
+        responses: list[str] | None = None,
+        raise_on_query: Exception | None = None,
         **kwargs,
     ):
         """Initialize mock connector.
@@ -30,17 +35,20 @@ class MockLLMConnector(LLMConnector):
         self.max_retries = kwargs.get("max_retries", 3)
 
     def query(
-        self, prompt: str, system_prompt: Optional[str] = None, n: int = 1
-    ) -> List[str]:
+        self, prompt: str, system_prompt: str | None = None, n: int = 1
+    ) -> list[str]:
         """Return predetermined responses or extract move from prompt.
 
         Args:
-            prompt: The prompt to send
-            system_prompt: Optional system prompt
-            n: Number of responses to generate (for voting)
+            prompt: The prompt to send.
+            system_prompt: Optional system prompt.
+            n: Number of responses to generate for voting.
 
         Returns:
-            List of response strings
+            list[str]: Response strings in query order.
+
+        Raises:
+            Exception: If ``raise_on_query`` was configured with an error.
         """
         self.query_count += 1  # Count each query call, not each response
         self.query_history.append(
@@ -77,7 +85,7 @@ class MockLLMConnector(LLMConnector):
 
         return responses
 
-    def get_model_info(self) -> Dict[str, Any]:
+    def get_model_info(self) -> dict[str, Any]:
         """Return mock model configuration."""
         return {
             "name": self.model,

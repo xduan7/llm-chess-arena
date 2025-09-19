@@ -1,0 +1,126 @@
+interactions:
+- request:
+    body: '{"messages": [{"role": "user", "content": "Let''s play chess. The current
+      game state in FEN is:\nrnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq -
+      0 1\nThe moves played so far are:\n\nYou are playing as player white.\nIt is
+      now your turn. Play your strongest move. The move MUST be legal. Reason step
+      by step to come up with your move, then output your final answer in the format
+      \"Final Answer: X\" where X is your chosen move in standard algebraic notation
+      (e.g., e4, Nf3, O-O)."}], "model": "gpt-4o-mini", "n": 1, "temperature": 1.0}'
+    headers:
+      accept:
+      - application/json
+      accept-encoding:
+      - gzip, deflate
+      connection:
+      - keep-alive
+      content-length:
+      - '528'
+      content-type:
+      - application/json
+      cookie:
+      - __cf_bm=cjMIyTtQViQhZrhhi1jNvDDytAorqFIUTQlCKBctgUk-1758252951-1.0.1.1-TJLrWxiCCgXrg.HLb6CnpjMIIGYQG6PYWO3Rpbix6Q4NF.BuULpG_OceNx.ytBuj.ysf9Yd5MuKkI_0N4MIC.Rn42MW0VvJ07f4JWnC34dI;
+        _cfuvid=CC3br50Ga8qj6..lUFyrlezUcqWucZ4KWxyZ3Sz12Jw-1758252951997-0.0.1.1-604800000
+      host:
+      - api.openai.com
+      user-agent:
+      - OpenAI/Python 1.102.0
+      x-stainless-arch:
+      - arm64
+      x-stainless-async:
+      - 'false'
+      x-stainless-lang:
+      - python
+      x-stainless-os:
+      - MacOS
+      x-stainless-package-version:
+      - 1.102.0
+      x-stainless-raw-response:
+      - 'true'
+      x-stainless-read-timeout:
+      - '30.0'
+      x-stainless-retry-count:
+      - '0'
+      x-stainless-runtime:
+      - CPython
+      x-stainless-runtime-version:
+      - 3.12.11
+    method: POST
+    uri: https://api.openai.com/v1/chat/completions
+  response:
+    body:
+      string: "{\n  \"id\": \"chatcmpl-CHMD5L2AQhwRUcmKXRT0sxou6Kow0\",\n  \"object\":
+        \"chat.completion\",\n  \"created\": 1758252987,\n  \"model\": \"gpt-4o-mini-2024-07-18\",\n
+        \ \"choices\": [\n    {\n      \"index\": 0,\n      \"message\": {\n        \"role\":
+        \"assistant\",\n        \"content\": \"To determine the best move in this
+        position, let's first analyze the current state of the chessboard represented
+        by the FEN:\\n\\n```\\nrnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq
+        - 0 1\\n```\\n\\n1. The board is in the initial position with all pieces in
+        their starting squares.\\n2. White has the advantage of the first move. In
+        chess, popular and strong opening moves for White include advancing the central
+        pawns and developing the knights.\\n3. Typical first moves include 1.e4 or
+        1.d4.\\n\\nLet's evaluate the two common moves:\\n\\n- **1.e4**: This move
+        advances the pawn in front of the king two squares, controlling the center
+        (e4 square) and opening lines for the queen and the bishop on f1. It is often
+        played in many classical chess openings.\\n- **1.d4**: This also controls
+        the center (d4 square) but is less aggressive than 1.e4 in terms of immediate
+        central control. It allows development of the other bishop.\\n\\nBoth moves
+        are very strong, but 1.e4 is more popular and can lead to active piece play
+        right from the start.\\n\\nConsidering both options and the principle of controlling
+        the center, I choose 1.e4 as my move.\\n\\nFinal Answer: e4\",\n        \"refusal\":
+        null,\n        \"annotations\": []\n      },\n      \"logprobs\": null,\n
+        \     \"finish_reason\": \"stop\"\n    }\n  ],\n  \"usage\": {\n    \"prompt_tokens\":
+        142,\n    \"completion_tokens\": 286,\n    \"total_tokens\": 428,\n    \"prompt_tokens_details\":
+        {\n      \"cached_tokens\": 0,\n      \"audio_tokens\": 0\n    },\n    \"completion_tokens_details\":
+        {\n      \"reasoning_tokens\": 0,\n      \"audio_tokens\": 0,\n      \"accepted_prediction_tokens\":
+        0,\n      \"rejected_prediction_tokens\": 0\n    }\n  },\n  \"service_tier\":
+        \"default\",\n  \"system_fingerprint\": \"fp_560af6e559\"\n}\n"
+    headers:
+      Connection:
+      - keep-alive
+      Content-Type:
+      - application/json
+      Server:
+      - cloudflare
+      Strict-Transport-Security:
+      - max-age=31536000; includeSubDomains; preload
+      Transfer-Encoding:
+      - chunked
+      X-Content-Type-Options:
+      - nosniff
+      access-control-expose-headers:
+      - X-Request-ID
+      alt-svc:
+      - h3=":443"; ma=86400
+      cf-cache-status:
+      - DYNAMIC
+      content-length:
+      - '1960'
+      openai-organization:
+      - user-aot8rlpgpoltgmjq3rrcwvq3
+      openai-processing-ms:
+      - '6339'
+      openai-project:
+      - proj_mPL62zuq4MRiWekadSO6KuLd
+      openai-version:
+      - '2020-10-01'
+      x-envoy-upstream-service-time:
+      - '6382'
+      x-openai-proxy-wasm:
+      - v0.1
+      x-ratelimit-limit-requests:
+      - '10000'
+      x-ratelimit-limit-tokens:
+      - '10000000'
+      x-ratelimit-remaining-requests:
+      - '9999'
+      x-ratelimit-remaining-tokens:
+      - '9999890'
+      x-ratelimit-reset-requests:
+      - 6ms
+      x-ratelimit-reset-tokens:
+      - 0s
+    status:
+      code: 200
+      message: OK
+version: 1

@@ -1,3 +1,6 @@
+"""Custom exception hierarchy for move parsing and validation."""
+
+
 class MoveError(ValueError):
     """Base exception for all move-related errors."""
 

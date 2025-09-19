@@ -1,3 +1,5 @@
+"""Integration tests covering multi-move gameplay scenarios."""
+
 import chess
 import pytest
 
@@ -11,7 +13,10 @@ from tests.conftest import (
 
 
 class TestRandomVsRandom:
+    """Regression tests covering random-vs-random match behavior."""
+
     def test_game__should_terminate__before_move_limit(self, game):
+        """Ensure random games end naturally or respect the move cap."""
         max_moves_before_timeout = 200
 
         game.play(max_num_moves=max_moves_before_timeout)
@@ -28,6 +33,7 @@ class TestRandomVsRandom:
     def test_games__should_produce_varied_outcomes__when_seeds_differ(
         self,
     ):
+        """Expect distinct results when random seeds differ."""
         outcomes = []
         num_games = 5
         move_limit = 200
@@ -54,6 +60,7 @@ class TestRandomVsRandom:
     def test_games__should_achieve_checkmate__when_playing_many_games(
         self,
     ):
+        """Verify long simulations eventually hit a checkmate termination."""
         termination_types = set()
         num_games = 20
         move_limit = 300
@@ -77,9 +84,12 @@ class TestRandomVsRandom:
 
 
 class TestGameWithCustomBoard:
+    """Tests that start from pre-arranged positions behave as expected."""
+
     def test_game__should_continue__from_spanish_opening(
         self, white_player, black_player
     ):
+        """Run play from a Ruy Lopez setup and ensure progress occurs."""
         game = Game(white_player, black_player)
 
         spanish_opening_moves = ["e4", "e5", "Nf3", "Nc6", "Bb5", "a6", "Ba4", "Nf6"]
@@ -98,6 +108,7 @@ class TestGameWithCustomBoard:
         assert total_moves_played > moves_after_setup
 
     def test_queen_endgame_plays_until_mate_or_move_limit(self, common_positions):
+        """Confirm complex endgames end or reach the configured limit."""
         game = setup_game_from_fen(common_positions["queen_endgame"])
         initial_moves = len(game.board.move_stack)
 
@@ -114,15 +125,18 @@ class TestGameWithCustomBoard:
 
 
 class TestPlayerInteraction:
+    """Verify players observe and interact with shared game state correctly."""
+
     def test_each_player_sees_correct_board_states_during_play(
         self,
     ):
+        """Check that recording players view alternating board states."""
         white_recording_player = RecordingPlayer(name="White", color="white", seed=42)
         black_recording_player = RecordingPlayer(name="Black", color="black", seed=43)
         game = Game(white_recording_player, black_recording_player)
 
         moves_to_play = 6
-        for move_count in range(moves_to_play):
+        for _ in range(moves_to_play):
             if not game.finished:
                 game.make_move()
 
@@ -140,6 +154,7 @@ class TestPlayerInteraction:
         ), "Black should see 3 different positions"
 
     def test_game_propagates_player_exceptions(self, black_player):
+        """Ensure runtime errors from players bubble up to the game loop."""
         faulty_white_player = FailingPlayer(
             name="White", color="white", seed=42, fail_after_moves=2
         )

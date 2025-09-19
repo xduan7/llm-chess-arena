@@ -1,15 +1,21 @@
-import chess
-from loguru import logger
+"""Core game loop coordinating chess players and board state."""
+
+from __future__ import annotations
+
 from typing import Any
 
+import chess
+from loguru import logger
+
 from llm_chess_arena.player.base_player import BasePlayer
-from llm_chess_arena.board_display import display_board_with_context
+from llm_chess_arena.renderer import display_board_with_context
 from llm_chess_arena.exceptions import (
     InvalidMoveError,
     IllegalMoveError,
     AmbiguousMoveError,
 )
 from llm_chess_arena.types import PlayerDecision
+from llm_chess_arena.utils import parse_attempted_move_to_uci
 
 
 class Game:
@@ -41,14 +47,14 @@ class Game:
         self.board = chess.Board()
         self.display_board = display_board
         logger.info(f"Game initialized: {white_player} vs {black_player}")
-        self._outcome = None
+        self._outcome: chess.Outcome | None = None
 
     @property
     def current_player(self) -> BasePlayer:
         """Get the player whose turn it is to move.
 
         Returns:
-            The current player (white or black).
+            BasePlayer: Currently active player instance.
         """
         return (
             self.white_player if self.board.turn == chess.WHITE else self.black_player
@@ -59,7 +65,7 @@ class Game:
         """Get the outcome of the game if finished.
 
         Returns:
-            The outcome object if the game is over, else None.
+            chess.Outcome | None: Outcome object when game is over, else None.
         """
         if self._outcome is None and self.board.is_game_over():
             self._outcome = self.board.outcome()
@@ -70,7 +76,7 @@ class Game:
         """Check if the game is finished.
 
         Returns:
-            True if the game is over, False otherwise.
+            bool: True if the game is over, False otherwise.
         """
         return self.outcome is not None
 
@@ -79,18 +85,20 @@ class Game:
         """Get the winner of the game if finished.
 
         Returns:
-            The winning player, or None if it's a draw or game is not over.
+            BasePlayer | None: Winning player, or None for draw / ongoing games.
         """
         if not self.finished or self.outcome is None:
             return None
 
-        winner = self.outcome.winner  # outcome is never None if game is over
-        if winner == chess.WHITE:
-            return self.white_player
-        elif winner == chess.BLACK:
-            return self.black_player
-        else:
+        winner_color = self.outcome.winner  # outcome is never None if game is over
+        if winner_color is None:
             return None
+
+        color_to_player = {
+            chess.WHITE: self.white_player,
+            chess.BLACK: self.black_player,
+        }
+        return color_to_player[winner_color]
 
     def make_move(self) -> None:
         """Execute a single move in the game.
@@ -123,19 +131,9 @@ class Game:
         logger.info(f"{self.current_player} resigns")
 
     def _handle_move(self, decision: PlayerDecision) -> None:
-        """Validate and apply a move to the board.
-
-        Args:
-            decision: Player's decision containing the move.
-
-        Raises:
-            InvalidMoveError: If move format is invalid or move is missing.
-            IllegalMoveError: If move is illegal in current position.
-        """
+        """Validate the player's move and apply it to the board."""
         if decision.attempted_move is None:
             raise InvalidMoveError("Move action requires attempted_move")
-
-        from llm_chess_arena.utils import parse_attempted_move_to_uci
 
         uci_move = parse_attempted_move_to_uci(
             decision.attempted_move, self.board.fen()
@@ -179,8 +177,10 @@ class Game:
                         display_board_with_context(
                             self.board,
                             current_player=self.current_player.name,
-                            move_count=(len(self.board.move_stack) + 1) // 2,
+                            move_count=self.board.fullmove_number,
                             last_move=current_move,
+                            white_player=self.white_player.name,
+                            black_player=self.black_player.name,
                         )
                 except (
                     IllegalMoveError,
@@ -216,6 +216,7 @@ class Game:
 
     def _cleanup_players(self) -> None:
         """Clean up player resources."""
+        # Player adapters expose ``close`` optionally; guard each call accordingly.
         if hasattr(self.white_player, "close"):
             try:
                 self.white_player.close()
@@ -228,11 +229,11 @@ class Game:
             except Exception as e:
                 logger.warning(f"Error closing black player: {e}")
 
-    def __enter__(self) -> "Game":
+    def __enter__(self) -> Game:
         """Context manager entry.
 
         Returns:
-            Self for use in with statement.
+            Game: Self reference for use in with statements.
         """
         return self
 

@@ -1,5 +1,8 @@
+"""LLM-backed player that queries models and applies voting heuristics."""
+
+from __future__ import annotations
+
 from collections import Counter
-from typing import Optional
 from loguru import logger
 
 from llm_chess_arena.player.base_player import BasePlayer
@@ -16,32 +19,34 @@ from llm_chess_arena.exceptions import (
 
 
 class LLMPlayer(BasePlayer):
-    """Chess player that uses an LLM to generate moves.
+    """Chess player that queries an LLM and applies optional majority voting.
 
-    Orchestrates between:
-    - LLMConnector: Handles communication with the LLM service
-    - LLMMoveHandler: Handles prompt generation and response parsing
+    The player delegates transport responsibility to the connector and relies on
+    the move handler for prompt rendering and move extraction.
     """
 
     def __init__(
         self,
         *,
-        name: Optional[str] = None,
+        name: str | None = None,
         color: Color,
         connector: LLMConnector,
         handler: BaseLLMMoveHandler,
         max_move_retries: int = 3,
         num_votes: int = 1,
-    ):
-        """Initialize LLM player.
+    ) -> None:
+        """Initialize the LLM-backed player.
 
         Args:
-            connector: LLM service connector
-            handler: Move prompt/parse handler
-            color: Chess piece color ('white' or 'black')
-            name: Optional player name
-            max_move_retries: Maximum retry attempts for invalid/illegal moves
-            num_votes: Number of samples of LLM queries for majority voting
+            name: Optional player name override.
+            color: Chess side this player controls.
+            connector: Interface responsible for communicating with the LLM.
+            handler: Component that renders prompts and parses responses.
+            max_move_retries: Maximum retries after invalid or illegal moves.
+            num_votes: Number of LLM samples to request for majority voting.
+
+        Raises:
+            ValueError: If ``num_votes`` is less than one.
         """
         if num_votes < 1:
             raise ValueError(f"`num_votes` must be >= 1, got {num_votes}")
@@ -51,25 +56,22 @@ class LLMPlayer(BasePlayer):
         self.handler = handler
         self.max_move_retries = max_move_retries
         self.num_votes = num_votes
+        self.last_move_attempts: int = 0
+        self.last_move_decision: PlayerDecision | None = None
 
     def _make_decision(self, context: PlayerDecisionContext) -> PlayerDecision:
-        """Get next move from the LLM with retry logic and majority voting.
-
-        If the move is invalid after all retries, returns resignation.
-        This function should handle retries internally and not raise.
-
-        Args:
-            context: Current game context
-
-        Returns:
-            Player decision (move or resignation)
-        """
+        """Produce a move via the LLM, retrying and voting before resigning."""
         # Must initialize prompt outside loop to preserve retry context across iterations
         prompt = self.handler.get_prompt(**context.model_dump())
 
-        for attempt in range(self.max_move_retries + 1):
+        self.last_move_attempts = 0
+        self.last_move_decision = None
+
+        max_attempts = self.max_move_retries + 1
+
+        for attempt in range(max_attempts):
             logger.debug(
-                f"LLM player {self} move attempt {attempt + 1}/{self.max_move_retries + 1} "
+                f"LLM player {self} move attempt {attempt + 1}/{max_attempts} "
                 f"for position FEN: {context.board_in_fen[:30]}..."
             )
             try:
@@ -78,6 +80,8 @@ class LLMPlayer(BasePlayer):
                     f"LLM returned decision: action={decision.action}, "
                     f"move={decision.attempted_move if decision.action == 'move' else 'N/A'}"
                 )
+                self.last_move_attempts = attempt + 1
+                self.last_move_decision = decision
 
             except (TimeoutError, ConnectionError) as e:
                 # Network errors should propagate up - the game/tournament
@@ -97,17 +101,17 @@ class LLMPlayer(BasePlayer):
                 return decision
             except (InvalidMoveError, IllegalMoveError, AmbiguousMoveError) as e:
                 # These three exceptions indicate issues with the move (must
-                # contains a move and the action must be 'move')
+                # contain a move and the action must be 'move')
                 logger.warning(
                     f"LLM player {self} attempt {attempt + 1} failed with {e.__class__.__name__}: {e}. "
                     f"Invalid move: '{decision.attempted_move}'. "
-                    f"{'Will retry with context' if attempt < self.max_move_retries else 'No retries left'}"
+                    f"{'Will retry with context' if attempt < max_attempts - 1 else 'No retries left'}"
                 )
-                if attempt < self.max_move_retries:
+                if attempt < max_attempts - 1:
                     prompt = self.handler.get_retry_prompt(
                         exception_name=e.__class__.__name__,
                         last_prompt=prompt,
-                        last_response=decision.response,
+                        last_response=getattr(decision, "response", None),
                         last_attempted_move=decision.attempted_move,
                         **context.model_dump(),
                     )
@@ -119,38 +123,25 @@ class LLMPlayer(BasePlayer):
                 logger.error(
                     f"LLM player {self} returned unsupported action '{decision.action}', resigning."
                 )
-                return PlayerDecision(action="resign")
+                resign_decision = PlayerDecision(action="resign")
+                self.last_move_decision = resign_decision
+                return resign_decision
 
-        # All attempts exhausted - resign
+        # All attempts exhausted - fall back to deterministic move or resign
+        self.last_move_attempts = max_attempts
         logger.warning(
             f"LLM player {self} failed to produce a valid move after "
-            f"{self.max_move_retries + 1} attempts, resigning."
+            f"{max_attempts} attempts, resigning."
         )
-        return PlayerDecision(action="resign")
+        self.last_move_decision = PlayerDecision(action="resign")
+        return self.last_move_decision
 
     def _validate_player_decision_from_llm(
         self,
         decision: PlayerDecision,
         board_in_fen: str,
     ) -> PlayerDecision:
-        """Get the player's action from the LLM.
-
-        If the action is a move, we validate it and convert to UCI format.
-
-        Args:
-            prompt: The prompt to send to the LLM
-            context: Current game context for validation
-
-        Returns:
-            Validated PlayerDecision with move in UCI format if applicable, or resignation.
-
-        Raises:
-            NotImplementedError: If LLM returned unsupported action
-            InvalidMoveError: If move format is invalid
-            IllegalMoveError: If move is illegal in current position
-            AmbiguousMoveError: If SAN move is ambiguous in current position
-
-        """
+        """Normalize the decision and ensure the move is legal for the position."""
 
         if decision.action == "resign":
             return decision
@@ -161,10 +152,12 @@ class LLMPlayer(BasePlayer):
                 f"got '{decision.action}'"
             )
 
+        attempted_move = decision.attempted_move
+        if attempted_move is None:
+            raise InvalidMoveError("LLM move decision missing attempted_move text")
+
         # Validate and convert move to UCI
-        valid_attempted_move = parse_attempted_move_to_uci(
-            decision.attempted_move, board_in_fen
-        )
+        valid_attempted_move = parse_attempted_move_to_uci(attempted_move, board_in_fen)
         decision.attempted_move = valid_attempted_move
         return decision
 
@@ -172,13 +165,7 @@ class LLMPlayer(BasePlayer):
         self,
         prompt: str,
     ) -> PlayerDecision:
-        """Query LLM and parse response into PlayerDecision. (could be invalid or None)
-
-        Raises:
-            TimeoutError: If LLM request times out
-            ConnectionError: If LLM service is unreachable
-
-        """
+        """Query the LLM and derive a decision using majority voting."""
         responses = self.connector.query(prompt, n=self.num_votes)
         logger.debug(
             f"Requested {self.num_votes} response(s) from LLM for majority voting"
@@ -207,7 +194,7 @@ class LLMPlayer(BasePlayer):
 
         if not decisions:
             # All responses failed to parse, in which case we create a
-            # fake desicion to trigger a retry
+            # fake decision to trigger a retry
             logger.error("All LLM responses failed to parse, triggering retry ...")
             return PlayerDecision(
                 action="move",
@@ -246,12 +233,13 @@ class LLMPlayer(BasePlayer):
         most_voted_decision = winning_decisions[0]
 
         # Log response texts from all winning votes for debugging
-        if hasattr(most_voted_decision, "response"):
-            all_responses = [
-                d.response
-                for d in winning_decisions
-                if hasattr(d, "response") and d.response
-            ]
+        response_value = getattr(most_voted_decision, "response", None)
+        if response_value is not None:
+            all_responses: list[str] = []
+            for decision_candidate in winning_decisions:
+                candidate_response = getattr(decision_candidate, "response", None)
+                if candidate_response:
+                    all_responses.append(str(candidate_response))
             if all_responses:
                 logger.debug(
                     f"Winning decision had {len(all_responses)} supporting responses"
@@ -260,7 +248,8 @@ class LLMPlayer(BasePlayer):
         return most_voted_decision
 
     def close(self) -> None:
-        """Clean up LLM connector resources if needed."""
+        """Release connector resources when the player is torn down."""
+        # Connectors may expose an optional close hook; guard the call.
         if hasattr(self.connector, "close"):
             try:
                 self.connector.close()

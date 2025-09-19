@@ -1,3 +1,5 @@
+"""Utility helpers for chess move serialization and validation."""
+
 import chess
 
 from llm_chess_arena.exceptions import (
@@ -14,7 +16,7 @@ def get_legal_moves_in_uci(board: chess.Board) -> list[str]:
         board: Current chess board state.
 
     Returns:
-        List of legal moves in UCI notation (e.g., ["e2e4", "g1f3"]).
+        list[str]: Legal moves in UCI notation (e.g., ["e2e4", "g1f3"]).
     """
     return [move.uci() for move in board.legal_moves]
 
@@ -26,7 +28,7 @@ def get_move_history_in_uci(board: chess.Board) -> list[str]:
         board: Current chess board state with move history.
 
     Returns:
-        List of moves in UCI notation (e.g., ["e2e4", "e7e5", "g1f3"]).
+        list[str]: Moves in UCI notation (e.g., ["e2e4", "e7e5", "g1f3"]).
     """
     return [move.uci() for move in board.move_stack]
 
@@ -39,7 +41,7 @@ def parse_attempted_move_to_uci(attempted_move: str, board_in_fen: str) -> str:
         board_in_fen: FEN string representing the position.
 
     Returns:
-        Move in UCI format (e.g., "e2e4").
+        str: Move in UCI format (e.g., "e2e4").
 
     Raises:
         InvalidMoveError: If notation is syntactically invalid.
@@ -55,8 +57,6 @@ def parse_attempted_move_to_uci(attempted_move: str, board_in_fen: str) -> str:
         move_normalized = "O-O"
     elif move_normalized.lower() in ["o-o-o", "0-0-0"]:
         move_normalized = "O-O-O"
-    else:
-        move_normalized = attempted_move
 
     try:
         move = chess.Move.from_uci(move_normalized)
@@ -64,11 +64,13 @@ def parse_attempted_move_to_uci(attempted_move: str, board_in_fen: str) -> str:
             raise IllegalMoveError(
                 f"Illegal move in current position: '{attempted_move}'"
             )
-        return move.uci()
+        move_uci = str(move.uci())
+        return move_uci
     except ValueError:
         try:
             move = board.parse_san(move_normalized)
-            return move.uci()
+            move_uci = str(move.uci())
+            return move_uci
         except chess.AmbiguousMoveError as e:
             raise AmbiguousMoveError(f"Ambiguous SAN move: '{attempted_move}'") from e
         except chess.InvalidMoveError as e:

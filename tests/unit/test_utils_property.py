@@ -45,6 +45,8 @@ def board_with_legal_move(draw):
 
 
 class TestMoveParsingProperties:
+    """Property-based tests validating parsing utilities."""
+
     @given(board=board_with_legal_move())
     @settings(max_examples=50, deadline=1000)
     def test_parse_legal_uci_move_parses_correctly(self, board):
@@ -171,6 +173,8 @@ class TestMoveParsingProperties:
 
 
 class ChessGameStateMachine(RuleBasedStateMachine):
+    """State machine exploring random chess play sequences."""
+
     def __init__(self):
         super().__init__()
         self.board = None
@@ -249,7 +253,7 @@ class TestPromotionMoveProperties:
         elif file == "h":
             rank7 = "7P"
         else:
-            rank7 = f"{file_index}P{7-file_index}"
+            rank7 = f"{file_index}P{7 - file_index}"
         fen = f"8/{rank7}/8/8/8/8/8/8 w - - 0 1"
         chess.Board(fen)
 
@@ -273,7 +277,7 @@ class TestPromotionMoveProperties:
         elif file == "h":
             rank2 = "7p"
         else:
-            rank2 = f"{file_index}p{7-file_index}"
+            rank2 = f"{file_index}p{7 - file_index}"
         fen = f"8/8/8/8/8/8/{rank2}/8 b - - 0 1"
         chess.Board(fen)
 

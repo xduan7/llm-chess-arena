@@ -1,12 +1,14 @@
+"""Shared Pydantic models and literals for the chess arena."""
+
 from typing import Literal
+
 from typing_extensions import Self
 from pydantic import BaseModel, Field, ConfigDict, field_validator, model_validator
 
 Color = Literal["white", "black"]
 # Currently supported actions
 PlayerAction = Literal["move", "resign"]
-# Future draw support: add 'offer_draw', 'accept_draw', 'decline_draw' to PlayerAction
-# and uncomment the draw handling logic in game.py lines 111-126
+# Future draw support: add draw-related actions here and extend game orchestration accordingly.
 
 
 class PlayerDecisionContext(BaseModel):
@@ -32,7 +34,7 @@ class PlayerDecisionContext(BaseModel):
             v: Legal moves in UCI format.
 
         Returns:
-            Validated list.
+            list[str]: Validated legal moves.
 
         Raises:
             ValueError: If empty (game should detect termination before requesting moves).
@@ -62,7 +64,7 @@ class PlayerDecision(BaseModel):
         """Ensure attempted_move presence matches action type.
 
         Returns:
-            Validated instance.
+            Self: Validated instance.
 
         Raises:
             ValueError: If move presence inconsistent with action.

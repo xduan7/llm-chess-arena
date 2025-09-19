@@ -1,7 +1,11 @@
+"""Stockfish-backed chess player implementation."""
+
+from __future__ import annotations
+
 import os
 import shutil
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Mapping
 
 import chess
 import chess.engine
@@ -11,18 +15,15 @@ from llm_chess_arena.player.base_player import BasePlayer
 from llm_chess_arena.types import Color, PlayerDecisionContext, PlayerDecision
 
 # Default depth prevents infinite analysis when limits not specified
-DEFAULT_ENGINE_LIMITS = {"depth": 10}
+DEFAULT_ENGINE_LIMITS: dict[str, Any] = {"depth": 10}
 
 
 class StockfishPlayer(BasePlayer):
-    """Chess player powered by Stockfish engine.
+    """Chess player powered by a lazily-initialized Stockfish engine.
 
-    Uses lazy initialization: engine subprocess starts only on first move request.
-    This prevents hanging processes if game init fails after player creation.
-
-    Note:
-        Call close() explicitly for clean shutdown, or use try/finally.
-        If program crashes after engine starts, subprocess may linger requiring manual kill.
+    The engine subprocess is started only when a decision is requested to avoid
+    spawning lingering processes if player construction fails. Always call
+    close() to terminate the engine once the player is no longer needed.
     """
 
     def __init__(
@@ -30,51 +31,47 @@ class StockfishPlayer(BasePlayer):
         *,
         name: str = "Stockfish",
         color: Color,
-        binary_path: Optional[str] = None,
-        engine_limits: Optional[Dict[str, Any]] = None,
-        engine_options: Optional[Dict[str, Any]] = None,
+        binary_path: str | None = None,
+        engine_limits: Mapping[str, Any] | None = None,
+        engine_options: Mapping[str, Any] | None = None,
     ) -> None:
-        """Initialize Stockfish player configuration.
-
-        Note: The engine subprocess is not started until the first move is
-        requested (lazy initialization). This avoids hanging processes if
-        Game initialization fails after player creation.
+        """Configure the Stockfish engine interface.
 
         Args:
-            name: Display name.
-            color: 'white' or 'black'.
+            name: Display name shown in logs and summaries.
+            color: Chess side this player controls.
             binary_path: Explicit path or None to auto-detect.
-            engine_limits: Search constraints (depth, time, nodes).
-            engine_options: UCI configuration (threads, skill level).
+            engine_limits: Search constraints such as depth or time.
+            engine_options: UCI configuration such as threads or skill level.
 
         Raises:
-            FileNotFoundError: If binary not found during path resolution.
+            FileNotFoundError: If Stockfish cannot be located.
         """
         super().__init__(name, color)
 
-        self.engine: Optional[chess.engine.SimpleEngine] = None
+        self.engine: chess.engine.SimpleEngine | None = None
         self.binary_path = self._find_stockfish_binary(binary_path)
-        self.engine_limits = engine_limits or DEFAULT_ENGINE_LIMITS
-        self.engine_options = engine_options or {}
+        self.engine_limits = (
+            dict(engine_limits) if engine_limits else DEFAULT_ENGINE_LIMITS.copy()
+        )
+        self.engine_options = dict(engine_options) if engine_options else {}
 
         logger.debug(
             f"StockfishPlayer configured with limits={self.engine_limits} (engine not started yet)"
         )
 
     @staticmethod
-    def _find_stockfish_binary(explicit_path: Optional[str] = None) -> str:
-        """Locate Stockfish binary.
-
-        Search order: explicit path, env var, PATH, common locations.
+    def _find_stockfish_binary(explicit_path: str | None = None) -> str:
+        """Resolve the Stockfish binary path.
 
         Args:
-            explicit_path: Explicit path or None for auto-detection.
+            explicit_path: Optional user-supplied binary path.
 
         Returns:
-            Resolved path to executable.
+            str: Absolute path to the Stockfish executable.
 
         Raises:
-            FileNotFoundError: If not found anywhere.
+            FileNotFoundError: If no executable is discovered.
         """
         if explicit_path:
             path = Path(explicit_path)
@@ -87,6 +84,7 @@ class StockfishPlayer(BasePlayer):
                 )
             return str(path.resolve())
 
+        # Allow environment customization so deployments can pin a managed binary.
         env_path = os.getenv("STOCKFISH_BINARY_PATH")
         if env_path:
             path = Path(env_path)
@@ -136,11 +134,7 @@ class StockfishPlayer(BasePlayer):
         )
 
     def _start_engine(self) -> None:
-        """Start the Stockfish engine subprocess (lazy initialization).
-
-        Raises:
-            RuntimeError: If engine initialization fails.
-        """
+        """Start the Stockfish engine subprocess on first demand."""
         if self.engine is not None:
             return
 
@@ -158,26 +152,20 @@ class StockfishPlayer(BasePlayer):
             raise RuntimeError(f"Failed to initialize Stockfish engine: {e}") from e
 
     def _make_decision(self, context: PlayerDecisionContext) -> PlayerDecision:
-        """Query Stockfish for best move.
-
-        Args:
-            context: Game context with FEN string.
-
-        Returns:
-            Decision with engine's best move.
-
-        Raises:
-            RuntimeError: If engine fails or cannot be started.
-        """
+        """Query Stockfish for the strongest move and wrap the response."""
         if self.engine is None:
             self._start_engine()
+
+        engine = self.engine
+        if engine is None:
+            raise RuntimeError("Stockfish engine failed to start")
 
         try:
             # Fresh board from FEN respects DTO pattern and avoids state mutation
             board = chess.Board(context.board_in_fen)
 
             limit = chess.engine.Limit(**self.engine_limits)
-            result = self.engine.play(board, limit)
+            result = engine.play(board, limit)
 
             if result.move is None:
                 raise chess.engine.EngineError(
@@ -190,11 +178,10 @@ class StockfishPlayer(BasePlayer):
             raise RuntimeError(f"Stockfish failed to generate move: {e}") from e
 
     def close(self) -> None:
-        """Gracefully terminate engine process.
+        """Terminate the Stockfish subprocess if it was started.
 
-        IMPORTANT: Always call this method or use with a try-finally block
-        to prevent hanging Stockfish processes. The engine subprocess will
-        continue running even after Python exceptions if not properly closed.
+        Always invoke this method (or wrap the player in try/finally)
+        to prevent orphaned engine processes after exceptions.
         """
         if self.engine is not None:
             try:

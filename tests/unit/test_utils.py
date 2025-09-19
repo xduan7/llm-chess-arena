@@ -1,5 +1,7 @@
-import pytest
+"""Unit tests for chess utility helper functions."""
+
 import chess
+import pytest
 
 from llm_chess_arena.utils import (
     get_legal_moves_in_uci,
@@ -14,6 +16,8 @@ from llm_chess_arena.exceptions import (
 
 
 class TestGetLegalMovesInUCI:
+    """Unit tests for generating legal UCI move lists."""
+
     def test_starting_position__returns_exactly_20_legal_moves(self):
         board = chess.Board()
         moves = get_legal_moves_in_uci(board)
@@ -58,6 +62,8 @@ class TestGetLegalMovesInUCI:
 
 
 class TestGetMoveHistoryInUCI:
+    """Unit tests ensuring move history is captured accurately."""
+
     def test_new_board__returns_empty_move_history(self):
         board = chess.Board()
         history = get_move_history_in_uci(board)
@@ -99,6 +105,8 @@ class TestGetMoveHistoryInUCI:
 
 
 class TestParseAttemptedMoveToUCI:
+    """Unit tests for parsing attempted moves into UCI."""
+
     def test_valid_uci_move__returns_unchanged(self):
         starting_position_fen = (
             "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
@@ -191,6 +199,8 @@ class TestParseAttemptedMoveToUCI:
 
 
 class TestUtilsEdgeCases:
+    """Edge-case scenarios covering move generation utilities."""
+
     def test_stalemate_position__returns_empty_legal_moves_list(self):
         stalemate_position = "7k/5Q2/6K1/8/8/8/8/8 b - - 0 1"
         board = chess.Board(stalemate_position)

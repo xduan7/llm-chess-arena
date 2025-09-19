@@ -1,6 +1,9 @@
+"""Integration tests that exercise live LLM-powered games."""
+
 import os
-import pytest
+
 import chess
+import pytest
 
 from llm_chess_arena.player.llm import (
     LLMPlayer,
@@ -12,7 +15,8 @@ from llm_chess_arena.player.llm import (
 pytestmark = pytest.mark.live
 
 
-def get_first_available_llm_model():
+def get_first_available_llm_model() -> str:
+    """Return the first LLM model with credentials configured or skip the test."""
     if os.getenv("OPENAI_API_KEY"):
         return "gpt-3.5-turbo"
     elif os.getenv("ANTHROPIC_API_KEY"):
@@ -34,6 +38,7 @@ def get_first_available_llm_model():
 def test_llm_player_generates_legal_opening_move_from_starting_position(
     llm_model_name, required_env_var
 ):
+    """Ensure deterministic connectors return legal opening moves."""
     if not os.getenv(required_env_var):
         pytest.skip(f"{required_env_var} not set")
 
@@ -59,6 +64,7 @@ def test_llm_player_generates_legal_opening_move_from_starting_position(
 
 
 def test_llm_retry_mechanism_recovers_from_illegal_move_attempts():
+    """Verify the retry flow recovers after illegal LLM moves."""
     available_llm_model = get_first_available_llm_model()
 
     deterministic_llm_connector = LLMConnector(
@@ -89,6 +95,7 @@ def test_llm_retry_mechanism_recovers_from_illegal_move_attempts():
 
 @pytest.mark.slow
 def test_llm_plays_coherent_opening_sequence_over_five_moves():
+    """Check that repeated queries produce a plausible opening sequence."""
     available_llm_model = get_first_available_llm_model()
 
     slightly_creative_llm_connector = LLMConnector(
@@ -107,7 +114,7 @@ def test_llm_plays_coherent_opening_sequence_over_five_moves():
     evolving_game_board = chess.Board()
     white_moves_in_san_notation = []
 
-    for move_number in range(5):
+    for _ in range(5):
         white_player_decision = white_llm_player(evolving_game_board)
         assert white_player_decision.action == "move"
 

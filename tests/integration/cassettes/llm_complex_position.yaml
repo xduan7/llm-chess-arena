@@ -1,0 +1,135 @@
+interactions:
+- request:
+    body: '{"messages": [{"role": "user", "content": "Let''s play chess. The current
+      game state in FEN is:\nr1bqk2r/pp2bppp/2n1pn2/3p4/2PP4/2N1PN2/PP2BPPP/R1BQKR2
+      w Qkq - 2 9\nThe moves played so far are:\n\nYou are playing as player white.\nIt
+      is now your turn. Play your strongest move. The move MUST be legal. Reason step
+      by step to come up with your move, then output your final answer in the format
+      \"Final Answer: X\" where X is your chosen move in standard algebraic notation
+      (e.g., e4, Nf3, O-O)."}], "model": "gpt-4o-mini", "n": 1, "temperature": 0.0}'
+    headers:
+      accept:
+      - application/json
+      accept-encoding:
+      - gzip, deflate
+      connection:
+      - keep-alive
+      content-length:
+      - '538'
+      content-type:
+      - application/json
+      host:
+      - api.openai.com
+      user-agent:
+      - OpenAI/Python 1.102.0
+      x-stainless-arch:
+      - arm64
+      x-stainless-async:
+      - 'false'
+      x-stainless-lang:
+      - python
+      x-stainless-os:
+      - MacOS
+      x-stainless-package-version:
+      - 1.102.0
+      x-stainless-raw-response:
+      - 'true'
+      x-stainless-read-timeout:
+      - '30.0'
+      x-stainless-retry-count:
+      - '0'
+      x-stainless-runtime:
+      - CPython
+      x-stainless-runtime-version:
+      - 3.12.11
+    method: POST
+    uri: https://api.openai.com/v1/chat/completions
+  response:
+    body:
+      string: "{\n  \"id\": \"chatcmpl-CHMCOL1QGG1KYygTByi9Q62ePtdoa\",\n  \"object\":
+        \"chat.completion\",\n  \"created\": 1758252944,\n  \"model\": \"gpt-4o-mini-2024-07-18\",\n
+        \ \"choices\": [\n    {\n      \"index\": 0,\n      \"message\": {\n        \"role\":
+        \"assistant\",\n        \"content\": \"To determine the best move for White
+        in the given position, let's analyze the current board state represented by
+        the FEN: \\n\\n```\\nr1bqk2r/pp2bppp/2n1pn2/3p4/2PP4/2N1PN2/PP2BPPP/R1BQKR2
+        w Qkq - 2 9\\n```\\n\\n### Step 1: Evaluate the Position\\n- **Material Count**:
+        Both sides have equal material.\\n- **Piece Activity**: \\n  - White has a
+        well-placed knight on c3 and a bishop on e4, which is actively controlling
+        the center.\\n  - Black has a knight on c6 and a bishop on e7, but the knight
+        on d5 is somewhat advanced and can be a target.\\n  \\n### Step 2: Identify
+        Potential Moves\\n- **Knight Moves**: The knight on c3 can move to a4, b5,
+        or d5. Moving to d5 would capture the pawn and attack the knight on c6.\\n-
+        **Bishop Moves**: The bishop on e4 can move to f5 or d3, but these moves do
+        not seem to create immediate threats.\\n- **Pawn Moves**: The pawns on d4
+        and c4 can advance, but they do not create immediate threats either.\\n\\n###
+        Step 3: Consider Tactical Opportunities\\n- Moving the knight from c3 to d5
+        captures the pawn on d5 and attacks the knight on c6. This move also opens
+        up the possibility of further attacks on Black's position.\\n\\n### Step 4:
+        Evaluate the Move\\n- **Nxd5**: This move captures the pawn and puts pressure
+        on the knight on c6. If Black responds with exd5, White can then recapture
+        with the knight on d5, maintaining a strong position.\\n\\n### Conclusion\\nAfter
+        evaluating the position and considering the potential moves, the strongest
+        move for White is to capture the pawn on d5 with the knight.\\n\\nFinal Answer:
+        Nxd5\",\n        \"refusal\": null,\n        \"annotations\": []\n      },\n
+        \     \"logprobs\": null,\n      \"finish_reason\": \"stop\"\n    }\n  ],\n
+        \ \"usage\": {\n    \"prompt_tokens\": 154,\n    \"completion_tokens\": 416,\n
+        \   \"total_tokens\": 570,\n    \"prompt_tokens_details\": {\n      \"cached_tokens\":
+        0,\n      \"audio_tokens\": 0\n    },\n    \"completion_tokens_details\":
+        {\n      \"reasoning_tokens\": 0,\n      \"audio_tokens\": 0,\n      \"accepted_prediction_tokens\":
+        0,\n      \"rejected_prediction_tokens\": 0\n    }\n  },\n  \"service_tier\":
+        \"default\",\n  \"system_fingerprint\": \"fp_560af6e559\"\n}\n"
+    headers:
+      Connection:
+      - keep-alive
+      Content-Type:
+      - application/json
+      Server:
+      - cloudflare
+      Set-Cookie:
+      - __cf_bm=cjMIyTtQViQhZrhhi1jNvDDytAorqFIUTQlCKBctgUk-1758252951-1.0.1.1-TJLrWxiCCgXrg.HLb6CnpjMIIGYQG6PYWO3Rpbix6Q4NF.BuULpG_OceNx.ytBuj.ysf9Yd5MuKkI_0N4MIC.Rn42MW0VvJ07f4JWnC34dI;
+        path=/; expires=Fri, 19-Sep-25 04:05:51 GMT; domain=.api.openai.com; HttpOnly;
+        Secure; SameSite=None
+      - _cfuvid=CC3br50Ga8qj6..lUFyrlezUcqWucZ4KWxyZ3Sz12Jw-1758252951997-0.0.1.1-604800000;
+        path=/; domain=.api.openai.com; HttpOnly; Secure; SameSite=None
+      Strict-Transport-Security:
+      - max-age=31536000; includeSubDomains; preload
+      Transfer-Encoding:
+      - chunked
+      X-Content-Type-Options:
+      - nosniff
+      access-control-expose-headers:
+      - X-Request-ID
+      alt-svc:
+      - h3=":443"; ma=86400
+      cf-cache-status:
+      - DYNAMIC
+      content-length:
+      - '2358'
+      openai-organization:
+      - user-aot8rlpgpoltgmjq3rrcwvq3
+      openai-processing-ms:
+      - '8034'
+      openai-project:
+      - proj_mPL62zuq4MRiWekadSO6KuLd
+      openai-version:
+      - '2020-10-01'
+      x-envoy-upstream-service-time:
+      - '8272'
+      x-openai-proxy-wasm:
+      - v0.1
+      x-ratelimit-limit-requests:
+      - '10000'
+      x-ratelimit-limit-tokens:
+      - '10000000'
+      x-ratelimit-remaining-requests:
+      - '9999'
+      x-ratelimit-remaining-tokens:
+      - '9999887'
+      x-ratelimit-reset-requests:
+      - 6ms
+      x-ratelimit-reset-tokens:
+      - 0s
+    status:
+      code: 200
+      message: OK
+version: 1

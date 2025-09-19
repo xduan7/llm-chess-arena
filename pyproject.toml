@@ -33,7 +33,11 @@ repository = "https://github.com/xduan7/llm_chess_arena"
 requires = ["setuptools>=61.0"]
 build-backend = "setuptools.build_meta"
 
+[tool.setuptools.package-dir]
+"" = "src"
+
 [tool.setuptools.packages.find]
+where = ["src"]
 include = ["llm_chess_arena*"]
 exclude = ["third_party*", "tests*"]
 
@@ -73,6 +77,10 @@ target-version = ["py312"]
 python_version = "3.12"
 strict = true
 plugins = ["pydantic.mypy"]
+
+[[tool.mypy.overrides]]
+module = "tests.*"
+ignore_errors = true
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
@@ -114,17 +122,19 @@ install.shell = "pip install --upgrade -e ."
 install-dev.shell = "pip install --upgrade -e .[dev]"
 install-test.shell = "pip install --upgrade -e .[test]"
 install-all.shell = "pip install --upgrade -e .[dev,test]"
-format.shell = "ruff format . && black ."
-typecheck.shell = "mypy llm_chess_arena"
+format.shell = "black ."
+lint.shell = "ruff check ."
+typecheck.shell = "mypy src/llm_chess_arena"
 hooks.shell = "pre-commit run --all-files"
 clean.shell = "find . -name '__pycache__' -prune -exec rm -rf {} + || true && find . -name '*.pyc' -type f -delete || true && rm -rf build/ dist/ *.egg-info/ .pytest_cache/ .mypy_cache/ .ruff_cache/ .coverage htmlcov/ || true"
 ready = [
+  "lint",
   "format", 
   "typecheck", 
   "hooks", 
   "clean",
 ]
 demo = "python demo/chess_demo.py"
-test = "python -m pytest -n auto -k 'not vcr'"
-test-all = "python -m pytest -n auto"
-test-vcr = "python -m pytest tests/integration/test_llm_integration_vcr.py"
+test = "python -m pytest -n auto"
+test-live = "python -m pytest -n auto --vcr-record=all"
+test-refresh.shell = "rm -rf tests/integration/cassettes && python -m pytest -n auto --vcr-record=all"

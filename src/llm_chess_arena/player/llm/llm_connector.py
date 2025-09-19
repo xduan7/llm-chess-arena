@@ -1,12 +1,19 @@
-from typing import Optional
+"""Connector that wraps LiteLLM for consistent API usage."""
+
+from __future__ import annotations
+
+from typing import Any
+
 from loguru import logger
 
 import litellm
+from litellm import exceptions as litellm_exceptions
 
 # Cross-provider robustness: silently ignore unsupported params when switching between
 # models (OpenAI, Anthropic, Gemini) rather than erroring. Research code needs flexibility.
 litellm.drop_params = True
-litellm.set_verbose = False
+if hasattr(litellm, "set_verbose"):
+    setattr(litellm, "set_verbose", False)
 
 
 class LLMConnector:
@@ -20,11 +27,11 @@ class LLMConnector:
         self,
         model: str,
         temperature: float = 0.7,
-        max_tokens: Optional[int] = None,
+        max_tokens: int | None = None,
         timeout: float = 30.0,
         max_retries: int = 3,
-    ):
-        """Initialize LLM connector.
+    ) -> None:
+        """Initialize the LiteLLM connector.
 
         Args:
             model: Model identifier (e.g., "gpt-4", "claude-3-opus", "gemini-pro").
@@ -43,8 +50,8 @@ class LLMConnector:
         self,
         prompt: str,
         n: int = 1,
-        system_prompt: Optional[str] = None,
-        **kwargs,
+        system_prompt: str | None = None,
+        **kwargs: Any,
     ) -> list[str]:
         """Send prompt to LLM and return n completions.
 
@@ -55,7 +62,7 @@ class LLMConnector:
             **kwargs: Additional params passed to litellm.completion.
 
         Returns:
-            List of completion strings in provider order.
+            list[str]: Completion strings in provider order.
 
         Raises:
             TimeoutError: Request exceeded timeout.
@@ -65,10 +72,10 @@ class LLMConnector:
         if system_prompt:
             messages.append({"role": "system", "content": system_prompt})
         messages.append({"role": "user", "content": prompt})
-        logger.debug(f"Querying to {self.model} with the messages: {messages}")
+        logger.debug(f"Querying model {self.model} with messages: {messages}")
 
         try:
-            completion_kwarg = {
+            completion_kwargs: dict[str, Any] = {
                 "messages": messages,
                 "model": self.model,
                 "temperature": self.temperature,
@@ -78,33 +85,41 @@ class LLMConnector:
                 "n": n,
                 **kwargs,
             }
-            response = litellm.completion(**completion_kwarg)
-            contents = [choice.message.content for choice in response.choices]
+            response = litellm.completion(**completion_kwargs)
+            contents: list[str] = []
+            for choice in response.choices:
+                content = getattr(choice.message, "content", None)
+                if content is None:
+                    raise ConnectionError("LLM response missing content message")
+                contents.append(str(content))
             logger.debug(f"{self.model} response choices: {contents}")
             return contents
 
-        except litellm.Timeout as e:
+        except litellm_exceptions.Timeout as e:
             logger.warning(f"Request timed out after {self.timeout}s: {e}")
             raise TimeoutError(f"Request timed out after {self.timeout}s") from e
 
         except (
-            litellm.RateLimitError,
-            litellm.ServiceUnavailableError,
-            litellm.InternalServerError,
+            litellm_exceptions.RateLimitError,
+            litellm_exceptions.ServiceUnavailableError,
+            litellm_exceptions.InternalServerError,
         ) as e:
             logger.warning(f"Transient API error (may retry at higher level): {e}")
             raise ConnectionError(f"LLM API temporarily unavailable: {e}") from e
 
         except (
-            litellm.AuthenticationError,
-            litellm.InvalidRequestError,
-            litellm.BadRequestError,
-            litellm.ContentPolicyViolationError,
+            litellm_exceptions.AuthenticationError,
+            litellm_exceptions.InvalidRequestError,
+            litellm_exceptions.BadRequestError,
+            litellm_exceptions.ContentPolicyViolationError,
         ) as e:
             logger.error(f"Permanent API error (will not retry): {e}")
             raise ConnectionError(f"LLM API request invalid: {e}") from e
 
-        except (litellm.APIError, litellm.APIConnectionError) as e:
+        except (
+            litellm_exceptions.APIError,
+            litellm_exceptions.APIConnectionError,
+        ) as e:
             logger.error(f"API error occurred: {e}")
             raise ConnectionError(f"LLM API call failed: {e}") from e
 

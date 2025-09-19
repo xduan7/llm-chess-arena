@@ -1,3 +1,5 @@
+"""Unit tests exercising the core game orchestration logic."""
+
 import chess
 import pytest
 
@@ -12,9 +14,12 @@ from tests.conftest import (
 
 
 class TestGameInitialization:
+    """Initialization invariants for the Game orchestration class."""
+
     def test_initialization__sets_players_and_initial_state_correctly(
         self, white_player, black_player
     ):
+        """Game holds onto the players and starts from the initial state."""
         game = Game(white_player, black_player)
 
         assert game.white_player == white_player
@@ -24,6 +29,7 @@ class TestGameInitialization:
         assert game.winner is None
 
     def test_initialization__creates_standard_starting_chess_position(self, game):
+        """Board should match a fresh python-chess board."""
         standard_starting_board = chess.Board()
         assert game.board == standard_starting_board
         assert len(game.board.move_stack) == 0
@@ -32,6 +38,7 @@ class TestGameInitialization:
     def test_initialization__raises_value_error__when_both_players_have_same_color(
         self, white_player
     ):
+        """Reject mismatched player color assignments."""
         second_white_player = white_player
 
         with pytest.raises(ValueError, match="wrong color"):
@@ -39,9 +46,12 @@ class TestGameInitialization:
 
 
 class TestGameFlow:
+    """Core flow behavior such as turn order and move application."""
+
     def test_current_player__alternates_between_white_and_black_after_each_move(
         self, game, white_player, black_player
     ):
+        """Current player should toggle after every move."""
         assert game.current_player == white_player
 
         game.make_move()
@@ -51,6 +61,7 @@ class TestGameFlow:
         assert game.current_player == white_player
 
     def test_make_move__updates_board_state_and_switches_turn_to_opponent(self, game):
+        """A successful move updates the board and flips the turn."""
         initial_board_state = game.board.fen()
 
         game.make_move()
@@ -62,6 +73,7 @@ class TestGameFlow:
     def test_make_move__raises_illegal_move_error__when_player_returns_invalid_move(
         self, black_player
     ):
+        """Illegal moves from players propagate as IllegalMoveError."""
         illegal_move_player = IllegalMovePlayer(
             name="Illegal", color="white", illegal_move_uci="b1e4"
         )
@@ -72,9 +84,12 @@ class TestGameFlow:
 
 
 class TestGameTermination:
+    """Game termination scenarios such as checkmate and stalemate."""
+
     def test_play__detects_checkmate__when_scholars_mate_sequence_is_played(
         self,
     ):
+        """Scholars mate script should yield checkmate for white."""
         scholars_mate_white_moves = ["e4", "Bc4", "Qh5", "Qxf7#"]
         scholars_mate_black_moves = ["e5", "Nc6", "Bc5"]
 
@@ -89,6 +104,7 @@ class TestGameTermination:
     def test_play__detects_stalemate__when_no_legal_moves_available_for_player_to_move(
         self, common_positions
     ):
+        """Ensure stalemate positions are recognized immediately."""
         game = setup_game_from_fen(common_positions["stalemate"])
 
         assert_game_terminated(game, chess.Termination.STALEMATE, None)
@@ -96,6 +112,7 @@ class TestGameTermination:
     def test_detects_draw_by_insufficient_material__when_only_kings_remain_on_board(
         self, common_positions
     ):
+        """Insufficient material should produce the proper draw outcome."""
         game = setup_game_from_fen(common_positions["king_vs_king"])
 
         assert_game_terminated(game, chess.Termination.INSUFFICIENT_MATERIAL, None)
@@ -103,6 +120,7 @@ class TestGameTermination:
     def test_board_can_claim_threefold_repetition__after_same_position_occurs_three_times(
         self, game
     ):
+        """Threefold repetition should be claimable when positions repeat."""
         knight_dance_creating_repetition = [
             "Nf3",
             "Nf6",
@@ -122,6 +140,7 @@ class TestGameTermination:
     def test_board_can_claim_fifty_move_rule__after_100_halfmoves_without_pawn_move_or_capture(
         self, game
     ):
+        """Fifty-move rule should be claimable once the clock reaches 100."""
         halfmove_clock_after_fifty_full_moves = 100
         game.board.halfmove_clock = halfmove_clock_after_fifty_full_moves
 
@@ -129,9 +148,12 @@ class TestGameTermination:
 
 
 class TestGameResult:
+    """Ensure the result reporting matches expected scoring conventions."""
+
     def test_back_rank_mate__results_in_white_victory_with_score_1_0(
         self, common_positions, white_player
     ):
+        """Back-rank mate fixture should count as a white win."""
         game = setup_game_from_fen(common_positions["back_rank_mate"])
         game.white_player = white_player
 
@@ -142,6 +164,7 @@ class TestGameResult:
     def test_fools_mate__results_in_black_victory_with_score_0_1(
         self, common_positions, black_player
     ):
+        """Fool's mate fixture should count as a black win."""
         game = setup_game_from_fen(common_positions["fools_mate"])
         game.black_player = black_player
 
@@ -152,6 +175,7 @@ class TestGameResult:
     def test_stalemate__results_in_draw_with_no_winner_and_score_half_half(
         self, common_positions
     ):
+        """Stalemates should report a draw and no winner."""
         game = setup_game_from_fen(common_positions["stalemate"])
 
         assert game.finished

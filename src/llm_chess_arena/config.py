@@ -21,21 +21,23 @@ def load_env(filename: str | None = None, override: bool = False) -> Path | None
         override: Whether to override existing environment variables.
 
     Returns:
-        Path to the .env file that was loaded, or None if not found.
+        Path | None: Path to the loaded .env file, or None if not found.
     """
     global _ENV_LOADED
 
     if _ENV_LOADED and not override:
         return None
 
-    env_file = filename or os.environ.get("ENV_FILE", ".env")
+    env_file = (
+        filename if filename is not None else os.environ.get("ENV_FILE") or ".env"
+    )
     dotenv_path = find_dotenv(env_file, usecwd=True)
 
-    if dotenv_path:
-        load_dotenv(dotenv_path, override=override)
-        _ENV_LOADED = True
-        logger.debug(f"Loaded environment from: {dotenv_path}")
-        return Path(dotenv_path)
-    else:
+    if not dotenv_path:
         logger.debug(f"No .env file found: {env_file}")
         return None
+
+    load_dotenv(dotenv_path, override=override)
+    _ENV_LOADED = True
+    logger.debug(f"Loaded environment from: {dotenv_path}")
+    return Path(dotenv_path)

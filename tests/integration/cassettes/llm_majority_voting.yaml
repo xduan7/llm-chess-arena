@@ -1,0 +1,168 @@
+interactions:
+- request:
+    body: '{"messages": [{"role": "user", "content": "Let''s play chess. The current
+      game state in FEN is:\nrnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq -
+      0 1\nThe moves played so far are:\n\nYou are playing as player white.\nIt is
+      now your turn. Play your strongest move. The move MUST be legal. Reason step
+      by step to come up with your move, then output your final answer in the format
+      \"Final Answer: X\" where X is your chosen move in standard algebraic notation
+      (e.g., e4, Nf3, O-O)."}], "model": "gpt-4o-mini", "n": 3, "temperature": 0.7}'
+    headers:
+      accept:
+      - application/json
+      accept-encoding:
+      - gzip, deflate
+      connection:
+      - keep-alive
+      content-length:
+      - '528'
+      content-type:
+      - application/json
+      cookie:
+      - __cf_bm=xY9v1QMwm3FnLiJRCNph4ak1WjebCPLKmAugFplHsUg-1758252962-1.0.1.1-BOcVMRjqKKixaKiXWvrdFYuq_NiBf.tHgLPUvx1OuQDdDacvB3BKCPG4wV1cfE1OR3V9r0Vo1DvDlfLgoW9TO3uUlxmTjpJKwXXTNXJzh3g;
+        _cfuvid=aXsfQt5qywaOOqgeItgv11IAWtCdgBcdy1dTk_yNJPM-1758252962955-0.0.1.1-604800000
+      host:
+      - api.openai.com
+      user-agent:
+      - OpenAI/Python 1.102.0
+      x-stainless-arch:
+      - arm64
+      x-stainless-async:
+      - 'false'
+      x-stainless-lang:
+      - python
+      x-stainless-os:
+      - MacOS
+      x-stainless-package-version:
+      - 1.102.0
+      x-stainless-raw-response:
+      - 'true'
+      x-stainless-read-timeout:
+      - '30.0'
+      x-stainless-retry-count:
+      - '0'
+      x-stainless-runtime:
+      - CPython
+      x-stainless-runtime-version:
+      - 3.12.11
+    method: POST
+    uri: https://api.openai.com/v1/chat/completions
+  response:
+    body:
+      string: "{\n  \"id\": \"chatcmpl-CHMCnfShGhHJuBAb7OxKWvTQWvs3O\",\n  \"object\":
+        \"chat.completion\",\n  \"created\": 1758252969,\n  \"model\": \"gpt-4o-mini-2024-07-18\",\n
+        \ \"choices\": [\n    {\n      \"index\": 0,\n      \"message\": {\n        \"role\":
+        \"assistant\",\n        \"content\": \"The current position is the starting
+        position of a chess game, where all pieces are in their initial squares. As
+        White, I have a variety of strong opening moves to choose from.\\n\\n1. **Evaluate
+        the position**: It\u2019s the beginning of the game, and I have a full set
+        of pieces ready to move. My goal is to control the center of the board, develop
+        my pieces, and ensure my king's safety.\\n\\n2. **Common opening principles**:\\n
+        \  - Control the center: The central squares (d4, d5, e4, e5) are crucial
+        for piece activity.\\n   - Develop pieces: I want to get my knights and bishops
+        out quickly.\\n   - King safety: I should consider castling in the future.\\n\\n3.
+        **Consider the strongest moves**:\\n   - **e4**: This is a very popular opening
+        move. It controls the center and opens lines for the bishop and queen.\\n
+        \  - **d4**: Another strong move, controlling the center and allowing the
+        light-squared bishop to develop.\\n   - **Nf3**: This develops a knight and
+        attacks the center at the same time.\\n   - **c4**: This is the English Opening,
+        which also aims for center control but is less direct.\\n\\n4. **Choosing
+        the best move**: \\n   - **e4** is one of the most powerful opening moves
+        in chess, providing strong control over the center and allowing for quick
+        piece development. It also prepares to play moves like Nf3 or d4 in subsequent
+        turns.\\n\\nAfter considering these factors, I will play the move:\\n\\nFinal
+        Answer: e4\",\n        \"refusal\": null,\n        \"annotations\": []\n      },\n
+        \     \"logprobs\": null,\n      \"finish_reason\": \"stop\"\n    },\n    {\n
+        \     \"index\": 1,\n      \"message\": {\n        \"role\": \"assistant\",\n
+        \       \"content\": \"In the current position, I have the following pieces
+        to consider for my next move:\\n\\n- White pieces: Rooks on a1 and h1, Knights
+        on b1 and g1, Bishops on c1 and f1, Queen on d1, King on e1, and Pawns on
+        a2, b2, c2, d2, e2, f2, g2, h2.\\n- Black pieces: Rooks on a8 and h8, Knights
+        on b8 and g8, Bishops on c8 and f8, Queen on d8, King on e8, and Pawns on
+        a7, b7, c7, d7, e7, f7, g7, h7.\\n\\nGiven that it is White's turn and the
+        position is the starting position of the game, I want to control the center
+        of the board, which is crucial in the opening phase of the game.\\n\\nThe
+        most common and strongest opening move for White is to move one of the central
+        pawns. The moves 1.e4 and 1.d4 are both very strong. \\n\\n- **If I play 1.e4**,
+        I immediately control the center (the e4 square) and open lines for my queen
+        and bishop.\\n- **If I play 1.d4**, I also control the center (the d4 square)
+        but primarily open lines for my queen and bishop on the c1 square.\\n\\nHowever,
+        1.e4 is generally considered to be the most aggressive and popular opening
+        move. It is widely played and allows for quick development of pieces.\\n\\nThus,
+        my strongest move is:\\n\\nFinal Answer: e4\",\n        \"refusal\": null,\n
+        \       \"annotations\": []\n      },\n      \"logprobs\": null,\n      \"finish_reason\":
+        \"stop\"\n    },\n    {\n      \"index\": 2,\n      \"message\": {\n        \"role\":
+        \"assistant\",\n        \"content\": \"The current position is the starting
+        position of a chess game, with all pieces in their original squares. As White,
+        I have the first move.\\n\\n1. **Evaluate the position**: Both players have
+        all their pieces, and no pieces have been moved yet. The primary goal is to
+        control the center of the board, develop pieces efficiently, and prepare for
+        king safety.\\n\\n2. **Common opening strategies**: The most popular opening
+        moves for White are pawn advances to e4 or d4, as they help to control the
+        center. Developing knights early is also a common strategy.\\n\\n3. **Choosing
+        a move**: \\n   - Moving **e4** is strong because it opens up lines for both
+        the queen and bishop, allowing for quick development and control of the center.\\n
+        \  - Moving **d4** is also a strong center control move but doesn't open lines
+        for the bishop immediately.\\n   - Developing the knight to **Nf3** is another
+        option, but it does not control the center as directly as the pawn moves.\\n\\n4.
+        **Considering the best move**: e4 is a classical opening move that has been
+        played by many strong players and allows for a solid start to the game. It
+        directly controls the center and is a strong foundational move.\\n\\nAfter
+        weighing these options, I will proceed with moving my pawn to e4.\\n\\nFinal
+        Answer: e4\",\n        \"refusal\": null,\n        \"annotations\": []\n      },\n
+        \     \"logprobs\": null,\n      \"finish_reason\": \"stop\"\n    }\n  ],\n
+        \ \"usage\": {\n    \"prompt_tokens\": 142,\n    \"completion_tokens\": 943,\n
+        \   \"total_tokens\": 1085,\n    \"prompt_tokens_details\": {\n      \"cached_tokens\":
+        0,\n      \"audio_tokens\": 0\n    },\n    \"completion_tokens_details\":
+        {\n      \"reasoning_tokens\": 0,\n      \"audio_tokens\": 0,\n      \"accepted_prediction_tokens\":
+        0,\n      \"rejected_prediction_tokens\": 0\n    }\n  },\n  \"service_tier\":
+        \"default\",\n  \"system_fingerprint\": \"fp_560af6e559\"\n}\n"
+    headers:
+      Connection:
+      - keep-alive
+      Content-Type:
+      - application/json
+      Server:
+      - cloudflare
+      Strict-Transport-Security:
+      - max-age=31536000; includeSubDomains; preload
+      Transfer-Encoding:
+      - chunked
+      X-Content-Type-Options:
+      - nosniff
+      access-control-expose-headers:
+      - X-Request-ID
+      alt-svc:
+      - h3=":443"; ma=86400
+      cf-cache-status:
+      - DYNAMIC
+      content-length:
+      - '5097'
+      openai-organization:
+      - user-aot8rlpgpoltgmjq3rrcwvq3
+      openai-processing-ms:
+      - '8215'
+      openai-project:
+      - proj_mPL62zuq4MRiWekadSO6KuLd
+      openai-version:
+      - '2020-10-01'
+      x-envoy-upstream-service-time:
+      - '8250'
+      x-openai-proxy-wasm:
+      - v0.1
+      x-ratelimit-limit-requests:
+      - '10000'
+      x-ratelimit-limit-tokens:
+      - '10000000'
+      x-ratelimit-remaining-requests:
+      - '9999'
+      x-ratelimit-remaining-tokens:
+      - '9999888'
+      x-ratelimit-reset-requests:
+      - 6ms
+      x-ratelimit-reset-tokens:
+      - 0s
+    status:
+      code: 200
+      message: OK
+version: 1

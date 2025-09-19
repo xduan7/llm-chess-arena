@@ -1,16 +1,22 @@
+"""Unit tests covering the random move selection baseline player."""
+
 import chess
 
 from llm_chess_arena.player.random_player import RandomPlayer
 
 
 class TestRandomPlayerInitialization:
+    """Initialization behavior for RandomPlayer."""
+
     def test_stores_provided_name_and_color_as_player_attributes(self):
+        """Players should store supplied metadata unchanged."""
         random_player_with_custom_name = RandomPlayer(name="Test", color="white")
 
         assert random_player_with_custom_name.name == "Test"
         assert random_player_with_custom_name.color == "white"
 
     def test_accepts_both_white_and_black_as_valid_color_strings(self):
+        """Validate both color literals are accepted."""
         white_random_player = RandomPlayer(name="White", color="white")
         black_random_player = RandomPlayer(name="Black", color="black")
 
@@ -18,6 +24,7 @@ class TestRandomPlayerInitialization:
         assert black_random_player.color == "black"
 
     def test_players_with_same_seed_generate_identical_moves_from_same_position(self):
+        """Identical seeds should yield identical choices."""
         player_with_seed_42_first = RandomPlayer(name="Player1", color="white", seed=42)
         player_with_seed_42_second = RandomPlayer(
             name="Player2", color="white", seed=42
@@ -36,13 +43,17 @@ class TestRandomPlayerInitialization:
         assert first_player_move.attempted_move != different_seed_move.attempted_move
 
     def test_seed_defaults_to_none_when_not_explicitly_provided(self):
+        """Players default to an unseeded RNG when not provided."""
         unseeded_random_player = RandomPlayer(name="Test", color="white")
 
         assert unseeded_random_player.seed is None
 
 
 class TestRandomPlayerMoveGeneration:
+    """Move generation expectations for RandomPlayer."""
+
     def test_generates_legal_move_from_standard_starting_position(self, white_player):
+        """Ensure generated moves are legal from the initial board."""
         standard_starting_board = chess.Board()
 
         player_decision = white_player(standard_starting_board)
@@ -54,6 +65,7 @@ class TestRandomPlayerMoveGeneration:
         )
 
     def test_two_players_with_identical_seeds_select_same_move(self):
+        """Seeded players should select the same move on identical boards."""
         first_seeded_player = RandomPlayer(name="Test1", color="white", seed=42)
         second_seeded_player = RandomPlayer(name="Test2", color="white", seed=42)
         test_board = chess.Board()
@@ -69,6 +81,7 @@ class TestRandomPlayerMoveGeneration:
     def test_generates_legal_moves_from_multiple_positions_during_game(
         self, black_player
     ):
+        """Verify legality across sequential positions mid-game."""
         game_board = chess.Board()
         game_board.push_san("e4")  # White opens with e4
 
@@ -88,6 +101,7 @@ class TestRandomPlayerMoveGeneration:
     def test_selects_legal_move_even_with_limited_endgame_options(
         self, common_positions, white_player
     ):
+        """Confirm legal move selection persists in tight endgames."""
         kings_facing_endgame_position = chess.Board(common_positions["kings_facing"])
 
         endgame_move_decision = white_player(kings_facing_endgame_position)
@@ -100,6 +114,7 @@ class TestRandomPlayerMoveGeneration:
     def test_selects_legal_escape_move_when_king_is_in_check(
         self, common_positions, black_player
     ):
+        """Ensure generated move resolves check situations legally."""
         black_king_in_check_position = chess.Board(common_positions["black_in_check"])
 
         available_escape_moves = list(black_king_in_check_position.legal_moves)
@@ -114,9 +129,12 @@ class TestRandomPlayerMoveGeneration:
 
 
 class TestRandomPlayerReproducibility:
+    """Reproducibility guarantees for seeded RandomPlayer instances."""
+
     def test_identical_seeds_produce_identical_move_sequences_across_multiple_turns(
         self,
     ):
+        """Matching seeds should produce identical multi-turn sequences."""
         shared_seed_value = 12345
 
         first_player = RandomPlayer(
@@ -158,6 +176,7 @@ class TestRandomPlayerReproducibility:
         assert first_player_move_sequence == second_player_move_sequence
 
     def test_different_seeds_produce_different_move_selections_from_same_position(self):
+        """Different seeds should diverge in their move selections."""
         shared_starting_position = chess.Board()
 
         player_with_seed_100 = RandomPlayer(name="Player1", color="white", seed=100)

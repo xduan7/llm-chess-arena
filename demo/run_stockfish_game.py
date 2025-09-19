@@ -10,7 +10,6 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from llm_chess_arena.config import load_env
 from llm_chess_arena.game import Game
 from llm_chess_arena.player.stockfish_player import StockfishPlayer
-from llm_chess_arena.board_display import display_board_with_context
 
 # Load environment variables
 load_env()
@@ -69,14 +68,6 @@ def main() -> None:
         else:
             print("Winner: Draw")
         print(f"Total moves: {len(game.board.move_stack)}")
-        print("\n" + "=" * 60)
-        print("FINAL POSITION:")
-        print("=" * 60)
-        display_board_with_context(
-            game.board,
-            current_player="Game Over",
-            move_count=len(game.board.move_stack) // 2,
-        )
 
 
 if __name__ == "__main__":

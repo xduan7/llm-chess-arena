@@ -1,7 +1,10 @@
+"""Unit tests for the LiteLLM connector abstraction."""
+
 import os
-import pytest
-from unittest.mock import patch, Mock
+from unittest.mock import Mock, patch
+
 import litellm
+import pytest
 
 from llm_chess_arena.player.llm.llm_connector import LLMConnector
 from llm_chess_arena.config import load_env
@@ -10,7 +13,10 @@ load_env()
 
 
 class TestLLMConnectorWithMockResponse:
+    """Unit tests that mock LiteLLM responses for deterministic behavior."""
+
     def test_query_returns_mocked_llm_response_content(self):
+        """Connector should return content from mocked LiteLLM responses."""
         with patch("litellm.completion") as mock_completion:
             mock_completion.return_value = Mock(
                 choices=[Mock(message=Mock(content="Final Answer: e4"))]
@@ -36,6 +42,7 @@ class TestLLMConnectorWithMockResponse:
             assert call_args.kwargs["max_tokens"] == 150
 
     def test_query_includes_system_prompt_in_message_list(self):
+        """System prompts must appear before user prompts."""
         with patch("litellm.completion") as mock_completion:
             mock_completion.return_value = Mock(
                 choices=[Mock(message=Mock(content="Response"))]
@@ -56,6 +63,7 @@ class TestLLMConnectorWithMockResponse:
             assert messages[1] == {"role": "user", "content": "User prompt"}
 
     def test_query_converts_litellm_timeout_to_standard_timeout_error(self):
+        """LiteLLM timeouts should map to TimeoutError for callers."""
         with patch("litellm.completion") as mock_completion:
             mock_completion.side_effect = litellm.Timeout(
                 message="Request timed out", model="gpt-4", llm_provider="openai"
@@ -71,6 +79,7 @@ class TestLLMConnectorWithMockResponse:
                 connector.query("Test prompt")
 
     def test_query_wraps_unexpected_exceptions_as_connection_error(self):
+        """Unexpected LiteLLM errors should raise ConnectionError."""
         with patch("litellm.completion") as mock_completion:
             mock_completion.side_effect = Exception("API error")
 
@@ -84,7 +93,10 @@ class TestLLMConnectorWithMockResponse:
 
 
 class TestLLMConnectorRetryLogic:
+    """Retry configuration propagation and exhaustion handling."""
+
     def test_query_passes_retry_configuration_to_litellm(self):
+        """Connector must forward retry settings to LiteLLM."""
         with patch("litellm.completion") as mock_completion:
             mock_completion.return_value = Mock(
                 choices=[Mock(message=Mock(content="Success"))]
@@ -101,6 +113,7 @@ class TestLLMConnectorRetryLogic:
             assert mock_completion.call_count >= 1
 
     def test_query_raises_error_after_all_retry_attempts_exhausted(self):
+        """Connector should raise once all retry attempts fail."""
         with patch("litellm.completion") as mock_completion:
             mock_completion.side_effect = Exception("Persistent error")
 
@@ -116,7 +129,10 @@ class TestLLMConnectorRetryLogic:
 
 
 class TestLLMConnectorConfiguration:
+    """Configuration-level tests for the connector."""
+
     def test_global_litellm_settings_are_configured_correctly(self):
+        """Global LiteLLM tweaks should match expected defaults."""
         assert litellm.drop_params
         assert not litellm.set_verbose
 
@@ -124,6 +140,7 @@ class TestLLMConnectorConfiguration:
     def test_all_initialization_parameters_forwarded_to_litellm_completion(
         self, mock_completion
     ):
+        """Initialization parameters must be passed through to LiteLLM."""
         mock_completion.return_value = Mock(
             choices=[Mock(message=Mock(content="Test"))]
         )
@@ -147,10 +164,13 @@ class TestLLMConnectorConfiguration:
 
 @pytest.mark.live
 class TestLLMConnectorRealAPI:
+    """Live API smoke tests guarded by API keys."""
+
     @pytest.mark.skipif(
         not os.getenv("OPENAI_API_KEY"), reason="OpenAI API key not set"
     )
     def test_openai_api_connection_returns_valid_response(self):
+        """Verify OpenAI connectivity when credentials are available."""
         openai_connector = LLMConnector(
             model="gpt-3.5-turbo",
             temperature=0.0,
@@ -166,12 +186,12 @@ class TestLLMConnectorRealAPI:
         assert len(llm_response) > 0
         assert isinstance(llm_response, list)
         assert isinstance(llm_response[0], str)
-        print(f"OpenAI response: {llm_response[0]}")
 
     @pytest.mark.skipif(
         not os.getenv("ANTHROPIC_API_KEY"), reason="Anthropic API key not set"
     )
     def test_anthropic_api_connection_returns_valid_response(self):
+        """Verify Anthropic connectivity when credentials are available."""
         anthropic_connector = LLMConnector(
             model="claude-3-haiku-20240307",
             temperature=0.0,
@@ -187,12 +207,12 @@ class TestLLMConnectorRealAPI:
         assert len(llm_response) > 0
         assert isinstance(llm_response, list)
         assert isinstance(llm_response[0], str)
-        print(f"Anthropic response: {llm_response[0]}")
 
     @pytest.mark.skipif(
         not os.getenv("GOOGLE_API_KEY"), reason="Google API key not set"
     )
     def test_google_gemini_api_connection_returns_valid_response(self):
+        """Verify Gemini connectivity when credentials are available."""
         gemini_connector = LLMConnector(
             model="gemini/gemini-2.0-flash-exp",
             temperature=0.0,
@@ -208,7 +228,6 @@ class TestLLMConnectorRealAPI:
         assert len(llm_response) > 0
         assert isinstance(llm_response, list)
         assert isinstance(llm_response[0], str)
-        print(f"Google response: {llm_response[0]}")
 
     def test_llm_generates_valid_chess_opening_move(self):
         if os.getenv("OPENAI_API_KEY"):
@@ -241,7 +260,6 @@ class TestLLMConnectorRealAPI:
         assert (
             response_contains_valid_opening
         ), f"Response doesn't contain a chess move: {llm_response[0]}"
-        print(f"Chess move from {selected_model}: {llm_response[0]}")
 
     def test_system_prompt_influences_llm_response(self):
         if os.getenv("OPENAI_API_KEY"):
@@ -273,6 +291,3 @@ class TestLLMConnectorRealAPI:
         assert (
             response_mentions_chess
         ), f"Response doesn't mention chess: {llm_response_with_system_context[0]}"
-        print(
-            f"System prompt response from {selected_model}: {llm_response_with_system_context[0]}"
-        )
