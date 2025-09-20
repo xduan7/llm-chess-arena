@@ -217,6 +217,10 @@ LICENSE
     - Aggregates per-player averages for centipawn loss and best-move hit rate that surface in post-game summaries.
     - Gracefully disables when Stockfish is unavailable so development environments without the engine still function.
 
+12. **Move Quality Buckets**:
+    - Stockfish evaluations classify every move into {best, excellent, good, inaccuracy, mistake, blunder} using centipawn-loss thresholds.
+    - Zero-loss alternatives to the engine's top line still count as "best" while missed forced mates are treated as blunders.
+    - Game summaries log ordered quality counts for quick post-run diagnostics without per-move INFO log spam.
 
 ---
 
@@ -375,9 +379,6 @@ LICENSE
 - Head-to-head comparisons
 - Rating progression graphs
 </details>
-
-
-
 
 
 

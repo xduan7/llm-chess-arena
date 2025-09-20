@@ -18,6 +18,9 @@ interactions:
       - '538'
       content-type:
       - application/json
+      cookie:
+      - __cf_bm=gkZYRgLCCz9MEs06PwHjVBkuWU_MRyQ0WroT.NyqYTs-1758375356-1.0.1.1-8vs.mTkNItxPts3frmQmVo1i0BHiHk5dX47yHxpBhs41rt5m_RAz3UQq5.VPmGYiK0GmSXERTUWr.nWyGrsgjmG2U160sZwUj1VONrbRF2k;
+        _cfuvid=RHd.QWaWzzwG6muRw1qznX7iFr9S_D4pL9y0gWnXvS8-1758375356277-0.0.1.1-604800000
       host:
       - api.openai.com
       user-agent:
@@ -46,34 +49,37 @@ interactions:
     uri: https://api.openai.com/v1/chat/completions
   response:
     body:
-      string: "{\n  \"id\": \"chatcmpl-CHqqKBeDBA0fvj92SXAsoTEQn1Ibc\",\n  \"object\":
-        \"chat.completion\",\n  \"created\": 1758370740,\n  \"model\": \"gpt-4o-mini-2024-07-18\",\n
+      string: "{\n  \"id\": \"chatcmpl-CHs2m3kDOOC1vuWfqbhlRZZeuA0Bj\",\n  \"object\":
+        \"chat.completion\",\n  \"created\": 1758375356,\n  \"model\": \"gpt-4o-mini-2024-07-18\",\n
         \ \"choices\": [\n    {\n      \"index\": 0,\n      \"message\": {\n        \"role\":
-        \"assistant\",\n        \"content\": \"Let's analyze the current position
-        based on the provided FEN: \\n\\n```\\nr1bqk2r/pp2bppp/2n1pn2/3p4/2PP4/2N1PN2/PP2BPPP/R1BQKR2
-        w Qkq - 2 9\\n```\\n\\n### Step 1: Identify the pieces and their positions\\n-
-        **White pieces**: \\n  - Rooks on a1 and b1\\n  - Knights on c3 and e2\\n
-        \ - Bishops on d1 and e4\\n  - Queen on d1\\n  - King on e1\\n  - Pawns on
-        a2, b2, c4, d4, e4, f2, g2, h2\\n\\n- **Black pieces**: \\n  - Rooks on a8
-        and h8\\n  - Knights on c6 and e4\\n  - Bishops on c8\\n  - Queen on d8\\n
-        \ - King on e8\\n  - Pawns on a7, b7, d5, e5, f7, g7, h7\\n\\n### Step 2:
-        Evaluate the position\\n- White has a slight lead in development with the
-        pieces more actively placed.\\n- The center is contested, with both sides
-        having pawns on d4 and d5.\\n- The knight on e4 is currently attacking the
-        bishop on e4, which is a potential target.\\n\\n### Step 3: Consider possible
-        moves\\n1. **Nxe4**: This captures the knight on e4, which is a strong move
-        as it removes a central piece and opens up the position.\\n2. **dxe5**: This
-        captures the pawn on e5, but it allows Black to recapture with the knight
-        on e4, which is not favorable.\\n3. **Bf4**: This develops the bishop but
-        does not address the immediate threat of the knight on e4.\\n4. **Nf3**: This
-        develops the knight but does not address the knight on e4.\\n\\n### Step 4:
-        Choose the best move\\nThe best move is to capture the knight on e4 with the
-        knight on c3. This not only removes a strong piece from Black but also maintains
-        pressure in the center.\\n\\n### Final Answer\\nFinal Answer: Nxe4\",\n        \"refusal\":
-        null,\n        \"annotations\": []\n      },\n      \"logprobs\": null,\n
-        \     \"finish_reason\": \"stop\"\n    }\n  ],\n  \"usage\": {\n    \"prompt_tokens\":
-        154,\n    \"completion_tokens\": 484,\n    \"total_tokens\": 638,\n    \"prompt_tokens_details\":
-        {\n      \"cached_tokens\": 0,\n      \"audio_tokens\": 0\n    },\n    \"completion_tokens_details\":
+        \"assistant\",\n        \"content\": \"To determine the best move for White
+        in the given position, let's analyze the current board state represented by
+        the FEN: \\n\\n```\\nr1bqk2r/pp2bppp/2n1pn2/3p4/2PP4/2N1PN2/PP2BPPP/R1BQKR2
+        w Qkq - 2 9\\n```\\n\\n### Step 1: Evaluate the Position\\n- **Material Count**:
+        Both sides have equal material.\\n- **Piece Activity**: \\n  - White has a
+        well-placed knight on c3 and a bishop on e4, which is actively controlling
+        the center.\\n  - Black has a knight on c6 and a bishop on e7, but the knight
+        on d5 is currently blocking the pawn structure.\\n  \\n### Step 2: Identify
+        Potential Moves\\n- **Pawn Moves**: \\n  - Moving the d-pawn (d4) could challenge
+        the knight on d5 and open up the center.\\n  - Moving the c-pawn (c3) could
+        support the d-pawn but does not directly challenge Black's position.\\n  \\n-
+        **Knight Moves**: \\n  - The knight on c3 can move to d5, but that would be
+        an illegal move since the d5 square is occupied by a black pawn.\\n  \\n-
+        **Bishop Moves**: \\n  - The bishop on e4 can move to f5, but that does not
+        create any immediate threats.\\n  \\n- **Queen Moves**: \\n  - The queen can
+        move to d2 or f3, but these moves do not create immediate threats or improve
+        the position significantly.\\n\\n### Step 3: Consider Tactical Opportunities\\n-
+        The most pressing issue is the knight on d5, which is blocking the pawn structure
+        and can be challenged. \\n- By playing **d4**, White can attack the knight
+        on d5 and potentially open up the center for further development.\\n\\n###
+        Step 4: Execute the Move\\nAfter considering the position and the potential
+        moves, the strongest move for White is to play **d4**. This move attacks the
+        knight on d5 and opens up the center for further play.\\n\\nFinal Answer:
+        d4\",\n        \"refusal\": null,\n        \"annotations\": []\n      },\n
+        \     \"logprobs\": null,\n      \"finish_reason\": \"stop\"\n    }\n  ],\n
+        \ \"usage\": {\n    \"prompt_tokens\": 154,\n    \"completion_tokens\": 449,\n
+        \   \"total_tokens\": 603,\n    \"prompt_tokens_details\": {\n      \"cached_tokens\":
+        0,\n      \"audio_tokens\": 0\n    },\n    \"completion_tokens_details\":
         {\n      \"reasoning_tokens\": 0,\n      \"audio_tokens\": 0,\n      \"accepted_prediction_tokens\":
         0,\n      \"rejected_prediction_tokens\": 0\n    }\n  },\n  \"service_tier\":
         \"default\",\n  \"system_fingerprint\": \"fp_560af6e559\"\n}\n"
@@ -84,12 +90,6 @@ interactions:
       - application/json
       Server:
       - cloudflare
-      Set-Cookie:
-      - __cf_bm=AfcBSb4jpoVq2np02OYLvWQCgAGHgYT_yUupora3UfQ-1758370748-1.0.1.1-8b35FLZn5JLvioz0oNTvxzRBH33YqYf1vnK4HFdl3jc4deUGGUPGSHST4aNAO_BlRlnOpqS.OzatwCIHAY8HEtzGjCECvrfAyltX1NVu9u8;
-        path=/; expires=Sat, 20-Sep-25 12:49:08 GMT; domain=.api.openai.com; HttpOnly;
-        Secure; SameSite=None
-      - _cfuvid=dsvyYEp3Ueh9zUFWm7WW17atLJDmBvi4.JHtWqcLYNM-1758370748432-0.0.1.1-604800000;
-        path=/; domain=.api.openai.com; HttpOnly; Secure; SameSite=None
       Strict-Transport-Security:
       - max-age=31536000; includeSubDomains; preload
       Transfer-Encoding:
@@ -103,17 +103,17 @@ interactions:
       cf-cache-status:
       - DYNAMIC
       content-length:
-      - '2331'
+      - '2509'
       openai-organization:
       - user-aot8rlpgpoltgmjq3rrcwvq3
       openai-processing-ms:
-      - '7586'
+      - '10113'
       openai-project:
       - proj_mPL62zuq4MRiWekadSO6KuLd
       openai-version:
       - '2020-10-01'
       x-envoy-upstream-service-time:
-      - '7744'
+      - '10156'
       x-openai-proxy-wasm:
       - v0.1
       x-ratelimit-limit-requests:
@@ -124,6 +124,141 @@ interactions:
       - '9999'
       x-ratelimit-remaining-tokens:
       - '9999887'
+      x-ratelimit-reset-requests:
+      - 6ms
+      x-ratelimit-reset-tokens:
+      - 0s
+    status:
+      code: 200
+      message: OK
+- request:
+    body: '{"messages": [{"role": "user", "content": "Let''s play chess. The current
+      game state in FEN is:\nr1bqk2r/pp2bppp/2n1pn2/3p4/2PP4/2N1PN2/PP2BPPP/R1BQKR2
+      w Qkq - 2 9\nThe moves played so far are:\n\nYou are playing as player white.\nIt
+      is now your turn. Play your strongest move. The move MUST be legal. Reason step
+      by step to come up with your move, then output your final answer in the format
+      \"Final Answer: X\" where X is your chosen move in standard algebraic notation
+      (e.g., e4, Nf3, O-O).\n\nYour previously suggested move was: d4, which is an
+      illegal move.\nPlease think carefully and generate a new and legal move."}],
+      "model": "gpt-4o-mini", "n": 1, "temperature": 0.0}'
+    headers:
+      accept:
+      - application/json
+      accept-encoding:
+      - gzip, deflate
+      connection:
+      - keep-alive
+      content-length:
+      - '666'
+      content-type:
+      - application/json
+      cookie:
+      - __cf_bm=gkZYRgLCCz9MEs06PwHjVBkuWU_MRyQ0WroT.NyqYTs-1758375356-1.0.1.1-8vs.mTkNItxPts3frmQmVo1i0BHiHk5dX47yHxpBhs41rt5m_RAz3UQq5.VPmGYiK0GmSXERTUWr.nWyGrsgjmG2U160sZwUj1VONrbRF2k;
+        _cfuvid=RHd.QWaWzzwG6muRw1qznX7iFr9S_D4pL9y0gWnXvS8-1758375356277-0.0.1.1-604800000
+      host:
+      - api.openai.com
+      user-agent:
+      - OpenAI/Python 1.102.0
+      x-stainless-arch:
+      - arm64
+      x-stainless-async:
+      - 'false'
+      x-stainless-lang:
+      - python
+      x-stainless-os:
+      - MacOS
+      x-stainless-package-version:
+      - 1.102.0
+      x-stainless-raw-response:
+      - 'true'
+      x-stainless-read-timeout:
+      - '30.0'
+      x-stainless-retry-count:
+      - '0'
+      x-stainless-runtime:
+      - CPython
+      x-stainless-runtime-version:
+      - 3.12.11
+    method: POST
+    uri: https://api.openai.com/v1/chat/completions
+  response:
+    body:
+      string: "{\n  \"id\": \"chatcmpl-CHs2wZMhdRPAsJgnsrVVy1c0D5EEw\",\n  \"object\":
+        \"chat.completion\",\n  \"created\": 1758375366,\n  \"model\": \"gpt-4o-mini-2024-07-18\",\n
+        \ \"choices\": [\n    {\n      \"index\": 0,\n      \"message\": {\n        \"role\":
+        \"assistant\",\n        \"content\": \"Let's analyze the current position
+        given in FEN: \\n\\n```\\nr1bqk2r/pp2bppp/2n1pn2/3p4/2PP4/2N1PN2/PP2BPPP/R1BQKR2
+        w Qkq - 2 9\\n```\\n\\n### Step 1: Understanding the Position\\n- **White
+        pieces**: Rooks on a1 and h1, Knights on c3 and f3, Bishops on e2 and d2,
+        Queen on d1, King on e1, and Pawns on a2, b2, c4, d4, e4, f2, g2, h2.\\n-
+        **Black pieces**: Rooks on a8 and h8, Knights on c6 and e4, Bishops on c8
+        and e7, Queen on d8, King on e8, and Pawns on a7, b7, d5, e5, f7, g7, h7.\\n\\n###
+        Step 2: Evaluating Possible Moves\\n- The position shows that White has a
+        strong center with pawns on c4 and d4. \\n- The knight on c3 is well-placed
+        and can support a pawn push or develop further.\\n- The knight on f3 is also
+        well-placed but is currently blocked by the pawn on e4.\\n\\n### Step 3: Identifying
+        Legal Moves\\n1. **Pawn Moves**: \\n   - d4 is illegal as it is already occupied
+        by a pawn.\\n   - c5 is a potential move, attacking the knight on b6.\\n   -
+        e4 is blocked by the knight on f3.\\n   - f3 is blocked by the pawn on e4.\\n\\n2.
+        **Knight Moves**:\\n   - Nf3 is blocked by the pawn on e4.\\n   - Nc3 can
+        move to a4 or b5, but those squares are not particularly strong.\\n   - Nf3
+        can move to e5, attacking the knight on e4.\\n\\n3. **Bishop Moves**:\\n   -
+        Be2 is a potential move but does not change the position significantly.\\n
+        \  - Bd2 is also a possibility but does not create immediate threats.\\n\\n4.
+        **Queen Moves**:\\n   - Qd1 can move to e2 or c2, but those moves do not create
+        immediate threats.\\n\\n5. **Castling**: \\n   - O-O is not possible as the
+        rook on h1 is blocked.\\n\\n### Step 4: Strongest Move\\nGiven the analysis,
+        the strongest move for White is to play **Nf3 to e5**. This move attacks the
+        knight on e4 and puts pressure on Black's position.\\n\\n### Final Answer\\nFinal
+        Answer: Nf3e5\",\n        \"refusal\": null,\n        \"annotations\": []\n
+        \     },\n      \"logprobs\": null,\n      \"finish_reason\": \"stop\"\n    }\n
+        \ ],\n  \"usage\": {\n    \"prompt_tokens\": 180,\n    \"completion_tokens\":
+        573,\n    \"total_tokens\": 753,\n    \"prompt_tokens_details\": {\n      \"cached_tokens\":
+        0,\n      \"audio_tokens\": 0\n    },\n    \"completion_tokens_details\":
+        {\n      \"reasoning_tokens\": 0,\n      \"audio_tokens\": 0,\n      \"accepted_prediction_tokens\":
+        0,\n      \"rejected_prediction_tokens\": 0\n    }\n  },\n  \"service_tier\":
+        \"default\",\n  \"system_fingerprint\": \"fp_560af6e559\"\n}\n"
+    headers:
+      Connection:
+      - keep-alive
+      Content-Type:
+      - application/json
+      Server:
+      - cloudflare
+      Strict-Transport-Security:
+      - max-age=31536000; includeSubDomains; preload
+      Transfer-Encoding:
+      - chunked
+      X-Content-Type-Options:
+      - nosniff
+      access-control-expose-headers:
+      - X-Request-ID
+      alt-svc:
+      - h3=":443"; ma=86400
+      cf-cache-status:
+      - DYNAMIC
+      content-length:
+      - '2601'
+      openai-organization:
+      - user-aot8rlpgpoltgmjq3rrcwvq3
+      openai-processing-ms:
+      - '11678'
+      openai-project:
+      - proj_mPL62zuq4MRiWekadSO6KuLd
+      openai-version:
+      - '2020-10-01'
+      x-envoy-upstream-service-time:
+      - '11692'
+      x-openai-proxy-wasm:
+      - v0.1
+      x-ratelimit-limit-requests:
+      - '10000'
+      x-ratelimit-limit-tokens:
+      - '10000000'
+      x-ratelimit-remaining-requests:
+      - '9999'
+      x-ratelimit-remaining-tokens:
+      - '9999856'
       x-ratelimit-reset-requests:
       - 6ms
       x-ratelimit-reset-tokens:

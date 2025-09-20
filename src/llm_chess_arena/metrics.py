@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+from collections import Counter
 from dataclasses import dataclass
+from enum import Enum
 from typing import Any, Mapping, Protocol
 
 import chess
@@ -13,6 +15,68 @@ from llm_chess_arena.player.stockfish_player import StockfishPlayer
 from llm_chess_arena.types import Color
 
 MATE_SCORE = 100_000
+ZERO_LOSS_EPSILON = 1e-6
+CP_LOSS_THRESHOLD_EXCELLENT = 50
+CP_LOSS_THRESHOLD_GOOD = 100
+CP_LOSS_THRESHOLD_INACCURACY = 200
+CP_LOSS_THRESHOLD_MISTAKE = 300
+
+
+class MoveQuality(Enum):
+    """Discrete categorization of move quality based on engine evaluation."""
+
+    BEST = "best"
+    EXCELLENT = "excellent"
+    GOOD = "good"
+    INACCURACY = "inaccuracy"
+    MISTAKE = "mistake"
+    BLUNDER = "blunder"
+
+
+MOVE_QUALITY_ORDER: tuple[MoveQuality, ...] = (
+    MoveQuality.BEST,
+    MoveQuality.EXCELLENT,
+    MoveQuality.GOOD,
+    MoveQuality.INACCURACY,
+    MoveQuality.MISTAKE,
+    MoveQuality.BLUNDER,
+)
+
+
+def classify_move_quality(
+    *,
+    best_move_hit: bool,
+    centipawn_loss: float,
+    best_move_is_mate: bool,
+    played_move_is_mate: bool,
+) -> MoveQuality:
+    """Categorize move quality based on engine evaluation results.
+
+    Args:
+        best_move_hit: Whether the player matched the engine's top move.
+        centipawn_loss: Non-negative difference between the best move and played move.
+        best_move_is_mate: True if the engine's recommended move gives a mating line.
+        played_move_is_mate: True if the played move still yields a mating line.
+
+    Returns:
+        MoveQuality: Discrete quality label for the move.
+    """
+    if best_move_is_mate and not played_move_is_mate:
+        return MoveQuality.BLUNDER
+
+    if best_move_hit or centipawn_loss <= ZERO_LOSS_EPSILON:
+        return MoveQuality.BEST
+
+    loss = centipawn_loss
+    if loss < CP_LOSS_THRESHOLD_EXCELLENT:
+        return MoveQuality.EXCELLENT
+    if loss < CP_LOSS_THRESHOLD_GOOD:
+        return MoveQuality.GOOD
+    if loss < CP_LOSS_THRESHOLD_INACCURACY:
+        return MoveQuality.INACCURACY
+    if loss < CP_LOSS_THRESHOLD_MISTAKE:
+        return MoveQuality.MISTAKE
+    return MoveQuality.BLUNDER
 
 
 @dataclass(frozen=True)
@@ -25,6 +89,7 @@ class MoveMetrics:
     centipawn_loss: float
     win_probability_delta: float
     best_move_hit: bool
+    quality: MoveQuality
     best_move_centipawns: float | None = None
     actual_centipawns: float | None = None
 
@@ -36,6 +101,7 @@ class MetricsSummary:
     moves_evaluated: int
     average_centipawn_loss: float | None
     best_move_hit_rate: float | None
+    quality_counts: Mapping[MoveQuality, int]
 
 
 class MoveMetricsEvaluator(Protocol):
@@ -130,6 +196,12 @@ class StockfishMetricsEvaluator:
             centipawn_loss=centipawn_loss,
             win_probability_delta=win_probability_delta,
             best_move_hit=best_move_hit,
+            quality=classify_move_quality(
+                best_move_hit=best_move_hit,
+                centipawn_loss=centipawn_loss,
+                best_move_is_mate=best_metrics.is_mate,
+                played_move_is_mate=actual_metrics.is_mate,
+            ),
             best_move_centipawns=best_metrics.centipawns,
             actual_centipawns=actual_metrics.centipawns,
         )
@@ -146,6 +218,7 @@ class StockfishMetricsEvaluator:
             self._engine = None
 
     def _ensure_engine(self) -> chess.engine.SimpleEngine:
+        """Ensure the Stockfish engine process is running and configured."""
         if self._engine is not None:
             return self._engine
 
@@ -166,6 +239,7 @@ class StockfishMetricsEvaluator:
         move: chess.Move,
         player_turn: chess.Color,
     ) -> "_PositionEvaluation":
+        """Evaluate the board after applying ``move`` from ``board``."""
         engine = self._ensure_engine()
         limit = chess.engine.Limit(depth=self.depth)
 
@@ -186,6 +260,7 @@ class StockfishMetricsEvaluator:
         return _PositionEvaluation(
             centipawns=centipawns,
             win_probability=win_probability,
+            is_mate=pov_score.is_mate(),
         )
 
 
@@ -193,6 +268,7 @@ class StockfishMetricsEvaluator:
 class _PositionEvaluation:
     centipawns: float
     win_probability: float
+    is_mate: bool
 
 
 class MetricsTracker:
@@ -292,13 +368,14 @@ class MetricsTracker:
 
         self._metrics_by_color[metrics.player_color].append(metrics)
 
-        logger.info(
-            "Metrics for {} -> {}: centipawn_loss={:.1f}, win_prob_delta={:.3f}, best_move_hit={}",
+        logger.debug(
+            "Metrics for {} -> {}: centipawn_loss={:.1f}, win_prob_delta={:.3f}, best_move_hit={}, quality={}",
             player_name,
             metrics.move_uci,
             metrics.centipawn_loss,
             metrics.win_probability_delta,
             metrics.best_move_hit,
+            metrics.quality.value,
         )
         return metrics
 
@@ -316,6 +393,7 @@ class MetricsTracker:
                     moves_evaluated=0,
                     average_centipawn_loss=None,
                     best_move_hit_rate=None,
+                    quality_counts={},
                 )
                 continue
 
@@ -324,10 +402,12 @@ class MetricsTracker:
             )
             best_move_hits = sum(1 for m in metrics_list if m.best_move_hit)
             best_move_hit_rate = best_move_hits / moves_evaluated
+            quality_counts = Counter(m.quality for m in metrics_list)
             summaries[color] = MetricsSummary(
                 moves_evaluated=moves_evaluated,
                 average_centipawn_loss=average_centipawn_loss,
                 best_move_hit_rate=best_move_hit_rate,
+                quality_counts=dict(quality_counts),
             )
         return summaries
 
@@ -340,8 +420,11 @@ class MetricsTracker:
 
 
 __all__ = [
+    "MOVE_QUALITY_ORDER",
     "MetricsTracker",
     "MoveMetrics",
     "MetricsSummary",
+    "MoveQuality",
     "StockfishMetricsEvaluator",
+    "classify_move_quality",
 ]

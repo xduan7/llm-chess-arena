@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Mapping
 
 import chess
 from loguru import logger
@@ -15,7 +15,7 @@ from llm_chess_arena.exceptions import (
 from llm_chess_arena.player.base_player import BasePlayer
 from llm_chess_arena.renderer import display_board_with_context
 from llm_chess_arena.types import PlayerDecision
-from llm_chess_arena.metrics import MetricsTracker
+from llm_chess_arena.metrics import MOVE_QUALITY_ORDER, MetricsTracker, MoveQuality
 from llm_chess_arena.utils import parse_attempted_move_to_uci
 
 
@@ -313,11 +313,22 @@ class Game:
             )
 
             logger.info(
-                "Metrics for {}: avg_centipawn_loss={}, best_move_hit_rate={}",
+                "Metrics for {}: avg_centipawn_loss={}, best_move_hit_rate={}, qualities={}",
                 str(player),
                 avg_loss,
                 hit_rate,
+                self._format_quality_summary(summary.quality_counts),
             )
+
+    @staticmethod
+    def _format_quality_summary(quality_counts: Mapping[MoveQuality, int]) -> str:
+        """Format move quality distribution for logging."""
+        parts: list[str] = []
+        for quality in MOVE_QUALITY_ORDER:
+            count = quality_counts.get(quality, 0)
+            if count:
+                parts.append(f"{quality.value}:{count}")
+        return ", ".join(parts) if parts else "none"
 
     def __enter__(self) -> Game:
         """Context manager entry.

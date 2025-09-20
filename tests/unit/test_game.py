@@ -5,7 +5,7 @@ import pytest
 
 from llm_chess_arena.game import Game
 from llm_chess_arena.exceptions import IllegalMoveError
-from llm_chess_arena.metrics import MetricsTracker, MoveMetrics
+from llm_chess_arena.metrics import MetricsTracker, MoveMetrics, MoveQuality
 from tests.conftest import (
     IllegalMovePlayer,
     ScriptedPlayer,
@@ -201,6 +201,7 @@ class RecordingEvaluator:
             centipawn_loss=1.0,
             win_probability_delta=0.0,
             best_move_hit=True,
+            quality=MoveQuality.BEST,
         )
 
     def close(self) -> None:
@@ -241,6 +242,23 @@ class TestGameMetrics:
         assert summary["white"].moves_evaluated == 2
         assert summary["white"].average_centipawn_loss == 1.0
         assert summary["white"].best_move_hit_rate == 1.0
+        assert summary["white"].quality_counts[MoveQuality.BEST] == 2
         assert summary["black"].moves_evaluated == 2
-
+        assert summary["black"].quality_counts[MoveQuality.BEST] == 2
         assert evaluator.closed
+
+
+def test_format_quality_summary_handles_empty_counts() -> None:
+    """Formatting should gracefully handle games without evaluated moves."""
+    assert Game._format_quality_summary({}) == "none"
+
+
+def test_format_quality_summary_orders_non_zero_counts() -> None:
+    """Quality summary output should respect ordering and skip empty buckets."""
+    counts = {
+        MoveQuality.BLUNDER: 2,
+        MoveQuality.BEST: 1,
+        MoveQuality.GOOD: 3,
+        MoveQuality.MISTAKE: 0,
+    }
+    assert Game._format_quality_summary(counts) == "best:1, good:3, blunder:2"

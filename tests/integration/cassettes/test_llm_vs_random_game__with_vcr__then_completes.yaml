@@ -19,8 +19,8 @@ interactions:
       content-type:
       - application/json
       cookie:
-      - __cf_bm=AfcBSb4jpoVq2np02OYLvWQCgAGHgYT_yUupora3UfQ-1758370748-1.0.1.1-8b35FLZn5JLvioz0oNTvxzRBH33YqYf1vnK4HFdl3jc4deUGGUPGSHST4aNAO_BlRlnOpqS.OzatwCIHAY8HEtzGjCECvrfAyltX1NVu9u8;
-        _cfuvid=dsvyYEp3Ueh9zUFWm7WW17atLJDmBvi4.JHtWqcLYNM-1758370748432-0.0.1.1-604800000
+      - __cf_bm=gkZYRgLCCz9MEs06PwHjVBkuWU_MRyQ0WroT.NyqYTs-1758375356-1.0.1.1-8vs.mTkNItxPts3frmQmVo1i0BHiHk5dX47yHxpBhs41rt5m_RAz3UQq5.VPmGYiK0GmSXERTUWr.nWyGrsgjmG2U160sZwUj1VONrbRF2k;
+        _cfuvid=RHd.QWaWzzwG6muRw1qznX7iFr9S_D4pL9y0gWnXvS8-1758375356277-0.0.1.1-604800000
       host:
       - api.openai.com
       user-agent:
@@ -49,32 +49,32 @@ interactions:
     uri: https://api.openai.com/v1/chat/completions
   response:
     body:
-      string: "{\n  \"id\": \"chatcmpl-CHqr9ZYGycbAlmSSs37AtHQE6UPb7\",\n  \"object\":
-        \"chat.completion\",\n  \"created\": 1758370791,\n  \"model\": \"gpt-4o-mini-2024-07-18\",\n
+      string: "{\n  \"id\": \"chatcmpl-CHs3qqAJSlDF9vPVCBlNQwqUYe4yd\",\n  \"object\":
+        \"chat.completion\",\n  \"created\": 1758375422,\n  \"model\": \"gpt-4o-mini-2024-07-18\",\n
         \ \"choices\": [\n    {\n      \"index\": 0,\n      \"message\": {\n        \"role\":
         \"assistant\",\n        \"content\": \"The current position is the starting
         position of a chess game, where both players have all their pieces in their
         original squares. As White, I have the first move, and I want to choose a
         strong opening move.\\n\\n1. **Evaluate the position**: All pieces are in
-        their starting positions. I need to consider moves that help control the center
+        their starting positions. I need to consider moves that control the center
         of the board, develop my pieces, and prepare for castling.\\n\\n2. **Common
-        opening principles**:\\n   - Control the center (the squares e4, d4, e5, and
-        d5).\\n   - Develop pieces (knights and bishops) towards the center.\\n   -
-        Ensure king safety (usually by castling).\\n\\n3. **Potential moves**:\\n
-        \  - **e4**: This move controls the center and opens lines for the queen and
-        bishop. It's one of the most popular opening moves.\\n   - **d4**: This also
-        controls the center but is less common than e4 in the opening.\\n   - **Nf3**:
-        This develops a knight and controls the center but does not immediately claim
-        a central pawn.\\n   - **Nc3**: This develops a knight but does not control
-        the center as effectively as e4 or d4.\\n\\n4. **Choosing the best move**:
-        \\n   - **e4** is a strong move because it immediately controls the center
-        and allows for quick development of my pieces. It is also a very common opening
-        move that leads to many well-studied openings.\\n\\nAfter considering these
-        factors, I will play the move e4.\\n\\nFinal Answer: e4\",\n        \"refusal\":
-        null,\n        \"annotations\": []\n      },\n      \"logprobs\": null,\n
-        \     \"finish_reason\": \"stop\"\n    }\n  ],\n  \"usage\": {\n    \"prompt_tokens\":
-        142,\n    \"completion_tokens\": 319,\n    \"total_tokens\": 461,\n    \"prompt_tokens_details\":
-        {\n      \"cached_tokens\": 0,\n      \"audio_tokens\": 0\n    },\n    \"completion_tokens_details\":
+        opening principles**:\\n   - Control the center (e4, d4, e5, d5).\\n   - Develop
+        knights before bishops.\\n   - Prepare to castle for king safety.\\n\\n3.
+        **Potential moves**:\\n   - **e4**: This move controls the center and opens
+        lines for the queen and bishop. It's one of the most popular opening moves.\\n
+        \  - **d4**: This also controls the center but is less common than e4 in the
+        very first move.\\n   - **Nf3**: This develops a knight and controls the center
+        but does not immediately control the central squares as strongly as e4 or
+        d4.\\n   - **c4**: This is the English Opening, but it does not control the
+        center as directly.\\n\\n4. **Choosing the best move**: \\n   - e4 is a strong
+        move because it immediately controls the center and allows for quick development
+        of my pieces. It is also a very common opening move that leads to many well-studied
+        positions.\\n\\nAfter considering these factors, I will play:\\n\\nFinal Answer:
+        e4\",\n        \"refusal\": null,\n        \"annotations\": []\n      },\n
+        \     \"logprobs\": null,\n      \"finish_reason\": \"stop\"\n    }\n  ],\n
+        \ \"usage\": {\n    \"prompt_tokens\": 142,\n    \"completion_tokens\": 307,\n
+        \   \"total_tokens\": 449,\n    \"prompt_tokens_details\": {\n      \"cached_tokens\":
+        0,\n      \"audio_tokens\": 0\n    },\n    \"completion_tokens_details\":
         {\n      \"reasoning_tokens\": 0,\n      \"audio_tokens\": 0,\n      \"accepted_prediction_tokens\":
         0,\n      \"rejected_prediction_tokens\": 0\n    }\n  },\n  \"service_tier\":
         \"default\",\n  \"system_fingerprint\": \"fp_560af6e559\"\n}\n"
@@ -98,17 +98,17 @@ interactions:
       cf-cache-status:
       - DYNAMIC
       content-length:
-      - '2181'
+      - '2145'
       openai-organization:
       - user-aot8rlpgpoltgmjq3rrcwvq3
       openai-processing-ms:
-      - '5378'
+      - '5245'
       openai-project:
       - proj_mPL62zuq4MRiWekadSO6KuLd
       openai-version:
       - '2020-10-01'
       x-envoy-upstream-service-time:
-      - '5404'
+      - '5259'
       x-openai-proxy-wasm:
       - v0.1
       x-ratelimit-limit-requests:
@@ -147,8 +147,8 @@ interactions:
       content-type:
       - application/json
       cookie:
-      - __cf_bm=AfcBSb4jpoVq2np02OYLvWQCgAGHgYT_yUupora3UfQ-1758370748-1.0.1.1-8b35FLZn5JLvioz0oNTvxzRBH33YqYf1vnK4HFdl3jc4deUGGUPGSHST4aNAO_BlRlnOpqS.OzatwCIHAY8HEtzGjCECvrfAyltX1NVu9u8;
-        _cfuvid=dsvyYEp3Ueh9zUFWm7WW17atLJDmBvi4.JHtWqcLYNM-1758370748432-0.0.1.1-604800000
+      - __cf_bm=gkZYRgLCCz9MEs06PwHjVBkuWU_MRyQ0WroT.NyqYTs-1758375356-1.0.1.1-8vs.mTkNItxPts3frmQmVo1i0BHiHk5dX47yHxpBhs41rt5m_RAz3UQq5.VPmGYiK0GmSXERTUWr.nWyGrsgjmG2U160sZwUj1VONrbRF2k;
+        _cfuvid=RHd.QWaWzzwG6muRw1qznX7iFr9S_D4pL9y0gWnXvS8-1758375356277-0.0.1.1-604800000
       host:
       - api.openai.com
       user-agent:
@@ -177,161 +177,27 @@ interactions:
     uri: https://api.openai.com/v1/chat/completions
   response:
     body:
-      string: "{\n  \"id\": \"chatcmpl-CHqrFnOdLmhq48WHAODnNW0P6jCET\",\n  \"object\":
-        \"chat.completion\",\n  \"created\": 1758370797,\n  \"model\": \"gpt-4o-mini-2024-07-18\",\n
+      string: "{\n  \"id\": \"chatcmpl-CHs3v6GkWSgF7fmMthLE1ZEMfPML4\",\n  \"object\":
+        \"chat.completion\",\n  \"created\": 1758375427,\n  \"model\": \"gpt-4o-mini-2024-07-18\",\n
         \ \"choices\": [\n    {\n      \"index\": 0,\n      \"message\": {\n        \"role\":
         \"assistant\",\n        \"content\": \"Let's analyze the current position
-        based on the FEN provided: \\n\\n```\\nr1bqkbnr/pppppppp/n7/8/4P3/8/PPPP1PPP/RNBQKBNR
-        w KQkq - 1 2\\n```\\n\\nThe board looks like this:\\n\\n```\\n8 r . b q k
-        b n r\\n7 p p p p p p p p\\n6 n . . . . . . .\\n5 . . . . P . . .\\n4 . .
-        . . . . . .\\n3 . . . . . . . .\\n2 P P P P . P P P\\n1 R N B Q K B N R\\n
-        \ a b c d e f g h\\n```\\n\\n### Current Position Analysis:\\n- White has
-        a pawn on e4 and is ready to advance or develop pieces.\\n- Black has moved
-        the knight from b8 to a6, which is not a very strong move as it does not control
-        the center and can be easily targeted.\\n- White has the opportunity to develop
-        pieces and control the center.\\n\\n### Possible Moves:\\n1. **Developing
-        Knights**: Moving Nf3 or Nc3 would help control the center.\\n2. **Pawns**:
-        Advancing the pawn to d4 would also help control the center and open lines
-        for the pieces.\\n3. **Bishop Development**: Moving Bc4 could target the f7
-        pawn, which is a weak point in Black's position.\\n\\n### Evaluating the Best
-        Move:\\n- **Nf3**: This move develops a knight and controls the center, but
-        it doesn't put immediate pressure on Black.\\n- **Nc3**: Similar to Nf3, it
-        develops a knight but also doesn't exert immediate pressure.\\n- **d4**: This
-        move opens up the center and allows for further development. It also puts
-        pressure on the e5 square.\\n- **Bc4**: This move targets the f7 pawn directly,
-        which is a critical weakness in Black's position.\\n\\n### Conclusion:\\nAmong
-        the options, **Bc4** is the most aggressive and puts immediate pressure on
-        Black's position. It develops a piece and targets a weak pawn.\\n\\nFinal
-        Answer: Bc4\",\n        \"refusal\": null,\n        \"annotations\": []\n
-        \     },\n      \"logprobs\": null,\n      \"finish_reason\": \"stop\"\n    }\n
-        \ ],\n  \"usage\": {\n    \"prompt_tokens\": 156,\n    \"completion_tokens\":
-        455,\n    \"total_tokens\": 611,\n    \"prompt_tokens_details\": {\n      \"cached_tokens\":
-        0,\n      \"audio_tokens\": 0\n    },\n    \"completion_tokens_details\":
-        {\n      \"reasoning_tokens\": 0,\n      \"audio_tokens\": 0,\n      \"accepted_prediction_tokens\":
-        0,\n      \"rejected_prediction_tokens\": 0\n    }\n  },\n  \"service_tier\":
-        \"default\",\n  \"system_fingerprint\": \"fp_560af6e559\"\n}\n"
-    headers:
-      Connection:
-      - keep-alive
-      Content-Type:
-      - application/json
-      Server:
-      - cloudflare
-      Strict-Transport-Security:
-      - max-age=31536000; includeSubDomains; preload
-      Transfer-Encoding:
-      - chunked
-      X-Content-Type-Options:
-      - nosniff
-      access-control-expose-headers:
-      - X-Request-ID
-      alt-svc:
-      - h3=":443"; ma=86400
-      cf-cache-status:
-      - DYNAMIC
-      content-length:
-      - '2427'
-      openai-organization:
-      - user-aot8rlpgpoltgmjq3rrcwvq3
-      openai-processing-ms:
-      - '9515'
-      openai-project:
-      - proj_mPL62zuq4MRiWekadSO6KuLd
-      openai-version:
-      - '2020-10-01'
-      x-envoy-upstream-service-time:
-      - '9548'
-      x-openai-proxy-wasm:
-      - v0.1
-      x-ratelimit-limit-requests:
-      - '10000'
-      x-ratelimit-limit-tokens:
-      - '10000000'
-      x-ratelimit-remaining-requests:
-      - '9999'
-      x-ratelimit-remaining-tokens:
-      - '9999886'
-      x-ratelimit-reset-requests:
-      - 6ms
-      x-ratelimit-reset-tokens:
-      - 0s
-    status:
-      code: 200
-      message: OK
-- request:
-    body: '{"messages": [{"role": "user", "content": "Let''s play chess. The current
-      game state in FEN is:\nr1bqkb1r/pppppppp/n6n/8/2B1P3/8/PPPP1PPP/RNBQK1NR w KQkq
-      - 3 3\nThe moves played so far are:\n1. e2e4 b8a6 2. f1c4 g8h6\nYou are playing
-      as player white.\nIt is now your turn. Play your strongest move. The move MUST
-      be legal. Reason step by step to come up with your move, then output your final
-      answer in the format \"Final Answer: X\" where X is your chosen move in standard
-      algebraic notation (e.g., e4, Nf3, O-O)."}], "model": "gpt-4o-mini", "n": 1,
-      "temperature": 0.0}'
-    headers:
-      accept:
-      - application/json
-      accept-encoding:
-      - gzip, deflate
-      connection:
-      - keep-alive
-      content-length:
-      - '559'
-      content-type:
-      - application/json
-      cookie:
-      - __cf_bm=AfcBSb4jpoVq2np02OYLvWQCgAGHgYT_yUupora3UfQ-1758370748-1.0.1.1-8b35FLZn5JLvioz0oNTvxzRBH33YqYf1vnK4HFdl3jc4deUGGUPGSHST4aNAO_BlRlnOpqS.OzatwCIHAY8HEtzGjCECvrfAyltX1NVu9u8;
-        _cfuvid=dsvyYEp3Ueh9zUFWm7WW17atLJDmBvi4.JHtWqcLYNM-1758370748432-0.0.1.1-604800000
-      host:
-      - api.openai.com
-      user-agent:
-      - OpenAI/Python 1.102.0
-      x-stainless-arch:
-      - arm64
-      x-stainless-async:
-      - 'false'
-      x-stainless-lang:
-      - python
-      x-stainless-os:
-      - MacOS
-      x-stainless-package-version:
-      - 1.102.0
-      x-stainless-raw-response:
-      - 'true'
-      x-stainless-read-timeout:
-      - '30.0'
-      x-stainless-retry-count:
-      - '0'
-      x-stainless-runtime:
-      - CPython
-      x-stainless-runtime-version:
-      - 3.12.11
-    method: POST
-    uri: https://api.openai.com/v1/chat/completions
-  response:
-    body:
-      string: "{\n  \"id\": \"chatcmpl-CHqrO8fNZ25LZ6lC5d2CvZGcRhqX0\",\n  \"object\":
-        \"chat.completion\",\n  \"created\": 1758370806,\n  \"model\": \"gpt-4o-mini-2024-07-18\",\n
-        \ \"choices\": [\n    {\n      \"index\": 0,\n      \"message\": {\n        \"role\":
-        \"assistant\",\n        \"content\": \"Let's analyze the current position
-        based on the FEN provided: \\n\\n```\\nr1bqkb1r/pppppppp/n6n/8/2B1P3/8/PPPP1PPP/RNBQK1NR
-        w KQkq - 3 3\\n```\\n\\n### Current Board Analysis\\n- **White Pieces**: \\n
-        \ - Rooks on a1 and h1\\n  - Knights on b1 and g1\\n  - Bishops on c4 and
-        f1\\n  - Queen on d1\\n  - King on e1\\n  - Pawns on a2, b2, c2, d2, e4, f2,
-        g2, h2\\n\\n- **Black Pieces**: \\n  - Rooks on a8 and h8\\n  - Knights on
-        b8 and h6\\n  - Bishops on c8 and f8\\n  - Queen on d8\\n  - King on e8\\n
-        \ - Pawns on a7, b7, c7, d7, e7, f7, g7, h7\\n\\n### Move Analysis\\n1. **Current
-        Move**: It's White's turn to move.\\n2. **Possible Moves**: \\n   - The bishop
-        on c4 is well-placed and can attack the f7 pawn.\\n   - The pawn on e4 can
-        advance to e5, attacking the knight on f6.\\n   - The knight on b1 can develop
-        to c3 or a3.\\n   - The pawn on d2 can advance to d3 or d4.\\n\\n3. **Best
-        Move Consideration**: \\n   - Moving the bishop from c4 to f7 (Bxf7) is a
-        strong candidate because it puts the black king in check and captures a pawn.
-        This move also threatens to win the rook on h8 if the king moves to e7.\\n\\n###
-        Conclusion\\nAfter considering the position and the potential moves, the strongest
-        move for White is to play Bxf7.\\n\\nFinal Answer: Bxf7\",\n        \"refusal\":
+        based on the FEN provided: \\n\\n1. The position is as follows:\\n   - White
+        pieces: Rooks on a1 and h1, Knights on b1 and g1, Bishops on c1 and f1, Queen
+        on d1, King on e1, Pawns on a2, b2, c2, d2, e4, f2, g2, h2.\\n   - Black pieces:
+        Rooks on a8 and h8, Knights on b8 and g8, Bishops on c8 and f8, Queen on d8,
+        King on e8, Pawns on a7, b7, c7, d7, e7, f7, g7, h7.\\n   - There is a knight
+        on a6 for Black, which is a bit out of play.\\n\\n2. The last moves were:\\n
+        \  - 1. e2e4 (White's move)\\n   - 1... b8a6 (Black's move)\\n\\n3. Now it's
+        White's turn. The goal is to develop pieces and control the center. \\n\\n4.
+        The pawn on e4 is well-placed, and I want to continue developing my pieces.
+        A strong move would be to play Nf3, which develops the knight towards the
+        center and prepares for kingside castling.\\n\\n5. Nf3 also attacks the pawn
+        on e5 (if Black plays ...e5 in the future) and supports the center.\\n\\n6.
+        There are no immediate threats from Black that I need to respond to, so developing
+        my knight is a solid choice.\\n\\nFinal Answer: Nf3\",\n        \"refusal\":
         null,\n        \"annotations\": []\n      },\n      \"logprobs\": null,\n
         \     \"finish_reason\": \"stop\"\n    }\n  ],\n  \"usage\": {\n    \"prompt_tokens\":
-        170,\n    \"completion_tokens\": 422,\n    \"total_tokens\": 592,\n    \"prompt_tokens_details\":
+        156,\n    \"completion_tokens\": 338,\n    \"total_tokens\": 494,\n    \"prompt_tokens_details\":
         {\n      \"cached_tokens\": 0,\n      \"audio_tokens\": 0\n    },\n    \"completion_tokens_details\":
         {\n      \"reasoning_tokens\": 0,\n      \"audio_tokens\": 0,\n      \"accepted_prediction_tokens\":
         0,\n      \"rejected_prediction_tokens\": 0\n    }\n  },\n  \"service_tier\":
@@ -356,17 +222,144 @@ interactions:
       cf-cache-status:
       - DYNAMIC
       content-length:
-      - '2034'
+      - '1884'
       openai-organization:
       - user-aot8rlpgpoltgmjq3rrcwvq3
       openai-processing-ms:
-      - '9800'
+      - '6417'
       openai-project:
       - proj_mPL62zuq4MRiWekadSO6KuLd
       openai-version:
       - '2020-10-01'
       x-envoy-upstream-service-time:
-      - '9813'
+      - '6432'
+      x-openai-proxy-wasm:
+      - v0.1
+      x-ratelimit-limit-requests:
+      - '10000'
+      x-ratelimit-limit-tokens:
+      - '10000000'
+      x-ratelimit-remaining-requests:
+      - '9999'
+      x-ratelimit-remaining-tokens:
+      - '9999886'
+      x-ratelimit-reset-requests:
+      - 6ms
+      x-ratelimit-reset-tokens:
+      - 0s
+    status:
+      code: 200
+      message: OK
+- request:
+    body: '{"messages": [{"role": "user", "content": "Let''s play chess. The current
+      game state in FEN is:\nr1bqkb1r/pppppppp/n6n/8/4P3/5N2/PPPP1PPP/RNBQKB1R w KQkq
+      - 3 3\nThe moves played so far are:\n1. e2e4 b8a6 2. g1f3 g8h6\nYou are playing
+      as player white.\nIt is now your turn. Play your strongest move. The move MUST
+      be legal. Reason step by step to come up with your move, then output your final
+      answer in the format \"Final Answer: X\" where X is your chosen move in standard
+      algebraic notation (e.g., e4, Nf3, O-O)."}], "model": "gpt-4o-mini", "n": 1,
+      "temperature": 0.0}'
+    headers:
+      accept:
+      - application/json
+      accept-encoding:
+      - gzip, deflate
+      connection:
+      - keep-alive
+      content-length:
+      - '559'
+      content-type:
+      - application/json
+      cookie:
+      - __cf_bm=gkZYRgLCCz9MEs06PwHjVBkuWU_MRyQ0WroT.NyqYTs-1758375356-1.0.1.1-8vs.mTkNItxPts3frmQmVo1i0BHiHk5dX47yHxpBhs41rt5m_RAz3UQq5.VPmGYiK0GmSXERTUWr.nWyGrsgjmG2U160sZwUj1VONrbRF2k;
+        _cfuvid=RHd.QWaWzzwG6muRw1qznX7iFr9S_D4pL9y0gWnXvS8-1758375356277-0.0.1.1-604800000
+      host:
+      - api.openai.com
+      user-agent:
+      - OpenAI/Python 1.102.0
+      x-stainless-arch:
+      - arm64
+      x-stainless-async:
+      - 'false'
+      x-stainless-lang:
+      - python
+      x-stainless-os:
+      - MacOS
+      x-stainless-package-version:
+      - 1.102.0
+      x-stainless-raw-response:
+      - 'true'
+      x-stainless-read-timeout:
+      - '30.0'
+      x-stainless-retry-count:
+      - '0'
+      x-stainless-runtime:
+      - CPython
+      x-stainless-runtime-version:
+      - 3.12.11
+    method: POST
+    uri: https://api.openai.com/v1/chat/completions
+  response:
+    body:
+      string: "{\n  \"id\": \"chatcmpl-CHs42MADUKYBd0bKqiPPP6kALPpYe\",\n  \"object\":
+        \"chat.completion\",\n  \"created\": 1758375434,\n  \"model\": \"gpt-4o-mini-2024-07-18\",\n
+        \ \"choices\": [\n    {\n      \"index\": 0,\n      \"message\": {\n        \"role\":
+        \"assistant\",\n        \"content\": \"Let's analyze the current position
+        based on the provided FEN: \\n\\n```\\nr1bqkb1r/pppppppp/n6n/8/4P3/5N2/PPPP1PPP/RNBQKB1R
+        w KQkq - 3 3\\n```\\n\\n### Current Position:\\n- **White Pieces**: \\n  -
+        Pawns: e4, a2, b2, c2, d2, f2, g2, h2\\n  - Knights: f3\\n  - Rooks: a1, h1\\n
+        \ - Bishops: c1, f1\\n  - Queen: d1\\n  - King: e1\\n\\n- **Black Pieces**:
+        \\n  - Pawns: a7, b7, c7, d7, e7, f7, g7, h7\\n  - Knights: a6, h6\\n  - Rooks:
+        a8, h8\\n  - Bishops: c8, f8\\n  - Queen: d8\\n  - King: e8\\n\\n### Move
+        Analysis:\\n1. **Current Turn**: White to move.\\n2. **Possible Moves**: \\n
+        \  - The knight on f3 can move to e5 or g5.\\n   - The pawn on e4 can advance
+        to e5.\\n   - The pawns on a2, b2, c2, d2, f2, g2, and h2 can also move, but
+        they are less impactful at this moment.\\n   - The knight on f3 can also move
+        to d4, but that doesn't seem to be advantageous.\\n\\n3. **Best Move Consideration**:\\n
+        \  - Moving the pawn from e4 to e5 attacks the knight on f6 and opens up the
+        position for further development.\\n   - If I play e5, the knight on f6 has
+        to move, and I can gain tempo.\\n   - After e5, if Black plays Nf6, I can
+        follow up with Nf3 to maintain pressure.\\n\\n### Conclusion:\\nThe strongest
+        move in this position is to advance the pawn from e4 to e5.\\n\\nFinal Answer:
+        e5\",\n        \"refusal\": null,\n        \"annotations\": []\n      },\n
+        \     \"logprobs\": null,\n      \"finish_reason\": \"stop\"\n    }\n  ],\n
+        \ \"usage\": {\n    \"prompt_tokens\": 170,\n    \"completion_tokens\": 452,\n
+        \   \"total_tokens\": 622,\n    \"prompt_tokens_details\": {\n      \"cached_tokens\":
+        0,\n      \"audio_tokens\": 0\n    },\n    \"completion_tokens_details\":
+        {\n      \"reasoning_tokens\": 0,\n      \"audio_tokens\": 0,\n      \"accepted_prediction_tokens\":
+        0,\n      \"rejected_prediction_tokens\": 0\n    }\n  },\n  \"service_tier\":
+        \"default\",\n  \"system_fingerprint\": \"fp_560af6e559\"\n}\n"
+    headers:
+      Connection:
+      - keep-alive
+      Content-Type:
+      - application/json
+      Server:
+      - cloudflare
+      Strict-Transport-Security:
+      - max-age=31536000; includeSubDomains; preload
+      Transfer-Encoding:
+      - chunked
+      X-Content-Type-Options:
+      - nosniff
+      access-control-expose-headers:
+      - X-Request-ID
+      alt-svc:
+      - h3=":443"; ma=86400
+      cf-cache-status:
+      - DYNAMIC
+      content-length:
+      - '2061'
+      openai-organization:
+      - user-aot8rlpgpoltgmjq3rrcwvq3
+      openai-processing-ms:
+      - '3218'
+      openai-project:
+      - proj_mPL62zuq4MRiWekadSO6KuLd
+      openai-version:
+      - '2020-10-01'
+      x-envoy-upstream-service-time:
+      - '3243'
       x-openai-proxy-wasm:
       - v0.1
       x-ratelimit-limit-requests:
@@ -386,13 +379,13 @@ interactions:
       message: OK
 - request:
     body: '{"messages": [{"role": "user", "content": "Let''s play chess. The current
-      game state in FEN is:\nr1bqkb1r/pppppnpp/n7/8/4P3/8/PPPP1PPP/RNBQK1NR w KQkq
-      - 0 4\nThe moves played so far are:\n1. e2e4 b8a6 2. f1c4 g8h6 3. c4f7 h6f7\nYou
-      are playing as player white.\nIt is now your turn. Play your strongest move.
-      The move MUST be legal. Reason step by step to come up with your move, then
-      output your final answer in the format \"Final Answer: X\" where X is your chosen
-      move in standard algebraic notation (e.g., e4, Nf3, O-O)."}], "model": "gpt-4o-mini",
-      "n": 1, "temperature": 0.0}'
+      game state in FEN is:\nr1bqkb1r/pppppp1p/n5pn/4P3/8/5N2/PPPP1PPP/RNBQKB1R w
+      KQkq - 0 4\nThe moves played so far are:\n1. e2e4 b8a6 2. g1f3 g8h6 3. e4e5
+      g7g6\nYou are playing as player white.\nIt is now your turn. Play your strongest
+      move. The move MUST be legal. Reason step by step to come up with your move,
+      then output your final answer in the format \"Final Answer: X\" where X is your
+      chosen move in standard algebraic notation (e.g., e4, Nf3, O-O)."}], "model":
+      "gpt-4o-mini", "n": 1, "temperature": 0.0}'
     headers:
       accept:
       - application/json
@@ -401,12 +394,12 @@ interactions:
       connection:
       - keep-alive
       content-length:
-      - '569'
+      - '573'
       content-type:
       - application/json
       cookie:
-      - __cf_bm=AfcBSb4jpoVq2np02OYLvWQCgAGHgYT_yUupora3UfQ-1758370748-1.0.1.1-8b35FLZn5JLvioz0oNTvxzRBH33YqYf1vnK4HFdl3jc4deUGGUPGSHST4aNAO_BlRlnOpqS.OzatwCIHAY8HEtzGjCECvrfAyltX1NVu9u8;
-        _cfuvid=dsvyYEp3Ueh9zUFWm7WW17atLJDmBvi4.JHtWqcLYNM-1758370748432-0.0.1.1-604800000
+      - __cf_bm=gkZYRgLCCz9MEs06PwHjVBkuWU_MRyQ0WroT.NyqYTs-1758375356-1.0.1.1-8vs.mTkNItxPts3frmQmVo1i0BHiHk5dX47yHxpBhs41rt5m_RAz3UQq5.VPmGYiK0GmSXERTUWr.nWyGrsgjmG2U160sZwUj1VONrbRF2k;
+        _cfuvid=RHd.QWaWzzwG6muRw1qznX7iFr9S_D4pL9y0gWnXvS8-1758375356277-0.0.1.1-604800000
       host:
       - api.openai.com
       user-agent:
@@ -435,32 +428,34 @@ interactions:
     uri: https://api.openai.com/v1/chat/completions
   response:
     body:
-      string: "{\n  \"id\": \"chatcmpl-CHqrZ0DXP1ZjaDWkLYLtHDY0Z8Fcv\",\n  \"object\":
-        \"chat.completion\",\n  \"created\": 1758370817,\n  \"model\": \"gpt-4o-mini-2024-07-18\",\n
+      string: "{\n  \"id\": \"chatcmpl-CHs457OwY8gOEvcBZoZuzsWYxjTLt\",\n  \"object\":
+        \"chat.completion\",\n  \"created\": 1758375437,\n  \"model\": \"gpt-4o-mini-2024-07-18\",\n
         \ \"choices\": [\n    {\n      \"index\": 0,\n      \"message\": {\n        \"role\":
         \"assistant\",\n        \"content\": \"Let's analyze the current position
-        based on the FEN provided: \\n\\n```\\nr1bqkb1r/pppppnpp/n7/8/4P3/8/PPPP1PPP/RNBQK1NR
-        w KQkq - 0 4\\n```\\n\\nThe position shows that it's White's turn to move.
-        The pieces are arranged as follows:\\n\\n- White has pawns on a2, b2, c2,
-        d4, e4, f2, g2, h2, a1 (Rook), b1 (Knight), c1 (Bishop), d1 (Queen), e1 (King),
-        f1 (Knight), g1 (Rook).\\n- Black has pawns on a7, b7, c7, d7, e7, f7, g7,
-        h7, a8 (Rook), b8 (Knight), c8 (Bishop), d8 (Queen), e8 (King), f8 (Bishop),
-        g8 (Knight).\\n\\nThe moves played so far are:\\n1. e2e4 b8a6 \\n2. f1c4 g8h6
-        \\n3. c4f7 h6f7\\n\\nAfter these moves, the position is as follows:\\n- White
-        has just captured the Black pawn on f7 with the Bishop, and Black has captured
-        the White Bishop on f7 with the Knight.\\n\\nNow, let's evaluate the position:\\n-
-        White has a strong center with pawns on d4 and e4.\\n- The Black Knight on
-        f7 is currently attacking the White Queen on d1.\\n- The Black pieces are
-        somewhat cramped, and the Knight on a6 is not very active.\\n\\nGiven that
-        the Black Knight on f7 is attacking the Queen, White needs to respond to that
-        threat. The best move for White is to move the Queen to a safe square while
-        also maintaining pressure on the Black position.\\n\\nThe best move is to
-        play:\\n- Qe2, which moves the Queen to e2, out of the attack from the Knight
-        on f7, and also connects the Rooks.\\n\\nNow, let's finalize the move.\\n\\nFinal
-        Answer: Qe2\",\n        \"refusal\": null,\n        \"annotations\": []\n
-        \     },\n      \"logprobs\": null,\n      \"finish_reason\": \"stop\"\n    }\n
-        \ ],\n  \"usage\": {\n    \"prompt_tokens\": 178,\n    \"completion_tokens\":
-        448,\n    \"total_tokens\": 626,\n    \"prompt_tokens_details\": {\n      \"cached_tokens\":
+        based on the provided FEN and the moves played so far.\\n\\nThe position is
+        as follows:\\n\\n- White pieces: Rooks on a1 and h1, Knights on f3 and b1,
+        Bishops on c1 and f1, Queen on d1, King on e1, and pawns on a2, b2, c2, d2,
+        e5, f2, g2, h2.\\n- Black pieces: Rooks on a8 and h8, Knights on a6 and b8,
+        Bishops on c8 and f8, Queen on d8, King on e8, and pawns on a7, b7, c7, d7,
+        f7, g6, h7.\\n\\nThe moves played are:\\n1. e2e4 b8a6\\n2. g1f3 g8h6\\n3.
+        e4e5 g7g6\\n\\nNow, it's White's turn to move. \\n\\n1. **Evaluate the position**:
+        \\n   - White has a pawn on e5, which is advanced and can potentially create
+        threats.\\n   - The knight on f3 is well-placed and can jump to various squares.\\n
+        \  - Black's pieces are somewhat cramped, especially the knights on a6 and
+        b8, which are not contributing much to the game.\\n\\n2. **Consider possible
+        moves**:\\n   - The most aggressive move for White is to play **Nf3 to e5**
+        (Nxe5), capturing the pawn on e5. This not only gains material but also puts
+        pressure on Black's position.\\n   - Other moves like developing the knight
+        to d4 or moving the pawn to d4 are also possible, but they do not create immediate
+        threats.\\n\\n3. **Evaluate Nxe5**:\\n   - By capturing the pawn on e5, White
+        not only gains a pawn but also threatens to attack the knight on c6 and potentially
+        open up lines for the rooks and queen.\\n   - This move also forces Black
+        to respond, as they will need to deal with the knight on e5.\\n\\nAfter considering
+        these factors, the strongest move for White is to capture the pawn on e5 with
+        the knight.\\n\\nFinal Answer: Nxe5\",\n        \"refusal\": null,\n        \"annotations\":
+        []\n      },\n      \"logprobs\": null,\n      \"finish_reason\": \"stop\"\n
+        \   }\n  ],\n  \"usage\": {\n    \"prompt_tokens\": 182,\n    \"completion_tokens\":
+        460,\n    \"total_tokens\": 642,\n    \"prompt_tokens_details\": {\n      \"cached_tokens\":
         0,\n      \"audio_tokens\": 0\n    },\n    \"completion_tokens_details\":
         {\n      \"reasoning_tokens\": 0,\n      \"audio_tokens\": 0,\n      \"accepted_prediction_tokens\":
         0,\n      \"rejected_prediction_tokens\": 0\n    }\n  },\n  \"service_tier\":
@@ -485,17 +480,17 @@ interactions:
       cf-cache-status:
       - DYNAMIC
       content-length:
-      - '2222'
+      - '2409'
       openai-organization:
       - user-aot8rlpgpoltgmjq3rrcwvq3
       openai-processing-ms:
-      - '7484'
+      - '10724'
       openai-project:
       - proj_mPL62zuq4MRiWekadSO6KuLd
       openai-version:
       - '2020-10-01'
       x-envoy-upstream-service-time:
-      - '7556'
+      - '10748'
       x-openai-proxy-wasm:
       - v0.1
       x-ratelimit-limit-requests:
@@ -505,7 +500,7 @@ interactions:
       x-ratelimit-remaining-requests:
       - '9999'
       x-ratelimit-remaining-tokens:
-      - '9999879'
+      - '9999878'
       x-ratelimit-reset-requests:
       - 6ms
       x-ratelimit-reset-tokens:
@@ -515,13 +510,15 @@ interactions:
       message: OK
 - request:
     body: '{"messages": [{"role": "user", "content": "Let''s play chess. The current
-      game state in FEN is:\nr1bqkb1r/pppppnpp/8/2n5/4P3/8/PPPPQPPP/RNB1K1NR w KQkq
-      - 2 5\nThe moves played so far are:\n1. e2e4 b8a6 2. f1c4 g8h6 3. c4f7 h6f7
-      4. d1e2 a6c5\nYou are playing as player white.\nIt is now your turn. Play your
-      strongest move. The move MUST be legal. Reason step by step to come up with
-      your move, then output your final answer in the format \"Final Answer: X\" where
-      X is your chosen move in standard algebraic notation (e.g., e4, Nf3, O-O)."}],
-      "model": "gpt-4o-mini", "n": 1, "temperature": 0.0}'
+      game state in FEN is:\nr1bqkb1r/pppppp1p/n5pn/4P3/8/5N2/PPPP1PPP/RNBQKB1R w
+      KQkq - 0 4\nThe moves played so far are:\n1. e2e4 b8a6 2. g1f3 g8h6 3. e4e5
+      g7g6\nYou are playing as player white.\nIt is now your turn. Play your strongest
+      move. The move MUST be legal. Reason step by step to come up with your move,
+      then output your final answer in the format \"Final Answer: X\" where X is your
+      chosen move in standard algebraic notation (e.g., e4, Nf3, O-O).\n\nYour previously
+      suggested move was: Nxe5, which is an illegal move.\nPlease think carefully
+      and generate a new and legal move."}], "model": "gpt-4o-mini", "n": 1, "temperature":
+      0.0}'
     headers:
       accept:
       - application/json
@@ -530,12 +527,12 @@ interactions:
       connection:
       - keep-alive
       content-length:
-      - '583'
+      - '703'
       content-type:
       - application/json
       cookie:
-      - __cf_bm=AfcBSb4jpoVq2np02OYLvWQCgAGHgYT_yUupora3UfQ-1758370748-1.0.1.1-8b35FLZn5JLvioz0oNTvxzRBH33YqYf1vnK4HFdl3jc4deUGGUPGSHST4aNAO_BlRlnOpqS.OzatwCIHAY8HEtzGjCECvrfAyltX1NVu9u8;
-        _cfuvid=dsvyYEp3Ueh9zUFWm7WW17atLJDmBvi4.JHtWqcLYNM-1758370748432-0.0.1.1-604800000
+      - __cf_bm=gkZYRgLCCz9MEs06PwHjVBkuWU_MRyQ0WroT.NyqYTs-1758375356-1.0.1.1-8vs.mTkNItxPts3frmQmVo1i0BHiHk5dX47yHxpBhs41rt5m_RAz3UQq5.VPmGYiK0GmSXERTUWr.nWyGrsgjmG2U160sZwUj1VONrbRF2k;
+        _cfuvid=RHd.QWaWzzwG6muRw1qznX7iFr9S_D4pL9y0gWnXvS8-1758375356277-0.0.1.1-604800000
       host:
       - api.openai.com
       user-agent:
@@ -564,31 +561,161 @@ interactions:
     uri: https://api.openai.com/v1/chat/completions
   response:
     body:
-      string: "{\n  \"id\": \"chatcmpl-CHqrgiFyCIT53JjTp2BiAHWAa0Wui\",\n  \"object\":
-        \"chat.completion\",\n  \"created\": 1758370824,\n  \"model\": \"gpt-4o-mini-2024-07-18\",\n
+      string: "{\n  \"id\": \"chatcmpl-CHs4GnXlMdhKlfybKwrEg5aa1pmRm\",\n  \"object\":
+        \"chat.completion\",\n  \"created\": 1758375448,\n  \"model\": \"gpt-4o-mini-2024-07-18\",\n
         \ \"choices\": [\n    {\n      \"index\": 0,\n      \"message\": {\n        \"role\":
         \"assistant\",\n        \"content\": \"Let's analyze the current position
-        based on the FEN provided: \\n\\n```\\nr1bqkb1r/pppppnpp/8/2n5/4P3/8/PPPPQPPP/RNB1K1NR
-        w KQkq - 2 5\\n```\\n\\n### Current Board Analysis:\\n- **White Pieces**:
-        \\n  - Pawns on a2, b2, c2, d2, e4, f2, g2, h2\\n  - Queen on e2\\n  - Rooks
-        on a1 and h1\\n  - Knight on b1\\n  - Bishop on c1\\n  - King on e1\\n\\n-
-        **Black Pieces**: \\n  - Pawns on a7, b7, c7, d7, e7, f7, g7, h7\\n  - Knight
-        on c4\\n  - Queen on d8\\n  - Rooks on a8 and h8\\n  - Bishop on b8\\n  -
-        King on e8\\n\\n### Move Consideration:\\n1. **Threats**: The knight on c4
-        is currently attacking the pawn on e4. If I do not respond to this threat,
-        Black can capture the pawn on e4 on their next move.\\n2. **Defending the
-        Pawn**: I can defend the pawn on e4 by moving my queen to e3. This move not
-        only defends the pawn but also connects my rooks and prepares for potential
-        future attacks.\\n3. **Other Options**: \\n   - Moving the knight from b1
-        to c3 is also a possibility, but it does not directly address the immediate
-        threat to the e4 pawn.\\n   - I could also consider moving the pawn from e4
-        to e5, but that would leave the knight on c4 free to capture the pawn.\\n\\n###
-        Best Move:\\nGiven the analysis, the best move is to play **Qe3**. This move
-        defends the pawn on e4 and maintains a strong position.\\n\\nFinal Answer:
-        Qe3\",\n        \"refusal\": null,\n        \"annotations\": []\n      },\n
+        based on the FEN provided: \\n\\n```\\nr1bqkb1r/pppppp1p/n5pn/4P3/8/5N2/PPPP1PPP/RNBQKB1R
+        w KQkq - 0 4\\n```\\n\\nThe position shows that it's White's turn to move.
+        The pieces are arranged as follows:\\n\\n- White has pawns on e5, a2, b2,
+        c2, d2, f2, g2, h2 and knights on f3 and e5.\\n- Black has pawns on a6, b7,
+        c7, d7, e7, f7, g6, h7 and knights on b8 and h6.\\n\\nNow, let's evaluate
+        the possible moves for White:\\n\\n1. **Nxe5** is illegal because the knight
+        on f3 cannot capture the pawn on e5.\\n2. **Nf3** is not a legal move since
+        the knight is already on f3.\\n3. **e5** is not a legal move since it is already
+        occupied by a pawn.\\n4. **d4** is a possible move, advancing the pawn to
+        d4.\\n5. **f4** is also a possible move, advancing the pawn to f4.\\n6. **Nf3**
+        is not a legal move since the knight is already on f3.\\n\\nAmong these options,
+        moving the pawn to d4 is a strong move because it opens up the center and
+        prepares for further development. \\n\\nLet's consider the move **d4**:\\n\\n-
+        It supports the pawn on e5.\\n- It opens lines for the pieces, particularly
+        the queen and the light-squared bishop.\\n- It puts pressure on the center.\\n\\nThus,
+        the best move for White is **d4**.\\n\\nFinal Answer: d4\",\n        \"refusal\":
+        null,\n        \"annotations\": []\n      },\n      \"logprobs\": null,\n
+        \     \"finish_reason\": \"stop\"\n    }\n  ],\n  \"usage\": {\n    \"prompt_tokens\":
+        209,\n    \"completion_tokens\": 380,\n    \"total_tokens\": 589,\n    \"prompt_tokens_details\":
+        {\n      \"cached_tokens\": 0,\n      \"audio_tokens\": 0\n    },\n    \"completion_tokens_details\":
+        {\n      \"reasoning_tokens\": 0,\n      \"audio_tokens\": 0,\n      \"accepted_prediction_tokens\":
+        0,\n      \"rejected_prediction_tokens\": 0\n    }\n  },\n  \"service_tier\":
+        \"default\",\n  \"system_fingerprint\": \"fp_560af6e559\"\n}\n"
+    headers:
+      Connection:
+      - keep-alive
+      Content-Type:
+      - application/json
+      Server:
+      - cloudflare
+      Strict-Transport-Security:
+      - max-age=31536000; includeSubDomains; preload
+      Transfer-Encoding:
+      - chunked
+      X-Content-Type-Options:
+      - nosniff
+      access-control-expose-headers:
+      - X-Request-ID
+      alt-svc:
+      - h3=":443"; ma=86400
+      cf-cache-status:
+      - DYNAMIC
+      content-length:
+      - '2045'
+      openai-organization:
+      - user-aot8rlpgpoltgmjq3rrcwvq3
+      openai-processing-ms:
+      - '7991'
+      openai-project:
+      - proj_mPL62zuq4MRiWekadSO6KuLd
+      openai-version:
+      - '2020-10-01'
+      x-envoy-upstream-service-time:
+      - '8075'
+      x-openai-proxy-wasm:
+      - v0.1
+      x-ratelimit-limit-requests:
+      - '10000'
+      x-ratelimit-limit-tokens:
+      - '10000000'
+      x-ratelimit-remaining-requests:
+      - '9999'
+      x-ratelimit-remaining-tokens:
+      - '9999847'
+      x-ratelimit-reset-requests:
+      - 6ms
+      x-ratelimit-reset-tokens:
+      - 0s
+    status:
+      code: 200
+      message: OK
+- request:
+    body: '{"messages": [{"role": "user", "content": "Let''s play chess. The current
+      game state in FEN is:\nr1bqkb1r/pppppp1p/6pn/2n1P3/3P4/5N2/PPP2PPP/RNBQKB1R
+      w KQkq - 1 5\nThe moves played so far are:\n1. e2e4 b8a6 2. g1f3 g8h6 3. e4e5
+      g7g6 4. d2d4 a6c5\nYou are playing as player white.\nIt is now your turn. Play
+      your strongest move. The move MUST be legal. Reason step by step to come up
+      with your move, then output your final answer in the format \"Final Answer:
+      X\" where X is your chosen move in standard algebraic notation (e.g., e4, Nf3,
+      O-O)."}], "model": "gpt-4o-mini", "n": 1, "temperature": 0.0}'
+    headers:
+      accept:
+      - application/json
+      accept-encoding:
+      - gzip, deflate
+      connection:
+      - keep-alive
+      content-length:
+      - '588'
+      content-type:
+      - application/json
+      cookie:
+      - __cf_bm=gkZYRgLCCz9MEs06PwHjVBkuWU_MRyQ0WroT.NyqYTs-1758375356-1.0.1.1-8vs.mTkNItxPts3frmQmVo1i0BHiHk5dX47yHxpBhs41rt5m_RAz3UQq5.VPmGYiK0GmSXERTUWr.nWyGrsgjmG2U160sZwUj1VONrbRF2k;
+        _cfuvid=RHd.QWaWzzwG6muRw1qznX7iFr9S_D4pL9y0gWnXvS8-1758375356277-0.0.1.1-604800000
+      host:
+      - api.openai.com
+      user-agent:
+      - OpenAI/Python 1.102.0
+      x-stainless-arch:
+      - arm64
+      x-stainless-async:
+      - 'false'
+      x-stainless-lang:
+      - python
+      x-stainless-os:
+      - MacOS
+      x-stainless-package-version:
+      - 1.102.0
+      x-stainless-raw-response:
+      - 'true'
+      x-stainless-read-timeout:
+      - '30.0'
+      x-stainless-retry-count:
+      - '0'
+      x-stainless-runtime:
+      - CPython
+      x-stainless-runtime-version:
+      - 3.12.11
+    method: POST
+    uri: https://api.openai.com/v1/chat/completions
+  response:
+    body:
+      string: "{\n  \"id\": \"chatcmpl-CHs4OjC3FgUwiTeK6MKchYTLKvqqe\",\n  \"object\":
+        \"chat.completion\",\n  \"created\": 1758375456,\n  \"model\": \"gpt-4o-mini-2024-07-18\",\n
+        \ \"choices\": [\n    {\n      \"index\": 0,\n      \"message\": {\n        \"role\":
+        \"assistant\",\n        \"content\": \"Let's analyze the current position
+        based on the FEN provided: \\n\\n```\\nr1bqkb1r/pppppp1p/6pn/2n1P3/3P4/5N2/PPP2PPP/RNBQKB1R
+        w KQkq - 1 5\\n```\\n\\n### Current Position:\\n- **White pieces**: Rooks
+        on a1 and h1, Knights on f3 and b1, Bishops on c1 and f1, Queen on d1, King
+        on e1, Pawns on a2, b2, c2, d4, e5, f2, g2, h2.\\n- **Black pieces**: Rooks
+        on a8 and h8, Knights on b8 and d5, Bishops on c8 and f8, Queen on d8, King
+        on e8, Pawns on a7, b7, c7, d7, e7, f7, g6, h7.\\n\\n### Move Analysis:\\n1.
+        **Current Turn**: White to move.\\n2. **Threats and Opportunities**:\\n   -
+        The pawn on e5 is currently advanced and can be a strong asset.\\n   - The
+        knight on f3 is well-placed and can support various attacks.\\n   - The pawn
+        on d4 is also advanced and can potentially support an attack or control the
+        center.\\n   - The knight on d5 is a strong piece for Black, controlling key
+        squares and potentially threatening the e3 square.\\n\\n### Possible Moves:\\n-
+        **Nf3 to e5**: This captures the pawn on e5, but it would leave the knight
+        on e5 vulnerable to being attacked.\\n- **d4 to d5**: This move attacks the
+        knight on d5, forcing it to move. This is a strong candidate as it also opens
+        up lines for the pieces.\\n- **Nf3 to e5**: This captures the pawn on e5,
+        but it would leave the knight on e5 vulnerable to being attacked.\\n- **Nf3
+        to d4**: This move would be illegal as the knight cannot move to d4.\\n\\n###
+        Best Move:\\nThe best move here is to push the pawn from d4 to d5. This move
+        attacks the knight on d5 and forces Black to respond, potentially gaining
+        a tempo and improving White's position.\\n\\n### Final Answer:\\nFinal Answer:
+        d5\",\n        \"refusal\": null,\n        \"annotations\": []\n      },\n
         \     \"logprobs\": null,\n      \"finish_reason\": \"stop\"\n    }\n  ],\n
-        \ \"usage\": {\n    \"prompt_tokens\": 191,\n    \"completion_tokens\": 423,\n
-        \   \"total_tokens\": 614,\n    \"prompt_tokens_details\": {\n      \"cached_tokens\":
+        \ \"usage\": {\n    \"prompt_tokens\": 196,\n    \"completion_tokens\": 497,\n
+        \   \"total_tokens\": 693,\n    \"prompt_tokens_details\": {\n      \"cached_tokens\":
         0,\n      \"audio_tokens\": 0\n    },\n    \"completion_tokens_details\":
         {\n      \"reasoning_tokens\": 0,\n      \"audio_tokens\": 0,\n      \"accepted_prediction_tokens\":
         0,\n      \"rejected_prediction_tokens\": 0\n    }\n  },\n  \"service_tier\":
@@ -613,17 +740,17 @@ interactions:
       cf-cache-status:
       - DYNAMIC
       content-length:
-      - '2114'
+      - '2438'
       openai-organization:
       - user-aot8rlpgpoltgmjq3rrcwvq3
       openai-processing-ms:
-      - '6962'
+      - '10701'
       openai-project:
       - proj_mPL62zuq4MRiWekadSO6KuLd
       openai-version:
       - '2020-10-01'
       x-envoy-upstream-service-time:
-      - '6975'
+      - '10723'
       x-openai-proxy-wasm:
       - v0.1
       x-ratelimit-limit-requests:
@@ -633,7 +760,7 @@ interactions:
       x-ratelimit-remaining-requests:
       - '9999'
       x-ratelimit-remaining-tokens:
-      - '9999876'
+      - '9999875'
       x-ratelimit-reset-requests:
       - 6ms
       x-ratelimit-reset-tokens:
