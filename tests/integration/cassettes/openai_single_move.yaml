@@ -47,30 +47,31 @@ interactions:
     uri: https://api.openai.com/v1/chat/completions
   response:
     body:
-      string: "{\n  \"id\": \"chatcmpl-CHs2qWtEwAoHW0uUohjjxc9epVb83\",\n  \"object\":
-        \"chat.completion\",\n  \"created\": 1758375360,\n  \"model\": \"gpt-4o-mini-2024-07-18\",\n
+      string: "{\n  \"id\": \"chatcmpl-CHuwEJAKx0zW35f312B83BaOhfxoW\",\n  \"object\":
+        \"chat.completion\",\n  \"created\": 1758386482,\n  \"model\": \"gpt-4o-mini-2024-07-18\",\n
         \ \"choices\": [\n    {\n      \"index\": 0,\n      \"message\": {\n        \"role\":
         \"assistant\",\n        \"content\": \"The current position is the starting
         position of a chess game, where both players have all their pieces in their
         original squares. As White, I have the first move, and I want to choose a
-        strong opening move.\\n\\n1. **Evaluate the position**: All pieces are in
-        their starting positions. I have the option to move pawns or knights. The
-        most common and strong opening moves for White are 1.e4 and 1.d4, as they
-        control the center of the board.\\n\\n2. **Consider pawn moves**: \\n   -
-        **1.e4**: This move opens lines for both the queen and the bishop on the f1
-        square. It also controls the center squares d5 and f5.\\n   - **1.d4**: This
-        move also controls the center, specifically e5 and c5, and opens the line
-        for the queen's bishop.\\n\\n3. **Consider knight moves**: \\n   - **1.Nf3**:
-        This move develops a knight and controls the center, but it does not open
-        lines for the bishops.\\n   - **1.Nc3**: This move develops a knight but is
-        less common and does not control the center as effectively as the pawn moves.\\n\\n4.
-        **Choose the best move**: \\n   - The move 1.e4 is the most popular and aggressive
-        opening move in chess. It allows for quick development of pieces and control
-        of the center, which is crucial in the opening phase of the game.\\n\\nAfter
-        considering these factors, I will play:\\n\\nFinal Answer: e4\",\n        \"refusal\":
-        null,\n        \"annotations\": []\n      },\n      \"logprobs\": null,\n
-        \     \"finish_reason\": \"stop\"\n    }\n  ],\n  \"usage\": {\n    \"prompt_tokens\":
-        142,\n    \"completion_tokens\": 313,\n    \"total_tokens\": 455,\n    \"prompt_tokens_details\":
+        strong opening move.\\n\\n1. **Evaluate the position**: The board is empty
+        except for the pieces in their starting positions. I need to consider moves
+        that control the center of the board, develop my pieces, and prepare for future
+        play.\\n\\n2. **Common opening principles**: \\n   - Control the center (the
+        squares e4, d4, e5, and d5).\\n   - Develop pieces (knights and bishops) towards
+        the center.\\n   - Ensure king safety (usually through castling).\\n\\n3.
+        **Potential moves**:\\n   - **e4**: This move controls the center and opens
+        lines for the queen and bishop. It's one of the most popular opening moves.\\n
+        \  - **d4**: This also controls the center but is less common than e4 in the
+        very first move.\\n   - **Nf3**: This develops a knight and controls the center,
+        but it doesn't control the center squares as directly as e4 or d4.\\n   -
+        **c4**: This is the English Opening, which is less direct in controlling the
+        center.\\n\\n4. **Choosing the best move**: \\n   - e4 is a very strong opening
+        move as it immediately controls the center and allows for quick development
+        of my pieces. It is also the most popular opening move in chess.\\n\\nAfter
+        considering these factors, I will play the move e4.\\n\\nFinal Answer: e4\",\n
+        \       \"refusal\": null,\n        \"annotations\": []\n      },\n      \"logprobs\":
+        null,\n      \"finish_reason\": \"stop\"\n    }\n  ],\n  \"usage\": {\n    \"prompt_tokens\":
+        142,\n    \"completion_tokens\": 323,\n    \"total_tokens\": 465,\n    \"prompt_tokens_details\":
         {\n      \"cached_tokens\": 0,\n      \"audio_tokens\": 0\n    },\n    \"completion_tokens_details\":
         {\n      \"reasoning_tokens\": 0,\n      \"audio_tokens\": 0,\n      \"accepted_prediction_tokens\":
         0,\n      \"rejected_prediction_tokens\": 0\n    }\n  },\n  \"service_tier\":
@@ -83,10 +84,10 @@ interactions:
       Server:
       - cloudflare
       Set-Cookie:
-      - __cf_bm=3jzUKkr.hgnAmsKs5U9eEKfSvlWO3T9oUbspdTCv.mU-1758375368-1.0.1.1-0wcddfqUfHhxPNzQVEJtITDldWMHL.FZmfmWN50BaH8W3xE.voRU5ybUlQIwreV6E111Q4j74YASgo4DZsH1_.KDhwmhFRB_I1Jb31akwZY;
-        path=/; expires=Sat, 20-Sep-25 14:06:08 GMT; domain=.api.openai.com; HttpOnly;
+      - __cf_bm=H6J8osaXbmBvx6n06FEmdA2eoHBwywpGy3ECKGFGDVc-1758386489-1.0.1.1-tvBvQgua_JoP83VeEBE11uFxpc9QRq6laFiMKAoat1zK6Vqa0QaLlhNG2xNilQC.JHZJW._c51wAKjbh1ILqN4nQcaXEj.4COSa.EOz9PWY;
+        path=/; expires=Sat, 20-Sep-25 17:11:29 GMT; domain=.api.openai.com; HttpOnly;
         Secure; SameSite=None
-      - _cfuvid=31t5pqC8bmOVmSrIa.JcOsyQckgRXvBuBoNmzEzQIgM-1758375368749-0.0.1.1-604800000;
+      - _cfuvid=0XJtkbJdN4ukmhdNravgCPUVmSQqGt9XTPFhKTy9h5E-1758386489051-0.0.1.1-604800000;
         path=/; domain=.api.openai.com; HttpOnly; Secure; SameSite=None
       Strict-Transport-Security:
       - max-age=31536000; includeSubDomains; preload
@@ -101,17 +102,17 @@ interactions:
       cf-cache-status:
       - DYNAMIC
       content-length:
-      - '2115'
+      - '2208'
       openai-organization:
       - user-aot8rlpgpoltgmjq3rrcwvq3
       openai-processing-ms:
-      - '8032'
+      - '6059'
       openai-project:
       - proj_mPL62zuq4MRiWekadSO6KuLd
       openai-version:
       - '2020-10-01'
       x-envoy-upstream-service-time:
-      - '8069'
+      - '6079'
       x-openai-proxy-wasm:
       - v0.1
       x-ratelimit-limit-requests:

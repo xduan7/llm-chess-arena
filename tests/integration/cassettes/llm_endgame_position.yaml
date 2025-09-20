@@ -19,8 +19,8 @@ interactions:
       content-type:
       - application/json
       cookie:
-      - __cf_bm=gkZYRgLCCz9MEs06PwHjVBkuWU_MRyQ0WroT.NyqYTs-1758375356-1.0.1.1-8vs.mTkNItxPts3frmQmVo1i0BHiHk5dX47yHxpBhs41rt5m_RAz3UQq5.VPmGYiK0GmSXERTUWr.nWyGrsgjmG2U160sZwUj1VONrbRF2k;
-        _cfuvid=RHd.QWaWzzwG6muRw1qznX7iFr9S_D4pL9y0gWnXvS8-1758375356277-0.0.1.1-604800000
+      - __cf_bm=bLM7v.wbDnIos1ApMZhaQjq3.MpUjTymubIUK048V9o-1758386478-1.0.1.1-VOFsPyBhgQZWZ9nH6z.3aeqKptbEM4NpeeJHvi3aRBVlybiM9LYXPGjNHUL6LkL6zyoL4I4XJzxR1CL4NFNVvWuTe6bayhttqYDhKNPZn4Y;
+        _cfuvid=6u19p2PBSs96DWtNfhI35Lr2_LBGjiFzq9J..bhdA1A-1758386478738-0.0.1.1-604800000
       host:
       - api.openai.com
       user-agent:
@@ -49,30 +49,32 @@ interactions:
     uri: https://api.openai.com/v1/chat/completions
   response:
     body:
-      string: "{\n  \"id\": \"chatcmpl-CHs38396VvgXPfuUQxDJfsxYtW1OW\",\n  \"object\":
-        \"chat.completion\",\n  \"created\": 1758375378,\n  \"model\": \"gpt-4o-mini-2024-07-18\",\n
+      string: "{\n  \"id\": \"chatcmpl-CHuwWPC2AnwIgCARlYluloTWKn5eL\",\n  \"object\":
+        \"chat.completion\",\n  \"created\": 1758386500,\n  \"model\": \"gpt-4o-mini-2024-07-18\",\n
         \ \"choices\": [\n    {\n      \"index\": 0,\n      \"message\": {\n        \"role\":
         \"assistant\",\n        \"content\": \"Let's analyze the current position
-        given in FEN: \\n\\n8/8/8/3k4/8/3K4/3P4/8 w - - 0 1\\n\\nThis represents the
-        following board:\\n\\n```\\n8 . . . . . . . .\\n7 . . . . . . . .\\n6 . .
-        . . . . . .\\n5 . . . k . . . .\\n4 . . . . . . . .\\n3 . . . K . P . .\\n2
-        . . . . . . . .\\n1 . . . . . . . .\\n```\\n\\n- White has a king on c3 and
-        a pawn on d3.\\n- Black has a king on d5.\\n\\nIt's White's turn to move.
-        The goal is to promote the pawn while keeping the king safe from being captured.\\n\\n1.
-        **Evaluate the position**: \\n   - The black king is on d5, which is directly
-        in front of the white pawn on d3. \\n   - The white king on c3 can help support
-        the pawn's advance.\\n\\n2. **Possible moves**:\\n   - The white pawn can
-        move to d4, which would be a strong move as it advances the pawn and forces
-        the black king to move.\\n   - The white king can move to b4 or d4, but moving
-        to d4 would be illegal since the black king occupies that square.\\n\\n3.
-        **Best move**:\\n   - Moving the pawn to d4 is the best move because it puts
-        pressure on the black king and allows the white king to support the pawn's
-        advance in the next turn.\\n\\nThus, the strongest legal move for White is
-        to advance the pawn from d3 to d4.\\n\\nFinal Answer: d4\",\n        \"refusal\":
-        null,\n        \"annotations\": []\n      },\n      \"logprobs\": null,\n
-        \     \"finish_reason\": \"stop\"\n    }\n  ],\n  \"usage\": {\n    \"prompt_tokens\":
-        130,\n    \"completion_tokens\": 353,\n    \"total_tokens\": 483,\n    \"prompt_tokens_details\":
-        {\n      \"cached_tokens\": 0,\n      \"audio_tokens\": 0\n    },\n    \"completion_tokens_details\":
+        given in the FEN: \\n\\n```\\n8/8/8/3k4/8/3K4/3P4/8 w - - 0 1\\n```\\n\\nThis
+        represents the following board:\\n\\n```\\n8 . . . . . . . .\\n7 . . . . .
+        . . .\\n6 . . . . . . . .\\n5 . . . k . . . .\\n4 . . . . . . . .\\n3 . .
+        . K . P . .\\n2 . . . . . . . .\\n1 . . . . . . . .\\n```\\n\\n- White has
+        a king on c3 and a pawn on d3.\\n- Black has a king on d5.\\n\\nIt's White's
+        turn to move. The goal is to promote the pawn while keeping the king safe
+        from being captured.\\n\\n### Step-by-step reasoning:\\n\\n1. **Identify the
+        Threats**: The black king on d5 is currently blocking the pawn on d3 from
+        advancing. The black king can move to c4 or e4 on the next turn, but it cannot
+        capture the white king on c3.\\n\\n2. **White's Options**: \\n   - The white
+        king can move to c4 or b4. \\n   - The pawn can move to d4, but that would
+        not be a good move since the black king can then capture it on the next turn.\\n\\n3.
+        **Best Move**: \\n   - Moving the white king to c4 (Kc4) is a strong move
+        because it directly supports the pawn on d3 and also blocks the black king
+        from advancing to c4 or e4. \\n   - This move also keeps the white king close
+        to the pawn, allowing for a potential promotion in the next few moves.\\n\\n###
+        Conclusion:\\nThe best move for White is to move the king to c4.\\n\\nFinal
+        Answer: Kc4\",\n        \"refusal\": null,\n        \"annotations\": []\n
+        \     },\n      \"logprobs\": null,\n      \"finish_reason\": \"stop\"\n    }\n
+        \ ],\n  \"usage\": {\n    \"prompt_tokens\": 130,\n    \"completion_tokens\":
+        387,\n    \"total_tokens\": 517,\n    \"prompt_tokens_details\": {\n      \"cached_tokens\":
+        0,\n      \"audio_tokens\": 0\n    },\n    \"completion_tokens_details\":
         {\n      \"reasoning_tokens\": 0,\n      \"audio_tokens\": 0,\n      \"accepted_prediction_tokens\":
         0,\n      \"rejected_prediction_tokens\": 0\n    }\n  },\n  \"service_tier\":
         \"default\",\n  \"system_fingerprint\": \"fp_560af6e559\"\n}\n"
@@ -96,17 +98,17 @@ interactions:
       cf-cache-status:
       - DYNAMIC
       content-length:
-      - '2020'
+      - '2121'
       openai-organization:
       - user-aot8rlpgpoltgmjq3rrcwvq3
       openai-processing-ms:
-      - '7834'
+      - '7479'
       openai-project:
       - proj_mPL62zuq4MRiWekadSO6KuLd
       openai-version:
       - '2020-10-01'
       x-envoy-upstream-service-time:
-      - '7849'
+      - '7508'
       x-openai-proxy-wasm:
       - v0.1
       x-ratelimit-limit-requests:
@@ -131,9 +133,9 @@ interactions:
       strongest move. The move MUST be legal. Reason step by step to come up with
       your move, then output your final answer in the format \"Final Answer: X\" where
       X is your chosen move in standard algebraic notation (e.g., e4, Nf3, O-O).\n\nYour
-      previously suggested move was: d4, which is an illegal move.\nPlease think carefully
-      and generate a new and legal move."}], "model": "gpt-4o-mini", "n": 1, "temperature":
-      0.0}'
+      previously suggested move was: Kc4, which is an illegal move.\nPlease think
+      carefully and generate a new and legal move."}], "model": "gpt-4o-mini", "n":
+      1, "temperature": 0.0}'
     headers:
       accept:
       - application/json
@@ -142,12 +144,12 @@ interactions:
       connection:
       - keep-alive
       content-length:
-      - '631'
+      - '632'
       content-type:
       - application/json
       cookie:
-      - __cf_bm=gkZYRgLCCz9MEs06PwHjVBkuWU_MRyQ0WroT.NyqYTs-1758375356-1.0.1.1-8vs.mTkNItxPts3frmQmVo1i0BHiHk5dX47yHxpBhs41rt5m_RAz3UQq5.VPmGYiK0GmSXERTUWr.nWyGrsgjmG2U160sZwUj1VONrbRF2k;
-        _cfuvid=RHd.QWaWzzwG6muRw1qznX7iFr9S_D4pL9y0gWnXvS8-1758375356277-0.0.1.1-604800000
+      - __cf_bm=bLM7v.wbDnIos1ApMZhaQjq3.MpUjTymubIUK048V9o-1758386478-1.0.1.1-VOFsPyBhgQZWZ9nH6z.3aeqKptbEM4NpeeJHvi3aRBVlybiM9LYXPGjNHUL6LkL6zyoL4I4XJzxR1CL4NFNVvWuTe6bayhttqYDhKNPZn4Y;
+        _cfuvid=6u19p2PBSs96DWtNfhI35Lr2_LBGjiFzq9J..bhdA1A-1758386478738-0.0.1.1-604800000
       host:
       - api.openai.com
       user-agent:
@@ -176,28 +178,31 @@ interactions:
     uri: https://api.openai.com/v1/chat/completions
   response:
     body:
-      string: "{\n  \"id\": \"chatcmpl-CHs3GUUWEQV1BworDZWfOh9urAPLu\",\n  \"object\":
-        \"chat.completion\",\n  \"created\": 1758375386,\n  \"model\": \"gpt-4o-mini-2024-07-18\",\n
+      string: "{\n  \"id\": \"chatcmpl-CHuwdAMge0QMPubZr6IRmxOTBQhYM\",\n  \"object\":
+        \"chat.completion\",\n  \"created\": 1758386507,\n  \"model\": \"gpt-4o-mini-2024-07-18\",\n
         \ \"choices\": [\n    {\n      \"index\": 0,\n      \"message\": {\n        \"role\":
         \"assistant\",\n        \"content\": \"Let's analyze the current position
-        given in FEN: \\n\\n8/8/8/3k4/8/3K4/3P4/8 w - - 0 1\\n\\nThis represents the
-        following board:\\n\\n```\\n8 . . . . . . . .\\n7 . . . . . . . .\\n6 . .
-        . . . . . .\\n5 . . . k . . . .\\n4 . . . . . . . .\\n3 . . . K . . . .\\n2
-        . . . P . . . .\\n1 . . . . . . . .\\n  a b c d e f g h\\n```\\n\\n- White
-        has a king on c3 and a pawn on d2.\\n- Black has a king on d5.\\n\\nIt's White's
-        turn to move. The goal is to promote the pawn while keeping the king safe
-        from being captured.\\n\\n1. **Identify Legal Moves**: \\n   - The white king
-        can move to b3, c4, or d4.\\n   - The pawn can move to d3.\\n\\n2. **Evaluate
-        Moves**:\\n   - Moving the pawn to d3 is a strong move because it advances
-        the pawn closer to promotion. After d3, the black king will have to move,
-        and White can then follow up with Kc4 to support the pawn.\\n   - Moving the
-        king to b3 or c4 does not advance the pawn and allows the black king to potentially
-        block the pawn's advance.\\n\\n3. **Best Move**: \\n   - The best move is
-        to advance the pawn to d3.\\n\\nFinal Answer: d3\",\n        \"refusal\":
-        null,\n        \"annotations\": []\n      },\n      \"logprobs\": null,\n
-        \     \"finish_reason\": \"stop\"\n    }\n  ],\n  \"usage\": {\n    \"prompt_tokens\":
-        156,\n    \"completion_tokens\": 327,\n    \"total_tokens\": 483,\n    \"prompt_tokens_details\":
-        {\n      \"cached_tokens\": 0,\n      \"audio_tokens\": 0\n    },\n    \"completion_tokens_details\":
+        based on the FEN provided: \\n\\n```\\n8/8/8/3k4/8/3K4/3P4/8 w - - 0 1\\n```\\n\\nThis
+        indicates the following:\\n\\n- The black king is on d5 (3rd rank, 4th file).\\n-
+        The white king is on d3 (3rd rank, 4th file).\\n- There is a white pawn on
+        d2 (3rd rank, 4th file).\\n- It's White's turn to move.\\n\\n### Step-by-step
+        reasoning:\\n\\n1. **Identify the pieces**: \\n   - White has a king on d3
+        and a pawn on d2.\\n   - Black has a king on d5.\\n\\n2. **Legal moves for
+        White**:\\n   - The white king can move to c3, c4, e3, or e4.\\n   - The white
+        pawn can move to d3.\\n\\n3. **Evaluate the best move**:\\n   - Moving the
+        pawn to d3 is a strong move because it advances the pawn closer to promotion
+        and also restricts the black king's movement.\\n   - Moving the king to c3
+        or e3 does not directly advance the pawn and allows the black king to potentially
+        capture the pawn if it moves to d3 later.\\n\\n4. **Consider the opponent's
+        responses**:\\n   - If I move the pawn to d3, the black king cannot capture
+        it immediately because it is protected by the white king on d3.\\n   - The
+        black king will have to move away or try to block the pawn's advance.\\n\\nGiven
+        this analysis, the strongest move for White is to advance the pawn to d3.\\n\\nFinal
+        Answer: d3\",\n        \"refusal\": null,\n        \"annotations\": []\n      },\n
+        \     \"logprobs\": null,\n      \"finish_reason\": \"stop\"\n    }\n  ],\n
+        \ \"usage\": {\n    \"prompt_tokens\": 157,\n    \"completion_tokens\": 352,\n
+        \   \"total_tokens\": 509,\n    \"prompt_tokens_details\": {\n      \"cached_tokens\":
+        0,\n      \"audio_tokens\": 0\n    },\n    \"completion_tokens_details\":
         {\n      \"reasoning_tokens\": 0,\n      \"audio_tokens\": 0,\n      \"accepted_prediction_tokens\":
         0,\n      \"rejected_prediction_tokens\": 0\n    }\n  },\n  \"service_tier\":
         \"default\",\n  \"system_fingerprint\": \"fp_560af6e559\"\n}\n"
@@ -221,17 +226,17 @@ interactions:
       cf-cache-status:
       - DYNAMIC
       content-length:
-      - '1856'
+      - '2075'
       openai-organization:
       - user-aot8rlpgpoltgmjq3rrcwvq3
       openai-processing-ms:
-      - '7847'
+      - '6748'
       openai-project:
       - proj_mPL62zuq4MRiWekadSO6KuLd
       openai-version:
       - '2020-10-01'
       x-envoy-upstream-service-time:
-      - '7894'
+      - '6763'
       x-openai-proxy-wasm:
       - v0.1
       x-ratelimit-limit-requests:
@@ -241,7 +246,7 @@ interactions:
       x-ratelimit-remaining-requests:
       - '9999'
       x-ratelimit-remaining-tokens:
-      - '9999865'
+      - '9999864'
       x-ratelimit-reset-requests:
       - 6ms
       x-ratelimit-reset-tokens:
@@ -256,10 +261,10 @@ interactions:
       strongest move. The move MUST be legal. Reason step by step to come up with
       your move, then output your final answer in the format \"Final Answer: X\" where
       X is your chosen move in standard algebraic notation (e.g., e4, Nf3, O-O).\n\nYour
-      previously suggested move was: d4, which is an illegal move.\nPlease think carefully
-      and generate a new and legal move.\n\nYour previously suggested move was: d3,
-      which is an illegal move.\nPlease think carefully and generate a new and legal
-      move."}], "model": "gpt-4o-mini", "n": 1, "temperature": 0.0}'
+      previously suggested move was: Kc4, which is an illegal move.\nPlease think
+      carefully and generate a new and legal move.\n\nYour previously suggested move
+      was: d3, which is an illegal move.\nPlease think carefully and generate a new
+      and legal move."}], "model": "gpt-4o-mini", "n": 1, "temperature": 0.0}'
     headers:
       accept:
       - application/json
@@ -268,12 +273,12 @@ interactions:
       connection:
       - keep-alive
       content-length:
-      - '759'
+      - '760'
       content-type:
       - application/json
       cookie:
-      - __cf_bm=gkZYRgLCCz9MEs06PwHjVBkuWU_MRyQ0WroT.NyqYTs-1758375356-1.0.1.1-8vs.mTkNItxPts3frmQmVo1i0BHiHk5dX47yHxpBhs41rt5m_RAz3UQq5.VPmGYiK0GmSXERTUWr.nWyGrsgjmG2U160sZwUj1VONrbRF2k;
-        _cfuvid=RHd.QWaWzzwG6muRw1qznX7iFr9S_D4pL9y0gWnXvS8-1758375356277-0.0.1.1-604800000
+      - __cf_bm=bLM7v.wbDnIos1ApMZhaQjq3.MpUjTymubIUK048V9o-1758386478-1.0.1.1-VOFsPyBhgQZWZ9nH6z.3aeqKptbEM4NpeeJHvi3aRBVlybiM9LYXPGjNHUL6LkL6zyoL4I4XJzxR1CL4NFNVvWuTe6bayhttqYDhKNPZn4Y;
+        _cfuvid=6u19p2PBSs96DWtNfhI35Lr2_LBGjiFzq9J..bhdA1A-1758386478738-0.0.1.1-604800000
       host:
       - api.openai.com
       user-agent:
@@ -302,26 +307,26 @@ interactions:
     uri: https://api.openai.com/v1/chat/completions
   response:
     body:
-      string: "{\n  \"id\": \"chatcmpl-CHs3OIWXwlIa9q4BLRxuZegYZbGkv\",\n  \"object\":
-        \"chat.completion\",\n  \"created\": 1758375394,\n  \"model\": \"gpt-4o-mini-2024-07-18\",\n
+      string: "{\n  \"id\": \"chatcmpl-CHuwkhJt1cAwVu2wpIMlPjSTmMQN2\",\n  \"object\":
+        \"chat.completion\",\n  \"created\": 1758386514,\n  \"model\": \"gpt-4o-mini-2024-07-18\",\n
         \ \"choices\": [\n    {\n      \"index\": 0,\n      \"message\": {\n        \"role\":
         \"assistant\",\n        \"content\": \"Let's analyze the current position
-        given in FEN: \\n\\n8/8/8/3k4/8/3K4/3P4/8 w - - 0 1\\n\\nThis represents the
-        following board:\\n\\n```\\n8 . . . . . . . .\\n7 . . . . . . . .\\n6 . .
-        . . . . . .\\n5 . . . k . . . .\\n4 . . . . . . . .\\n3 . . . K . P . .\\n2
-        . . . . . . . .\\n1 . . . . . . . .\\n```\\n\\n- White has a king on c3 and
-        a pawn on d3.\\n- Black has a king on d5.\\n\\nIt's White's turn to move.
-        The goal is to promote the pawn while keeping the king safe.\\n\\n1. The first
-        thing to note is that the pawn on d3 can move to d4. This is a legal move
-        and will advance the pawn towards promotion.\\n2. After moving the pawn to
-        d4, the Black king will have to move, as it cannot capture the pawn on d4
-        (the White king is blocking it).\\n3. This move also keeps the White king
-        on c3 safe and in a position to support the pawn's advance.\\n\\nThus, the
-        best move for White is to advance the pawn to d4.\\n\\nFinal Answer: d4\",\n
-        \       \"refusal\": null,\n        \"annotations\": []\n      },\n      \"logprobs\":
-        null,\n      \"finish_reason\": \"stop\"\n    }\n  ],\n  \"usage\": {\n    \"prompt_tokens\":
-        182,\n    \"completion_tokens\": 279,\n    \"total_tokens\": 461,\n    \"prompt_tokens_details\":
-        {\n      \"cached_tokens\": 0,\n      \"audio_tokens\": 0\n    },\n    \"completion_tokens_details\":
+        given in FEN: \\n\\n8/8/8/3k4/8/3K4/3P4/8 w - - 0 1\\n\\nThis indicates the
+        following:\\n\\n- The black king is on d5.\\n- The white king is on d3.\\n-
+        There is a white pawn on d2.\\n- It's White's turn to move.\\n\\nIn this position,
+        the goal is to promote the pawn while keeping the black king from interfering.
+        The white king is already well-placed to support the pawn's advance.\\n\\n1.
+        The first step is to consider the possible moves for the white king. The white
+        king can move to c3, c4, or e3.\\n2. The pawn on d2 can move to d3, but that
+        would be an illegal move since the black king is on d5 and would capture the
+        pawn on the next turn.\\n3. The best move is to advance the white king to
+        c3. This move keeps the black king from advancing to c4 and allows the white
+        king to support the pawn's advance on the next turn.\\n\\nThus, the strongest
+        legal move for White is:\\n\\nFinal Answer: Kc3\",\n        \"refusal\": null,\n
+        \       \"annotations\": []\n      },\n      \"logprobs\": null,\n      \"finish_reason\":
+        \"stop\"\n    }\n  ],\n  \"usage\": {\n    \"prompt_tokens\": 183,\n    \"completion_tokens\":
+        243,\n    \"total_tokens\": 426,\n    \"prompt_tokens_details\": {\n      \"cached_tokens\":
+        0,\n      \"audio_tokens\": 0\n    },\n    \"completion_tokens_details\":
         {\n      \"reasoning_tokens\": 0,\n      \"audio_tokens\": 0,\n      \"accepted_prediction_tokens\":
         0,\n      \"rejected_prediction_tokens\": 0\n    }\n  },\n  \"service_tier\":
         \"default\",\n  \"system_fingerprint\": \"fp_560af6e559\"\n}\n"
@@ -345,17 +350,17 @@ interactions:
       cf-cache-status:
       - DYNAMIC
       content-length:
-      - '1716'
+      - '1726'
       openai-organization:
       - user-aot8rlpgpoltgmjq3rrcwvq3
       openai-processing-ms:
-      - '6129'
+      - '4617'
       openai-project:
       - proj_mPL62zuq4MRiWekadSO6KuLd
       openai-version:
       - '2020-10-01'
       x-envoy-upstream-service-time:
-      - '6148'
+      - '4643'
       x-openai-proxy-wasm:
       - v0.1
       x-ratelimit-limit-requests:
@@ -366,132 +371,6 @@ interactions:
       - '9999'
       x-ratelimit-remaining-tokens:
       - '9999833'
-      x-ratelimit-reset-requests:
-      - 6ms
-      x-ratelimit-reset-tokens:
-      - 1ms
-    status:
-      code: 200
-      message: OK
-- request:
-    body: '{"messages": [{"role": "user", "content": "Let''s play chess. The current
-      game state in FEN is:\n8/8/8/3k4/8/3K4/3P4/8 w - - 0 1\nThe moves played so
-      far are:\n\nYou are playing as player white.\nIt is now your turn. Play your
-      strongest move. The move MUST be legal. Reason step by step to come up with
-      your move, then output your final answer in the format \"Final Answer: X\" where
-      X is your chosen move in standard algebraic notation (e.g., e4, Nf3, O-O).\n\nYour
-      previously suggested move was: d4, which is an illegal move.\nPlease think carefully
-      and generate a new and legal move.\n\nYour previously suggested move was: d3,
-      which is an illegal move.\nPlease think carefully and generate a new and legal
-      move.\n\nYour previously suggested move was: d4, which is an illegal move.\nPlease
-      think carefully and generate a new and legal move."}], "model": "gpt-4o-mini",
-      "n": 1, "temperature": 0.0}'
-    headers:
-      accept:
-      - application/json
-      accept-encoding:
-      - gzip, deflate
-      connection:
-      - keep-alive
-      content-length:
-      - '887'
-      content-type:
-      - application/json
-      cookie:
-      - __cf_bm=gkZYRgLCCz9MEs06PwHjVBkuWU_MRyQ0WroT.NyqYTs-1758375356-1.0.1.1-8vs.mTkNItxPts3frmQmVo1i0BHiHk5dX47yHxpBhs41rt5m_RAz3UQq5.VPmGYiK0GmSXERTUWr.nWyGrsgjmG2U160sZwUj1VONrbRF2k;
-        _cfuvid=RHd.QWaWzzwG6muRw1qznX7iFr9S_D4pL9y0gWnXvS8-1758375356277-0.0.1.1-604800000
-      host:
-      - api.openai.com
-      user-agent:
-      - OpenAI/Python 1.102.0
-      x-stainless-arch:
-      - arm64
-      x-stainless-async:
-      - 'false'
-      x-stainless-lang:
-      - python
-      x-stainless-os:
-      - MacOS
-      x-stainless-package-version:
-      - 1.102.0
-      x-stainless-raw-response:
-      - 'true'
-      x-stainless-read-timeout:
-      - '30.0'
-      x-stainless-retry-count:
-      - '0'
-      x-stainless-runtime:
-      - CPython
-      x-stainless-runtime-version:
-      - 3.12.11
-    method: POST
-    uri: https://api.openai.com/v1/chat/completions
-  response:
-    body:
-      string: "{\n  \"id\": \"chatcmpl-CHs3UqpJbSUkPtnhyyCSW98kRFCVJ\",\n  \"object\":
-        \"chat.completion\",\n  \"created\": 1758375400,\n  \"model\": \"gpt-4o-mini-2024-07-18\",\n
-        \ \"choices\": [\n    {\n      \"index\": 0,\n      \"message\": {\n        \"role\":
-        \"assistant\",\n        \"content\": \"Let's analyze the current position
-        given in FEN: \\n\\n8/8/8/3k4/8/3K4/3P4/8 w - - 0 1\\n\\nThis represents the
-        following board:\\n\\n```\\n8 . . . . . . . .\\n7 . . . . . . . .\\n6 . .
-        . . . . . .\\n5 . . . k . . . .\\n4 . . . . . . . .\\n3 . . . K . . . .\\n2
-        . . . P . . . .\\n1 . . . . . . . .\\n  a b c d e f g h\\n```\\n\\n- White
-        has a king on c3 and a pawn on d2.\\n- Black has a king on d5.\\n\\nIt's White's
-        turn to move. The goal is to promote the pawn while keeping the king safe.\\n\\n1.
-        The first thing to note is that the pawn on d2 can move to d3. This is a legal
-        move and puts the pawn one step closer to promotion.\\n2. After moving the
-        pawn to d3, the Black king on d5 cannot capture it because it is protected
-        by the White king on c3.\\n3. This move also keeps the White king in a position
-        to support the pawn's advance.\\n\\nGiven this analysis, the best move for
-        White is to advance the pawn to d3.\\n\\nFinal Answer: d3\",\n        \"refusal\":
-        null,\n        \"annotations\": []\n      },\n      \"logprobs\": null,\n
-        \     \"finish_reason\": \"stop\"\n    }\n  ],\n  \"usage\": {\n    \"prompt_tokens\":
-        208,\n    \"completion_tokens\": 284,\n    \"total_tokens\": 492,\n    \"prompt_tokens_details\":
-        {\n      \"cached_tokens\": 0,\n      \"audio_tokens\": 0\n    },\n    \"completion_tokens_details\":
-        {\n      \"reasoning_tokens\": 0,\n      \"audio_tokens\": 0,\n      \"accepted_prediction_tokens\":
-        0,\n      \"rejected_prediction_tokens\": 0\n    }\n  },\n  \"service_tier\":
-        \"default\",\n  \"system_fingerprint\": \"fp_560af6e559\"\n}\n"
-    headers:
-      Connection:
-      - keep-alive
-      Content-Type:
-      - application/json
-      Server:
-      - cloudflare
-      Strict-Transport-Security:
-      - max-age=31536000; includeSubDomains; preload
-      Transfer-Encoding:
-      - chunked
-      X-Content-Type-Options:
-      - nosniff
-      access-control-expose-headers:
-      - X-Request-ID
-      alt-svc:
-      - h3=":443"; ma=86400
-      cf-cache-status:
-      - DYNAMIC
-      content-length:
-      - '1723'
-      openai-organization:
-      - user-aot8rlpgpoltgmjq3rrcwvq3
-      openai-processing-ms:
-      - '6542'
-      openai-project:
-      - proj_mPL62zuq4MRiWekadSO6KuLd
-      openai-version:
-      - '2020-10-01'
-      x-envoy-upstream-service-time:
-      - '6557'
-      x-openai-proxy-wasm:
-      - v0.1
-      x-ratelimit-limit-requests:
-      - '10000'
-      x-ratelimit-limit-tokens:
-      - '10000000'
-      x-ratelimit-remaining-requests:
-      - '9999'
-      x-ratelimit-remaining-tokens:
-      - '9999802'
       x-ratelimit-reset-requests:
       - 6ms
       x-ratelimit-reset-tokens:

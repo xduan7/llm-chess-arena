@@ -56,6 +56,7 @@ class Game:
             if metrics_tracker is not None
             else (MetricsTracker.from_stockfish() if enable_metrics else None)
         )
+        self._move_qualities: list[MoveQuality | None] = []
 
         metrics_enabled = bool(
             self.metrics_tracker is not None and self.metrics_tracker.enabled
@@ -177,17 +178,21 @@ class Game:
         logger.debug("{} plays: {}", player, uci_move)
         self.board.push(move)
 
+        move_quality: MoveQuality | None = None
         if self.metrics_tracker is not None:
             try:
-                self.metrics_tracker.record_move(
+                metrics = self.metrics_tracker.record_move(
                     board_before_move,
                     move,
                     player_name=player.name,
                 )
+                if metrics is not None:
+                    move_quality = metrics.quality
             except Exception as exc:  # pragma: no cover - safeguards metrics path
                 logger.warning(
                     "Failed to record metrics for move {}: {}", uci_move, exc
                 )
+        self._move_qualities.append(move_quality)
 
     def play(self, max_num_moves: int | None = None) -> None:
         """Run the game until completion, illegal move, or max moves reached.
@@ -227,6 +232,7 @@ class Game:
                             last_move=current_move,
                             white_player=self.white_player.name,
                             black_player=self.black_player.name,
+                            move_qualities=self._move_qualities,
                         )
                 except (
                     IllegalMoveError,

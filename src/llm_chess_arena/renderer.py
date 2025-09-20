@@ -4,9 +4,11 @@ from __future__ import annotations
 
 import os
 import re
-from typing import Iterable, Sequence
+from typing import Iterable, Mapping, Sequence
 
 import chess
+
+from llm_chess_arena.metrics import MoveQuality
 
 # Unicode chess pieces (single theme today, but keep structure for easy extension)
 PIECE_THEMES: dict[str, dict[str, str]] = {
@@ -93,6 +95,16 @@ class Colors:
     UNDERLINE = "\033[4m"
 
 
+QUALITY_ANNOTATIONS: dict[MoveQuality, tuple[str, str]] = {
+    MoveQuality.BEST: ("[BEST]", Colors.GREEN),
+    MoveQuality.EXCELLENT: ("[EXC]", Colors.GREEN),
+    MoveQuality.GOOD: ("[GOOD]", Colors.NEUTRAL),
+    MoveQuality.INACCURACY: ("[INACC]", Colors.YELLOW),
+    MoveQuality.MISTAKE: ("[MIST]", Colors.RED),
+    MoveQuality.BLUNDER: ("[BLUN]", Colors.RED),
+}
+
+HISTORY_ENTRY_WIDTH = 18
 INFO_BLOCK_WIDTH = 30
 ANSI_ESCAPE_RE = re.compile(r"\033\[[0-9;]*m")
 
@@ -108,6 +120,27 @@ def strip_ansi(text: str) -> str:
     """
 
     return ANSI_ESCAPE_RE.sub("", text)
+
+
+def _pad_history_entry(text: str, width: int) -> str:
+    """Pad ``text`` with spaces to reach ``width`` visible characters."""
+
+    visible_length = len(strip_ansi(text))
+    if visible_length >= width:
+        return text
+    return f"{text}{' ' * (width - visible_length)}"
+
+
+def _quality_suffix(quality: MoveQuality | None) -> str:
+    """Return the annotated suffix for ``quality`` with coloring."""
+
+    if quality is None:
+        return ""
+
+    suffix, color = QUALITY_ANNOTATIONS.get(quality, ("", Colors.NEUTRAL))
+    if not suffix:
+        return ""
+    return f" {color}{suffix}{Colors.RESET}"
 
 
 def _supports_truecolor() -> bool:
@@ -199,7 +232,7 @@ def _render_board_lines(
     if flip:
         files = files[::-1]
 
-    file_header = f"{'':>5}"
+    file_header = f"{'':>4}"
     for file_char in files:
         file_header += f"{Colors.BOLD}{Colors.NEUTRAL}{file_char:>3}{Colors.RESET}"
 
@@ -263,26 +296,45 @@ def _print_board(
             print(board_line)
 
 
-def _format_move_history(board: chess.Board, limit: int = 8) -> list[str]:
-    """Return up to ``limit`` full-move rows with color-coded SAN strings."""
+def _format_move_history(
+    board: chess.Board,
+    limit: int = 8,
+    *,
+    piece_map: Mapping[str, str],
+    move_qualities: Sequence[MoveQuality | None] | None = None,
+) -> list[str]:
+    """Return up to ``limit`` full-move rows with annotated UCI strings."""
 
     history_board = chess.Board()
     rows: list[tuple[int, str | None, str | None]] = []
 
-    for move in board.move_stack:
+    for ply_index, move in enumerate(board.move_stack):
         mover_is_white = history_board.turn == chess.WHITE
         move_number = history_board.fullmove_number
-        san = history_board.san(move)
+
+        piece = history_board.piece_at(move.from_square)
+        glyph = piece_map.get(piece.symbol(), piece.symbol()) if piece else "?"
+        move_text = f"{glyph} {move.uci()}"
+
+        quality: MoveQuality | None = None
+        if move_qualities is not None and ply_index < len(move_qualities):
+            quality = move_qualities[ply_index]
+
+        annotated_move = _pad_history_entry(
+            f"{move_text}{_quality_suffix(quality)}",
+            HISTORY_ENTRY_WIDTH,
+        )
+
         history_board.push(move)
 
         if mover_is_white:
-            rows.append((move_number, san, None))
+            rows.append((move_number, annotated_move, None))
         else:
             if rows and rows[-1][0] == move_number:
-                last_move_number, white_san, _ = rows[-1]
-                rows[-1] = (last_move_number, white_san, san)
+                last_move_number, white_move, _ = rows[-1]
+                rows[-1] = (last_move_number, white_move, annotated_move)
             else:
-                rows.append((move_number, None, san))
+                rows.append((move_number, None, annotated_move))
 
     if not rows:
         return []
@@ -294,11 +346,8 @@ def _format_move_history(board: chess.Board, limit: int = 8) -> list[str]:
     for idx, (move_number, white_san, black_san) in enumerate(recent):
         number_part = f"{Colors.NEUTRAL}{move_number:>2}:{Colors.RESET}"
 
-        white_disp = (white_san or "-").ljust(8)
-        black_disp = (black_san or "-").ljust(8)
-
-        white_text = f"{white_disp}"
-        black_text = f"{black_disp}"
+        white_text = white_san or _pad_history_entry("-", HISTORY_ENTRY_WIDTH)
+        black_text = black_san or _pad_history_entry("-", HISTORY_ENTRY_WIDTH)
 
         if idx == last_index:
             white_fmt = f"{Colors.BOLD}{Colors.WHITE}{white_text}{Colors.RESET}"
@@ -403,10 +452,17 @@ def _compose_sidebar_lines(
     board: chess.Board,
     *,
     history_limit: int,
+    piece_map: Mapping[str, str],
+    move_qualities: Sequence[MoveQuality | None] | None = None,
 ) -> list[str]:
     """Build the move-history sidebar shown alongside the board."""
 
-    history_lines = _format_move_history(board, history_limit)
+    history_lines = _format_move_history(
+        board,
+        history_limit,
+        piece_map=piece_map,
+        move_qualities=move_qualities,
+    )
     if history_lines:
         return [
             f"{Colors.BOLD}{Colors.NEUTRAL}Move History{Colors.RESET}"
@@ -498,6 +554,7 @@ def display_board_with_context(
     white_player: str | None = None,
     black_player: str | None = None,
     history_length: int = 8,
+    move_qualities: Sequence[MoveQuality | None] | None = None,
 ) -> None:
     """Render the board alongside contextual game information.
 
@@ -512,14 +569,19 @@ def display_board_with_context(
         white_player: Display name for White, shown in the sidebar footer.
         black_player: Display name for Black, shown in the sidebar footer.
         history_length: Number of most-recent moves to list in the sidebar.
+        move_qualities: Optional per-move quality annotations aligned to the
+            board's move stack.
     """
 
     if clear_before:
         clear_screen()
 
+    piece_map = _resolve_piece_theme(piece_theme)
     sidebar_lines = _compose_sidebar_lines(
         board,
         history_limit=history_length,
+        piece_map=piece_map,
+        move_qualities=move_qualities,
     )
 
     white_header = _format_player_label(white_player, is_white=True)
@@ -536,7 +598,6 @@ def display_board_with_context(
     )
 
     highlight_set = set(highlight_squares) if highlight_squares else None
-    piece_map = _resolve_piece_theme(piece_theme)
     board_lines = _render_board_lines(board, highlight_set, last_move, False, piece_map)
 
     print()

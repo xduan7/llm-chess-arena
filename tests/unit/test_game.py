@@ -3,6 +3,7 @@
 import chess
 import pytest
 
+import llm_chess_arena.renderer as renderer
 from llm_chess_arena.game import Game
 from llm_chess_arena.exceptions import IllegalMoveError
 from llm_chess_arena.metrics import MetricsTracker, MoveMetrics, MoveQuality
@@ -246,6 +247,7 @@ class TestGameMetrics:
         assert summary["black"].moves_evaluated == 2
         assert summary["black"].quality_counts[MoveQuality.BEST] == 2
         assert evaluator.closed
+        assert game._move_qualities == [MoveQuality.BEST] * 4
 
 
 def test_format_quality_summary_handles_empty_counts() -> None:
@@ -262,3 +264,22 @@ def test_format_quality_summary_orders_non_zero_counts() -> None:
         MoveQuality.MISTAKE: 0,
     }
     assert Game._format_quality_summary(counts) == "best:1, good:3, blunder:2"
+
+
+def test_format_move_history_includes_glyphs_and_quality_annotations() -> None:
+    """Rendered history shows piece glyphs and quality suffixes."""
+    board = chess.Board()
+    board.push(chess.Move.from_uci("e2e4"))
+    board.push(chess.Move.from_uci("e7e5"))
+
+    piece_map = renderer._resolve_piece_theme(None)
+    history_lines = renderer._format_move_history(
+        board,
+        limit=4,
+        piece_map=piece_map,
+        move_qualities=[MoveQuality.BEST, MoveQuality.MISTAKE],
+    )
+
+    combined = " ".join(renderer.strip_ansi(line) for line in history_lines)
+    assert "♙ e2e4 [BEST]" in combined
+    assert "♟ e7e5 [MIST]" in combined

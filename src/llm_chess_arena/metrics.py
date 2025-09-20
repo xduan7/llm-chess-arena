@@ -369,8 +369,7 @@ class MetricsTracker:
         self._metrics_by_color[metrics.player_color].append(metrics)
 
         logger.debug(
-            "Metrics for {} -> {}: centipawn_loss={:.1f}, win_prob_delta={:.3f}, best_move_hit={}, quality={}",
-            player_name,
+            "Metrics for {}: centipawn_loss={:.1f}, win_prob_delta={:.3f}, best_move_hit={}, quality={}",
             metrics.move_uci,
             metrics.centipawn_loss,
             metrics.win_probability_delta,
