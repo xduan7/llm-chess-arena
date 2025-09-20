@@ -230,8 +230,8 @@ class Game:
                             current_player=self.current_player.name,
                             move_count=self.board.fullmove_number,
                             last_move=current_move,
-                            white_player=self.white_player.name,
-                            black_player=self.black_player.name,
+                            white_player=str(self.white_player),
+                            black_player=str(self.black_player),
                             move_qualities=self._move_qualities,
                         )
                 except (
@@ -296,11 +296,39 @@ class Game:
                 logger.warning("Error closing metrics tracker: {}", e)
 
     def _log_metrics_summary(self) -> None:
-        """Log aggregated metrics for each player after the game."""
+        """Display aggregated metrics for each player after the game."""
         if self.metrics_tracker is None:
             return
 
+        from llm_chess_arena.renderer import display_game_summary
+
         summaries = self.metrics_tracker.summarize()
+        white_summary = summaries.get("white")
+        black_summary = summaries.get("black")
+
+        # Get game result for display
+        game_result = None
+        if self.board.is_game_over():
+            outcome = self.board.outcome()
+            if outcome:
+                if outcome.winner == chess.WHITE:
+                    game_result = f"{self.white_player} WINS!"
+                elif outcome.winner == chess.BLACK:
+                    game_result = f"{self.black_player} WINS!"
+                else:
+                    game_result = "DRAW"
+            else:
+                game_result = "Game Over"
+
+        display_game_summary(
+            white_player=str(self.white_player),
+            black_player=str(self.black_player),
+            white_summary=white_summary,
+            black_summary=black_summary,
+            game_result=game_result,
+        )
+
+        # Still log for debugging/records
         for color, summary in summaries.items():
             if summary.moves_evaluated == 0:
                 continue
@@ -318,7 +346,7 @@ class Game:
                 else "N/A"
             )
 
-            logger.info(
+            logger.debug(
                 "Metrics for {}: avg_centipawn_loss={}, best_move_hit_rate={}, qualities={}",
                 str(player),
                 avg_loss,

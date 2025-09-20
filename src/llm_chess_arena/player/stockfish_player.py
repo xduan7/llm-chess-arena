@@ -2,9 +2,6 @@
 
 from __future__ import annotations
 
-import os
-import shutil
-from pathlib import Path
 from typing import Any, Mapping
 
 import chess
@@ -12,6 +9,7 @@ import chess.engine
 from loguru import logger
 
 from llm_chess_arena.player.base_player import BasePlayer
+from llm_chess_arena.utils import find_stockfish_binary
 from llm_chess_arena.types import Color, PlayerDecisionContext, PlayerDecision
 
 # Default depth prevents infinite analysis when limits not specified
@@ -50,7 +48,7 @@ class StockfishPlayer(BasePlayer):
         super().__init__(name, color)
 
         self.engine: chess.engine.SimpleEngine | None = None
-        self.binary_path = self._find_stockfish_binary(binary_path)
+        self.binary_path = find_stockfish_binary(binary_path)
         self.engine_limits = (
             dict(engine_limits) if engine_limits else DEFAULT_ENGINE_LIMITS.copy()
         )
@@ -59,79 +57,6 @@ class StockfishPlayer(BasePlayer):
         logger.debug(
             "StockfishPlayer configured with limits={} (engine not started yet)",
             self.engine_limits,
-        )
-
-    @staticmethod
-    def _find_stockfish_binary(explicit_path: str | None = None) -> str:
-        """Resolve the Stockfish binary path.
-
-        Args:
-            explicit_path: Optional user-supplied binary path.
-
-        Returns:
-            str: Absolute path to the Stockfish executable.
-
-        Raises:
-            FileNotFoundError: If no executable is discovered.
-        """
-        if explicit_path:
-            path = Path(explicit_path)
-            if not path.exists():
-                raise FileNotFoundError(f"Stockfish binary not found at: {path}")
-            if not os.access(str(path), os.X_OK):
-                raise FileNotFoundError(
-                    f"Stockfish binary exists but is not executable at: {path}\n"
-                    f"Try: chmod +x {path}"
-                )
-            return str(path.resolve())
-
-        # Allow environment customization so deployments can pin a managed binary.
-        env_path = os.getenv("STOCKFISH_BINARY_PATH")
-        if env_path:
-            path = Path(env_path)
-            if not path.exists():
-                logger.warning(
-                    "Environment variable STOCKFISH_BINARY_PATH set to {} but file does not exist",
-                    path,
-                )
-            elif not os.access(str(path), os.X_OK):
-                logger.warning(
-                    "Stockfish binary from STOCKFISH_BINARY_PATH exists but is not executable: {}",
-                    path,
-                )
-            else:
-                logger.debug(
-                    "Found Stockfish binary from STOCKFISH_BINARY_PATH: {}", path
-                )
-                return str(path.resolve())
-
-        system_path = shutil.which("stockfish")
-        if system_path:
-            logger.debug("Found Stockfish binary in PATH: {}", system_path)
-            return system_path
-
-        common_paths = [
-            "/usr/local/bin/stockfish",
-            "/usr/bin/stockfish",
-            "/opt/homebrew/bin/stockfish",
-            "C:\\Program Files\\Stockfish\\stockfish.exe",
-            "C:\\Program Files (x86)\\Stockfish\\stockfish.exe",
-        ]
-        for common_path in common_paths:
-            path = Path(common_path)
-            if path.exists() and os.access(str(path), os.X_OK):
-                logger.debug("Found Stockfish binary in common path: {}", path)
-                return str(path.resolve())
-
-        raise FileNotFoundError(
-            "Stockfish not found. Please install it or provide the binary path.\n"
-            "You can either:\n"
-            "  1. Set STOCKFISH_BINARY_PATH in your .env file\n"
-            "  2. Pass binary_path parameter when creating StockfishPlayer\n"
-            "  3. Install Stockfish:\n"
-            "     macOS: brew install stockfish\n"
-            "     Ubuntu/Debian: apt-get install stockfish\n"
-            "     Windows: Download from https://stockfishchess.org/download/"
         )
 
     def _start_engine(self) -> None:

@@ -11,7 +11,7 @@ import chess
 import chess.engine
 from loguru import logger
 
-from llm_chess_arena.player.stockfish_player import StockfishPlayer
+from llm_chess_arena.utils import find_stockfish_binary
 from llm_chess_arena.types import Color
 
 MATE_SCORE = 100_000
@@ -141,9 +141,7 @@ class StockfishMetricsEvaluator:
             engine_options: Optional UCI engine options.
         """
         self.depth = depth
-        self.binary_path = StockfishPlayer._find_stockfish_binary(
-            binary_path
-        )  # noqa: SLF001
+        self.binary_path = find_stockfish_binary(binary_path)
         self.engine_options = dict(engine_options or {})
         self._engine: chess.engine.SimpleEngine | None = None
         self._wdl_model: chess.engine.WdlModel = "sf"

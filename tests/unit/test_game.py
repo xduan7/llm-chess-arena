@@ -272,14 +272,20 @@ def test_format_move_history_includes_glyphs_and_quality_annotations() -> None:
     board.push(chess.Move.from_uci("e2e4"))
     board.push(chess.Move.from_uci("e7e5"))
 
-    piece_map = renderer._resolve_piece_theme(None)
-    history_lines = renderer._format_move_history(
+    rows = renderer._generate_move_history_rows(
         board,
-        limit=4,
-        piece_map=piece_map,
         move_qualities=[MoveQuality.BEST, MoveQuality.MISTAKE],
     )
 
-    combined = " ".join(renderer.strip_ansi(line) for line in history_lines)
-    assert "♙ e2e4 [BEST]" in combined
-    assert "♟ e7e5 [MIST]" in combined
+    assert rows, "Expected move history rows"
+    move_number, white_entry, black_entry = rows[0]
+    assert move_number == 1
+    assert white_entry is not None
+    assert white_entry.style == renderer.WHITE_MOVE_ENTRY_STYLE
+    assert white_entry.plain.startswith("♟ e2e4")
+    assert white_entry.plain.endswith("!!")
+
+    assert black_entry is not None
+    assert black_entry.style == renderer.BLACK_MOVE_ENTRY_STYLE
+    assert black_entry.plain.startswith("♟ e7e5")
+    assert black_entry.plain.endswith("?")

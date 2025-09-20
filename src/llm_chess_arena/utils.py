@@ -1,6 +1,11 @@
-"""Utility helpers for chess move serialization and validation."""
+"""Utility helpers for chess move serialization, validation, and system utilities."""
+
+import os
+import shutil
+from pathlib import Path
 
 import chess
+from loguru import logger
 
 from llm_chess_arena.exceptions import (
     IllegalMoveError,
@@ -79,3 +84,78 @@ def parse_attempted_move_to_uci(attempted_move: str, board_in_fen: str) -> str:
             raise IllegalMoveError(
                 f"Illegal move in current position: '{attempted_move}'"
             ) from e
+
+
+# Common platform-specific locations checked after PATH lookup.
+COMMON_STOCKFISH_PATHS: tuple[str, ...] = (
+    "/usr/local/bin/stockfish",
+    "/usr/bin/stockfish",
+    "/opt/homebrew/bin/stockfish",
+    "C:/Program Files/Stockfish/stockfish.exe",
+    "C:/Program Files (x86)/Stockfish/stockfish.exe",
+)
+
+
+def find_stockfish_binary(explicit_path: str | None = None) -> str:
+    """Resolve a usable Stockfish executable path.
+
+    Args:
+        explicit_path: Optional user-supplied path to the Stockfish binary.
+
+    Returns:
+        str: Absolute path to the executable.
+
+    Raises:
+        FileNotFoundError: If no executable binary can be located.
+    """
+    if explicit_path:
+        path = Path(explicit_path)
+        if not path.exists():
+            raise FileNotFoundError(f"Stockfish binary not found at: {path}")
+        if not os.access(str(path), os.X_OK):
+            raise FileNotFoundError(
+                f"Stockfish binary exists but is not executable at: {path}\n"
+                f"Try: chmod +x {path}"
+            )
+        return str(path.resolve())
+
+    env_path = os.getenv("STOCKFISH_BINARY_PATH")
+    if env_path:
+        env_binary = Path(env_path)
+        if not env_binary.exists():
+            logger.warning(
+                "Environment variable STOCKFISH_BINARY_PATH set to {} but file does not exist",
+                env_binary,
+            )
+        elif not os.access(str(env_binary), os.X_OK):
+            logger.warning(
+                "Stockfish binary from STOCKFISH_BINARY_PATH exists but is not executable: {}",
+                env_binary,
+            )
+        else:
+            logger.debug(
+                "Found Stockfish binary from STOCKFISH_BINARY_PATH: {}", env_binary
+            )
+            return str(env_binary.resolve())
+
+    system_path = shutil.which("stockfish")
+    if system_path:
+        logger.debug("Found Stockfish binary in PATH: {}", system_path)
+        return system_path
+
+    for candidate in COMMON_STOCKFISH_PATHS:
+        path = Path(candidate)
+        if path.exists() and os.access(str(path), os.X_OK):
+            logger.debug("Found Stockfish binary in common path: {}", path)
+            return str(path.resolve())
+
+    raise FileNotFoundError(
+        "Stockfish not found. Please install it or provide the binary path.\n"
+        "You can either:\n"
+        "  1. Set STOCKFISH_BINARY_PATH in your .env file\n"
+        "  2. Pass binary_path parameter when creating StockfishPlayer\n"
+        "  3. Install Stockfish:\n"
+        "     macOS: brew install stockfish\n"
+        "     Ubuntu/Debian: apt-get install stockfish\n"
+        "     Windows: Download from https://stockfishchess.org/download/"
+    )

@@ -1,30 +1,76 @@
-"""Terminal chess board rendering utilities."""
+"""Terminal chess board rendering utilities powered by Rich."""
 
 from __future__ import annotations
 
+from typing import Iterable, Sequence
+
 import os
-import re
-from typing import Iterable, Mapping, Sequence
 
 import chess
+from rich.align import Align
+from rich.console import Console
+from rich.panel import Panel
+from rich.table import Table
+from rich.text import Text
 
-from llm_chess_arena.metrics import MoveQuality
+from llm_chess_arena.metrics import MOVE_QUALITY_ORDER, MetricsSummary, MoveQuality
 
-# Unicode chess pieces (single theme today, but keep structure for easy extension)
+console = Console()
+
+LIGHT_SQUARE_COLOR = "#d2b48c"
+DARK_SQUARE_COLOR = "#b58863"
+HIGHLIGHT_COLOR = "#6aaa64"
+LAST_MOVE_FROM_COLOR = "#f59e0b"
+LAST_MOVE_TO_COLOR = "#ef4444"
+
+WHITE_PLAYER_STYLE = "bold white"
+BLACK_PLAYER_STYLE = "bold grey50"
+WHITE_MOVE_ENTRY_STYLE = WHITE_PLAYER_STYLE
+BLACK_MOVE_ENTRY_STYLE = BLACK_PLAYER_STYLE
+ACCENT_TEXT_STYLE = "cyan"
+DIM_TEXT_STYLE = "dim"
+MISSING_MOVE_ENTRY_STYLE = "grey58"
+WIN_TEXT_STYLE = "bold green"
+DRAW_TEXT_STYLE = "bold cyan"
+CHECK_TEXT_STYLE = "bold red"
+TURN_TEXT_STYLE = "cyan"
+HEADER_SEPARATOR_STYLE = "cyan"
+PIECE_WHITE_STYLE = "bold white"
+PIECE_BLACK_STYLE = "bold black"
+DEFAULT_QUALITY_TEXT_STYLE = "white"
+
+QUALITY_SUFFIXES: dict[MoveQuality, str] = {
+    MoveQuality.BLUNDER: "??",
+    MoveQuality.MISTAKE: "?",
+    MoveQuality.INACCURACY: "?!",
+    MoveQuality.GOOD: "!?",
+    MoveQuality.EXCELLENT: "!",
+    MoveQuality.BEST: "!!",
+}
+
+QUALITY_COLORS: dict[MoveQuality, str] = {
+    MoveQuality.BLUNDER: "bold red",
+    MoveQuality.MISTAKE: "dark_orange3",
+    MoveQuality.INACCURACY: "gold1",
+    MoveQuality.GOOD: "deepskyblue1",
+    MoveQuality.EXCELLENT: "spring_green1",
+    MoveQuality.BEST: "chartreuse3",
+}
+
 PIECE_THEMES: dict[str, dict[str, str]] = {
     "glyph": {
-        "K": "♔",  # White King
-        "Q": "♕",  # White Queen
-        "R": "♖",  # White Rook
-        "B": "♗",  # White Bishop
-        "N": "♘",  # White Knight
-        "P": "♙",  # White Pawn
-        "k": "♚",  # Black King
-        "q": "♛",  # Black Queen
-        "r": "♜",  # Black Rook
-        "b": "♝",  # Black Bishop
-        "n": "♞",  # Black Knight
-        "p": "♟",  # Black Pawn
+        "K": "♔",
+        "Q": "♕",
+        "R": "♖",
+        "B": "♗",
+        "N": "♘",
+        "P": "♙",
+        "k": "♚",
+        "q": "♛",
+        "r": "♜",
+        "b": "♝",
+        "n": "♞",
+        "p": "♟",
     },
 }
 
@@ -32,348 +78,213 @@ DEFAULT_PIECE_THEME = os.environ.get("LLM_CHESS_PIECE_THEME", "glyph").lower()
 
 
 def _resolve_piece_theme(theme: str | None) -> dict[str, str]:
-    """Return the piece symbol mapping for the requested theme."""
-
     selected = (theme or DEFAULT_PIECE_THEME).lower()
     return PIECE_THEMES.get(selected, PIECE_THEMES["glyph"])
 
 
-# Public helper to adjust the global default at runtime
-def set_default_piece_theme(theme: str) -> None:
-    """Update the default piece theme used by the renderer.
-
-    Args:
-        theme: Name of the theme defined in ``PIECE_THEMES``.
-
-    Raises:
-        ValueError: If ``theme`` is not a known piece theme.
-    """
-
-    normalized = theme.lower()
-    if normalized not in PIECE_THEMES:
-        raise ValueError(
-            f"Unknown piece theme '{theme}'. Available themes: {', '.join(sorted(PIECE_THEMES))}."
-        )
-
-    global DEFAULT_PIECE_THEME, PIECE_SYMBOLS
-    DEFAULT_PIECE_THEME = normalized
-    PIECE_SYMBOLS = PIECE_THEMES[normalized]
-
-
-# Legacy export for external callers that import PIECE_SYMBOLS directly
 PIECE_SYMBOLS = _resolve_piece_theme(None)
 
 
-# ANSI color codes
-class Colors:
-    """ANSI color codes for terminal output."""
-
-    # Text colors
-    WHITE = "\033[97m"
-    BLACK = "\033[30m"
-    GRAY = "\033[2;37m"
-    NEUTRAL = "\033[96m"
-    YELLOW = "\033[93m"
-    GREEN = "\033[92m"
-    RED = "\033[91m"
-    BLUE = "\033[94m"
-    MAGENTA = "\033[95m"
-
-    # Background colors
-    BG_WHITE = "\033[107m"
-    BG_BLACK = "\033[40m"
-    BG_LIGHT_GRAY = "\033[47m"
-    BG_DARK_GRAY = "\033[100m"
-    BG_LIGHT_BROWN = ""  # Populated at runtime based on terminal capabilities
-    BG_DARK_BROWN = ""
-    BG_GREEN = "\033[102m"
-    BG_RED = "\033[101m"
-
-    # Reset
-    RESET = "\033[0m"
-    BOLD = "\033[1m"
-    UNDERLINE = "\033[4m"
-
-
-QUALITY_ANNOTATIONS: dict[MoveQuality, tuple[str, str]] = {
-    MoveQuality.BEST: ("[BEST]", Colors.GREEN),
-    MoveQuality.EXCELLENT: ("[EXC]", Colors.GREEN),
-    MoveQuality.GOOD: ("[GOOD]", Colors.NEUTRAL),
-    MoveQuality.INACCURACY: ("[INACC]", Colors.YELLOW),
-    MoveQuality.MISTAKE: ("[MIST]", Colors.RED),
-    MoveQuality.BLUNDER: ("[BLUN]", Colors.RED),
-}
-
-HISTORY_ENTRY_WIDTH = 18
-INFO_BLOCK_WIDTH = 30
-ANSI_ESCAPE_RE = re.compile(r"\033\[[0-9;]*m")
-
-
-def strip_ansi(text: str) -> str:
-    """Remove ANSI escape sequences from text.
-
-    Args:
-        text: String potentially containing ANSI escape sequences.
-
-    Returns:
-        str: ``text`` with ANSI sequences removed.
-    """
-
-    return ANSI_ESCAPE_RE.sub("", text)
-
-
-def _pad_history_entry(text: str, width: int) -> str:
-    """Pad ``text`` with spaces to reach ``width`` visible characters."""
-
-    visible_length = len(strip_ansi(text))
-    if visible_length >= width:
-        return text
-    return f"{text}{' ' * (width - visible_length)}"
-
-
-def _quality_suffix(quality: MoveQuality | None) -> str:
-    """Return the annotated suffix for ``quality`` with coloring."""
-
+def _quality_annotation(quality: MoveQuality | None) -> Text | None:
     if quality is None:
-        return ""
+        return None
 
-    suffix, color = QUALITY_ANNOTATIONS.get(quality, ("", Colors.NEUTRAL))
+    suffix = QUALITY_SUFFIXES.get(quality, "")
     if not suffix:
-        return ""
-    return f" {color}{suffix}{Colors.RESET}"
+        return None
+    style = QUALITY_COLORS.get(quality, "")
+    return Text(suffix, style=style)
 
 
-def _supports_truecolor() -> bool:
-    """Detect whether the current terminal supports 24-bit color."""
-
-    colorterm = os.environ.get("COLORTERM", "").lower()
-    term = os.environ.get("TERM", "").lower()
-    return "truecolor" in colorterm or "24bit" in colorterm or term.endswith("-direct")
-
-
-def _configure_board_palette() -> None:
-    """Populate board square background colors based on terminal support."""
-
-    if _supports_truecolor():
-        light = "\033[48;2;210;180;140m"  # muted tan
-        dark = "\033[48;2;139;109;83m"  # slightly lighter umber
-    else:
-        light = "\033[48;5;180m"
-        dark = "\033[48;5;137m"
-
-    Colors.BG_LIGHT_BROWN = light
-    Colors.BG_DARK_BROWN = dark
-
-
-_configure_board_palette()
-
-
-def get_piece_display(piece: chess.Piece | None, piece_map: dict[str, str]) -> str:
-    """Return the glyph representing ``piece`` in the provided ``piece_map``.
-
-    Args:
-        piece: Chess piece or ``None`` for an empty square.
-        piece_map: Mapping from python-chess piece symbols to display glyphs.
-
-    Returns:
-        str: Unicode symbol for the piece or a single space when ``piece`` is ``None``.
-    """
+def _piece_symbol_solid(piece: chess.Piece | None) -> str:
+    """Return solid symbols for board display (better visibility)."""
     if piece is None:
         return " "
-    return piece_map.get(piece.symbol(), piece.symbol())
+
+    # Use solid symbols for all pieces on the board
+    solid_map = {
+        "K": "♚",  # White King -> solid
+        "Q": "♛",  # White Queen -> solid
+        "R": "♜",  # White Rook -> solid
+        "B": "♝",  # White Bishop -> solid
+        "N": "♞",  # White Knight -> solid
+        "P": "♟",  # White Pawn -> solid
+        "k": "♚",  # Black King (already solid)
+        "q": "♛",  # Black Queen (already solid)
+        "r": "♜",  # Black Rook (already solid)
+        "b": "♝",  # Black Bishop (already solid)
+        "n": "♞",  # Black Knight (already solid)
+        "p": "♟",  # Black Pawn (already solid)
+    }
+    return solid_map.get(piece.symbol(), piece.symbol())
 
 
-def get_square_color(square: int) -> str:
-    """Get background color for a chess square.
-
-    Args:
-        square: Square index (0-63).
-
-    Returns:
-        str: ANSI background color code.
-    """
-    file = chess.square_file(square)
-    rank = chess.square_rank(square)
-    is_light_square = (file + rank) % 2 == 1
-    return Colors.BG_LIGHT_BROWN if is_light_square else Colors.BG_DARK_BROWN
-
-
-def get_piece_color(piece: chess.Piece | None, is_light_square: bool) -> str:
-    """Return the ANSI color code that should be used to draw ``piece``.
-
-    Args:
-        piece: Chess piece or ``None`` for an empty square.
-        is_light_square: Whether the square background is light colored.
-
-    Returns:
-        str: ANSI text color code to apply before printing ``piece``.
-    """
+def _piece_style(piece: chess.Piece | None, square: int) -> str:
     if piece is None:
-        return Colors.WHITE
+        return ""
 
-    if piece.color == chess.WHITE:
-        if is_light_square:
-            return f"{Colors.BOLD}{Colors.UNDERLINE}{Colors.BLACK}"
-        return f"{Colors.BOLD}{Colors.WHITE}"
-
-    return f"{Colors.BOLD}{Colors.BLACK}"
+    # White pieces should always be white, black pieces should always be black
+    return PIECE_WHITE_STYLE if piece.color == chess.WHITE else PIECE_BLACK_STYLE
 
 
-def _render_board_lines(
-    board: chess.Board,
-    highlight_set: set[int] | None,
+def _square_background(
+    square: int,
+    highlight_squares: set[int],
     last_move: chess.Move | None,
-    flip: bool,
-    piece_theme: dict[str, str],
-) -> list[str]:
-    """Generate the individual lines that form the board representation."""
+) -> str:
+    file_idx = chess.square_file(square)
+    rank_idx = chess.square_rank(square)
+    base_color = (
+        LIGHT_SQUARE_COLOR if (file_idx + rank_idx) % 2 == 0 else DARK_SQUARE_COLOR
+    )
 
-    files = "abcdefgh"
-    if flip:
-        files = files[::-1]
+    if last_move:
+        if square == last_move.to_square:
+            return LAST_MOVE_TO_COLOR
+        if square == last_move.from_square:
+            return LAST_MOVE_FROM_COLOR
 
-    file_header = f"{'':>4}"
-    for file_char in files:
-        file_header += f"{Colors.BOLD}{Colors.NEUTRAL}{file_char:>3}{Colors.RESET}"
+    if square in highlight_squares:
+        return HIGHLIGHT_COLOR
 
-    lines: list[str] = [file_header]
-
-    ranks = range(8) if flip else range(7, -1, -1)
-
-    for rank in ranks:
-        rank_display = f"{Colors.BOLD}{Colors.NEUTRAL}{rank + 1:>4} {Colors.RESET}"
-        row = ""
-        files_range = range(7, -1, -1) if flip else range(8)
-
-        for file in files_range:
-            square = chess.square(file, rank)
-            piece = board.piece_at(square)
-            file_idx = chess.square_file(square)
-            rank_idx = chess.square_rank(square)
-            is_light_square = (file_idx + rank_idx) % 2 == 1
-
-            bg_color = get_square_color(square)
-
-            if highlight_set and square in highlight_set:
-                bg_color = Colors.BG_GREEN
-            elif last_move and square in (last_move.from_square, last_move.to_square):
-                bg_color = Colors.BG_RED
-
-            piece_symbol = get_piece_display(piece, piece_theme)
-            piece_color = get_piece_color(piece, is_light_square)
-
-            row += f"{bg_color}{piece_color} {piece_symbol} {Colors.RESET}"
-
-        lines.append(
-            f"{rank_display}{row} {Colors.BOLD}{Colors.NEUTRAL}{rank + 1}{Colors.RESET}"
-        )
-
-    lines.append(file_header)
-    return lines
+    return base_color
 
 
-def _print_board(
-    board_lines: Sequence[str],
-    sidebar_lines: Sequence[str] | None = None,
-    gap: int = 4,
-) -> None:
-    """Print the board lines, optionally with a sidebar aligned to each row."""
-
-    sidebar_lines = sidebar_lines or []
-    max_board_width = max((len(strip_ansi(line)) for line in board_lines), default=0)
-    total_lines = max(len(board_lines), len(sidebar_lines))
-
-    for idx in range(total_lines):
-        board_line = board_lines[idx] if idx < len(board_lines) else ""
-        sidebar_line = sidebar_lines[idx] if idx < len(sidebar_lines) else ""
-
-        board_width = len(strip_ansi(board_line))
-        padding = " " * max(gap, gap + max_board_width - board_width)
-
-        if sidebar_line:
-            print(f"{board_line}{padding}{sidebar_line}")
-        else:
-            print(board_line)
-
-
-def _format_move_history(
+def _build_board_table(
     board: chess.Board,
-    limit: int = 8,
-    *,
-    piece_map: Mapping[str, str],
+    highlight_squares: set[int],
+    last_move: chess.Move | None,
+) -> Table:
+    table = Table.grid(padding=0, expand=False)
+    # Columns: rank + space + 8 board squares + space + rank = 12 total
+    table.add_column(justify="right", width=2)  # left rank numbers
+    table.add_column(justify="center", width=1)  # spacing
+    for _ in range(8):
+        table.add_column(justify="center", width=3)  # board squares
+    table.add_column(justify="center", width=1)  # spacing
+    table.add_column(justify="left", width=2)  # right rank numbers
+
+    # File labels row: empty + space + 8 letters + space + empty
+    file_labels = (
+        [Text(" "), Text(" ")]
+        + [Text(letter, style=ACCENT_TEXT_STYLE) for letter in "abcdefgh"]
+        + [Text(" "), Text(" ")]
+    )
+    table.add_row(*file_labels)
+
+    for rank in range(7, -1, -1):
+        row_cells: list[Text] = [
+            Text(f"{rank + 1}", style=ACCENT_TEXT_STYLE),
+            Text(" "),
+        ]
+        for file_idx in range(8):
+            square = chess.square(file_idx, rank)
+            piece = board.piece_at(square)
+            bg_color = _square_background(square, highlight_squares, last_move)
+            style = _piece_style(piece, square)
+            style = f"{style} on {bg_color}" if style else f"on {bg_color}"
+            symbol = _piece_symbol_solid(piece)
+            row_cells.append(Text(f" {symbol} ", style=style, justify="center"))
+        row_cells.append(Text(" "))
+        row_cells.append(Text(f"{rank + 1}", style=ACCENT_TEXT_STYLE))
+        table.add_row(*row_cells)
+
+    table.add_row(*file_labels)
+    return table
+
+
+def _generate_move_history_rows(
+    board: chess.Board,
     move_qualities: Sequence[MoveQuality | None] | None = None,
-) -> list[str]:
-    """Return up to ``limit`` full-move rows with annotated UCI strings."""
+) -> list[tuple[int, Text | None, Text | None]]:
+    """Return move history rows using Rich ``Text`` objects."""
 
     history_board = chess.Board()
-    rows: list[tuple[int, str | None, str | None]] = []
+    rows: list[tuple[int, Text | None, Text | None]] = []
 
     for ply_index, move in enumerate(board.move_stack):
         mover_is_white = history_board.turn == chess.WHITE
         move_number = history_board.fullmove_number
-
         piece = history_board.piece_at(move.from_square)
-        glyph = piece_map.get(piece.symbol(), piece.symbol()) if piece else "?"
-        move_text = f"{glyph} {move.uci()}"
-
-        quality: MoveQuality | None = None
-        if move_qualities is not None and ply_index < len(move_qualities):
-            quality = move_qualities[ply_index]
-
-        annotated_move = _pad_history_entry(
-            f"{move_text}{_quality_suffix(quality)}",
-            HISTORY_ENTRY_WIDTH,
+        glyph = _piece_symbol_solid(piece) if piece else "?"
+        entry_style = (
+            WHITE_MOVE_ENTRY_STYLE if mover_is_white else BLACK_MOVE_ENTRY_STYLE
         )
+        move_entry = Text(f"{glyph} {move.uci()}", style=entry_style)
+
+        quality = (
+            move_qualities[ply_index]
+            if move_qualities is not None and ply_index < len(move_qualities)
+            else None
+        )
+        annotation = _quality_annotation(quality)
+        if annotation:
+            move_entry.append(" ")
+            move_entry.append_text(annotation)
 
         history_board.push(move)
 
         if mover_is_white:
-            rows.append((move_number, annotated_move, None))
+            rows.append((move_number, move_entry, None))
         else:
             if rows and rows[-1][0] == move_number:
-                last_move_number, white_move, _ = rows[-1]
-                rows[-1] = (last_move_number, white_move, annotated_move)
+                last_number, white_entry, _ = rows[-1]
+                rows[-1] = (last_number, white_entry, move_entry)
             else:
-                rows.append((move_number, None, annotated_move))
+                rows.append((move_number, None, move_entry))
 
-    if not rows:
-        return []
-
-    recent = rows[-limit:]
-    last_index = len(recent) - 1
-    lines: list[str] = []
-
-    for idx, (move_number, white_san, black_san) in enumerate(recent):
-        number_part = f"{Colors.NEUTRAL}{move_number:>2}:{Colors.RESET}"
-
-        white_text = white_san or _pad_history_entry("-", HISTORY_ENTRY_WIDTH)
-        black_text = black_san or _pad_history_entry("-", HISTORY_ENTRY_WIDTH)
-
-        if idx == last_index:
-            white_fmt = f"{Colors.BOLD}{Colors.WHITE}{white_text}{Colors.RESET}"
-            black_fmt = f"{Colors.BOLD}{Colors.GRAY}{black_text}{Colors.RESET}"
-        else:
-            white_fmt = f"{Colors.WHITE}{white_text}{Colors.RESET}"
-            black_fmt = f"{Colors.GRAY}{black_text}{Colors.RESET}"
-
-        lines.append(f"{number_part} {white_fmt}   {black_fmt}")
-
-    return lines
+    return rows
 
 
-def _format_player_label(name: str | None, *, is_white: bool) -> str:
-    """Return a colorized label for a player name and side."""
+def _build_move_history(
+    board: chess.Board,
+    *,
+    history_length: int,
+    move_qualities: Sequence[MoveQuality | None] | None,
+) -> Panel:
+    if not board.move_stack:
+        return Panel.fit(
+            Text("No moves yet.", style=DIM_TEXT_STYLE), title="Move History"
+        )
 
+    rows = _generate_move_history_rows(board, move_qualities)
+
+    if history_length > 0:
+        rows = rows[-history_length:]
+
+    history_table = Table.grid(padding=(0, 1), expand=False)
+    history_table.add_column(justify="right", width=3)  # move number column
+    history_table.add_column(min_width=8)  # white move column
+    history_table.add_column(min_width=8)  # black move column
+
+    for idx, (move_number, white_entry, black_entry) in enumerate(rows):
+        number_cell = Text(f"{move_number:>2}:", style=ACCENT_TEXT_STYLE)
+        white_cell = (
+            white_entry.copy()
+            if white_entry is not None
+            else Text("-", style=MISSING_MOVE_ENTRY_STYLE)
+        )
+        black_cell = (
+            black_entry.copy()
+            if black_entry is not None
+            else Text("-", style=MISSING_MOVE_ENTRY_STYLE)
+        )
+
+        if idx == len(rows) - 1:
+            number_cell.stylize("bold")
+            white_cell.stylize("bold")
+            black_cell.stylize("bold")
+
+        history_table.add_row(number_cell, white_cell, black_cell)
+
+    return Panel.fit(history_table, title="Move History")
+
+
+def _format_player_label(name: str | None, *, is_white: bool) -> Text:
     side_name = "White" if is_white else "Black"
-    color_code = Colors.WHITE if is_white else Colors.GRAY
     display_name = name or side_name
-
-    if name:
-        full_label = f"{display_name} ({side_name})"
-    else:
-        full_label = display_name
-
-    return f"{Colors.BOLD}{color_code}{full_label}{Colors.RESET}"
+    color_style = WHITE_PLAYER_STYLE if is_white else BLACK_PLAYER_STYLE
+    return Text(display_name, style=color_style)
 
 
 def _status_line_with_players(
@@ -381,165 +292,36 @@ def _status_line_with_players(
     white_player: str | None,
     black_player: str | None,
     current_player: str | None,
-) -> str:
-    """Create a status line with consistent coloring."""
-
+) -> Text:
     if board.is_game_over():
+        status = Text()
         outcome = board.outcome()
-        if outcome:
-            if outcome.winner == chess.WHITE:
-                if white_player:
-                    winner_label = _format_player_label(white_player, is_white=True)
-                    return (
-                        f"{winner_label} {Colors.BOLD}{Colors.GREEN}WINS!{Colors.RESET}"
-                    )
-                return f"{Colors.BOLD}{Colors.GREEN}White wins!{Colors.RESET}"
-            if outcome.winner == chess.BLACK:
-                if black_player:
-                    winner_label = _format_player_label(black_player, is_white=False)
-                    return (
-                        f"{winner_label} {Colors.BOLD}{Colors.GREEN}WINS!{Colors.RESET}"
-                    )
-                return f"{Colors.BOLD}{Colors.GREEN}Black wins!{Colors.RESET}"
-            return f"{Colors.BOLD}{Colors.NEUTRAL}Drawn game{Colors.RESET}"
-        return f"{Colors.BOLD}{Colors.NEUTRAL}Game over{Colors.RESET}"
+        if outcome and outcome.winner == chess.WHITE:
+            status.append_text(_format_player_label(white_player, is_white=True))
+            status.append(" WINS!", style=WIN_TEXT_STYLE)
+            return status
+        if outcome and outcome.winner == chess.BLACK:
+            status.append_text(_format_player_label(black_player, is_white=False))
+            status.append(" WINS!", style=WIN_TEXT_STYLE)
+            return status
+        status.append("Drawn game", style=DRAW_TEXT_STYLE)
+        return status
 
     turn_is_white = board.turn == chess.WHITE
     roster_name = white_player if turn_is_white else black_player
-    descriptor = roster_name or current_player
-    descriptor_text = _format_player_label(descriptor, is_white=turn_is_white)
+    descriptor_name = current_player if current_player is not None else roster_name
+    descriptor = _format_player_label(descriptor_name, is_white=turn_is_white)
 
+    status = Text()
     if board.is_check():
-        return (
-            f"{Colors.BOLD}{Colors.RED}CHECK!{Colors.RESET} "
-            f"{descriptor_text} {Colors.NEUTRAL}to move{Colors.RESET}"
-        )
+        status.append("CHECK! ", style=CHECK_TEXT_STYLE)
+        status.append_text(descriptor)
+        status.append(" to move", style=TURN_TEXT_STYLE)
+    else:
+        status.append_text(descriptor)
+        status.append(" to move", style=TURN_TEXT_STYLE)
 
-    return f"{descriptor_text} {Colors.NEUTRAL}to move{Colors.RESET}"
-
-
-def build_game_info_lines(
-    board: chess.Board,
-    move_count: int | None = None,
-    current_player: str | None = None,
-    last_move_san: str | None = None,
-) -> list[str]:
-    """Compose the informational text describing the current game state.
-
-    Args:
-        board: Board whose state should be summarised.
-        move_count: Optional half-move counter to display.
-        current_player: Name of the player to move, if tracked externally.
-        last_move_san: SAN representation of the last move played.
-
-    Returns:
-        list[str]: Lines suitable for display beneath the board.
-    """
-    status_text = _status_line_with_players(board, None, None, current_player)
-
-    info_lines: list[str] = [status_text]
-
-    if move_count is not None:
-        info_lines.append(f"{Colors.NEUTRAL}Moves played: {move_count}{Colors.RESET}")
-
-    if last_move_san:
-        info_lines.append(f"{Colors.NEUTRAL}Last move: {last_move_san}{Colors.RESET}")
-
-    return info_lines
-
-
-def _compose_sidebar_lines(
-    board: chess.Board,
-    *,
-    history_limit: int,
-    piece_map: Mapping[str, str],
-    move_qualities: Sequence[MoveQuality | None] | None = None,
-) -> list[str]:
-    """Build the move-history sidebar shown alongside the board."""
-
-    history_lines = _format_move_history(
-        board,
-        history_limit,
-        piece_map=piece_map,
-        move_qualities=move_qualities,
-    )
-    if history_lines:
-        return [
-            f"{Colors.BOLD}{Colors.NEUTRAL}Move History{Colors.RESET}"
-        ] + history_lines
-    return [f"{Colors.NEUTRAL}No moves yet{Colors.RESET}"]
-
-
-def display_board(
-    board: chess.Board,
-    highlight_squares: Iterable[int] | None = None,
-    last_move: chess.Move | None = None,
-    flip: bool = False,
-    *,
-    piece_theme: str | None = None,
-    sidebar_lines: Sequence[str] | None = None,
-) -> None:
-    """Render the chess board in the terminal.
-
-    Args:
-        board: Chess board to display.
-        highlight_squares: Iterable of square indices to highlight.
-        last_move: Last move to highlight (from and to squares).
-        flip: Whether to display from black's perspective.
-        piece_theme: Optional piece glyph collection to use.
-        sidebar_lines: Optional lines printed alongside the board.
-    """
-
-    highlight_set = set(highlight_squares) if highlight_squares else None
-    piece_map = _resolve_piece_theme(piece_theme)
-
-    board_lines = _render_board_lines(board, highlight_set, last_move, flip, piece_map)
-
-    print()
-    _print_board(board_lines, sidebar_lines)
-    print()
-
-
-def display_game_info(
-    board: chess.Board,
-    move_count: int | None = None,
-    current_player: str | None = None,
-    last_move_san: str | None = None,
-) -> None:
-    """Render game details below the board.
-
-    Args:
-        board: Board whose information should be shown.
-        move_count: Optional half-move counter to display.
-        current_player: Name of the player to move, if tracked externally.
-        last_move_san: SAN representation of the last move played.
-    """
-
-    info_lines = build_game_info_lines(board, move_count, current_player, last_move_san)
-
-    for line in info_lines:
-        clean_line = strip_ansi(line)
-        padding = max(0, (INFO_BLOCK_WIDTH - len(clean_line)) // 2)
-        print(f"{'':>{padding}}{line}")
-
-    print()
-
-
-def display_move_prompt(player_name: str, move_count: int) -> None:
-    """Prompt the active player for a move.
-
-    Args:
-        player_name: Name of the player to move.
-        move_count: Current move number.
-    """
-    prompt = f"{Colors.BOLD}{Colors.BLUE}[Move {move_count}] {player_name}, enter your move: {Colors.RESET}"
-    print(prompt, end="")
-
-
-def clear_screen() -> None:
-    """Clear the terminal screen."""
-    # Windows shells require ``cls`` whereas POSIX shells expect ``clear``.
-    os.system("cls" if os.name == "nt" else "clear")
+    return status
 
 
 def display_board_with_context(
@@ -549,71 +331,165 @@ def display_board_with_context(
     last_move: chess.Move | None = None,
     clear_before: bool = False,
     *,
-    piece_theme: str | None = None,
+    piece_theme: (
+        str | None
+    ) = None,  # Accepted for API compatibility; unused with Rich rendering.
     highlight_squares: Iterable[int] | None = None,
     white_player: str | None = None,
     black_player: str | None = None,
     history_length: int = 8,
     move_qualities: Sequence[MoveQuality | None] | None = None,
 ) -> None:
-    """Render the board alongside contextual game information.
+    """Render the chess board alongside contextual game information using Rich.
 
     Args:
-        board: Chess board to display.
-        current_player: Friendly label for the active player (if any).
-        move_count: External move counter (shown in sidebar when provided).
-        last_move: Last move made, highlighted on the board and in history.
-        clear_before: Whether to clear the terminal before drawing.
-        piece_theme: Optional theme name for the piece glyphs.
-        highlight_squares: Extra squares to highlight (e.g. suggestions).
-        white_player: Display name for White, shown in the sidebar footer.
-        black_player: Display name for Black, shown in the sidebar footer.
-        history_length: Number of most-recent moves to list in the sidebar.
-        move_qualities: Optional per-move quality annotations aligned to the
-            board's move stack.
+        board: Chess board state to render.
+        current_player: Name of the player whose turn it is.
+        move_count: Current move number (unused, kept for compatibility).
+        last_move: Most recent move to highlight on the board.
+        clear_before: Whether to clear the terminal before rendering.
+        piece_theme: Piece display theme (unused with Rich rendering).
+        highlight_squares: Square indices to highlight on the board.
+        white_player: Name of the white player.
+        black_player: Name of the black player.
+        history_length: Maximum number of recent moves to display.
+        move_qualities: Quality annotations for each move in the history.
     """
 
     if clear_before:
-        clear_screen()
+        console.clear()
 
-    piece_map = _resolve_piece_theme(piece_theme)
-    sidebar_lines = _compose_sidebar_lines(
+    highlight_set = set(highlight_squares or [])
+    board_table = _build_board_table(board, highlight_set, last_move)
+
+    header_text = Text()
+    header_text.append(white_player or "White", style=WHITE_PLAYER_STYLE)
+    header_text.append(" vs ", style=HEADER_SEPARATOR_STYLE)
+    header_text.append(black_player or "Black", style=BLACK_PLAYER_STYLE)
+
+    history_panel = _build_move_history(
         board,
-        history_limit=history_length,
-        piece_map=piece_map,
+        history_length=history_length,
         move_qualities=move_qualities,
     )
-
-    white_header = _format_player_label(white_player, is_white=True)
-    black_header = _format_player_label(black_player, is_white=False)
-    header_line = f"{white_header} {Colors.NEUTRAL}vs{Colors.RESET} {black_header}"
-
-    status_current_player = None if board.is_game_over() else current_player
+    # Use Table.grid instead of Columns for proper content-based sizing
+    grid = Table.grid(
+        expand=False, padding=(0, 3)
+    )  # increased padding between board and history
+    grid.add_column()
+    grid.add_column()
+    grid.add_row(board_table, history_panel)
 
     status_line = _status_line_with_players(
         board,
         white_player,
         black_player,
-        status_current_player,
+        current_player,
     )
+    panel = Panel.fit(grid, title=header_text, subtitle=status_line, padding=(1, 3))
 
-    highlight_set = set(highlight_squares) if highlight_squares else None
-    board_lines = _render_board_lines(board, highlight_set, last_move, False, piece_map)
-
-    print()
-    print(header_line)
-    print()
-    _print_board(board_lines, sidebar_lines)
-    print()
-    print(status_line)
+    console.print()
+    console.print(Align.center(panel))
+    console.print()
 
 
-# Demo function to display the starting position
-def _demo() -> None:
-    """Showcase the terminal board view for manual inspection."""
-    board = chess.Board()
-    display_board_with_context(board, "Test Player", 1)
+def display_game_summary(
+    white_player: str | None,
+    black_player: str | None,
+    white_summary: "MetricsSummary | None",
+    black_summary: "MetricsSummary | None",
+    game_result: str | None = None,
+) -> None:
+    """Display post-game metrics summary with Rich panels for each player.
+
+    Args:
+        white_player: Name of the white player.
+        black_player: Name of the black player.
+        white_summary: Performance metrics for the white player.
+        black_summary: Performance metrics for the black player.
+        game_result: Final game result string (unused, kept for compatibility).
+    """
+
+    if white_summary is None and black_summary is None:
+        return
+
+    # Create panels for each player
+    panels: list[Panel] = []
+
+    if white_summary is not None and white_summary.moves_evaluated > 0:
+        white_panel = _build_metrics_panel(
+            player_name=white_player or "White", summary=white_summary, is_white=True
+        )
+        panels.append(white_panel)
+
+    if black_summary is not None and black_summary.moves_evaluated > 0:
+        black_panel = _build_metrics_panel(
+            player_name=black_player or "Black", summary=black_summary, is_white=False
+        )
+        panels.append(black_panel)
+
+    if not panels:
+        return
+
+    # Display panels side by side if both players have metrics
+    layout: Panel | Table
+
+    if len(panels) == 2:
+        grid = Table.grid(expand=False, padding=(0, 3))
+        grid.add_column()
+        grid.add_column()
+        grid.add_row(panels[0], panels[1])
+        layout = grid
+    else:
+        layout = panels[0]
+
+    console.print()
+    console.print(Align.center(layout))
+    console.print()
 
 
-if __name__ == "__main__":
-    _demo()
+def _build_metrics_panel(
+    player_name: str,
+    summary: "MetricsSummary",
+    is_white: bool,
+) -> Panel:
+    """Build a Rich panel displaying a player's metrics."""
+
+    # Player name and style
+    name_style = WHITE_PLAYER_STYLE if is_white else BLACK_PLAYER_STYLE
+    player_text = Text(player_name, style=name_style)
+
+    # Metrics content
+    content = []
+
+    # Basic stats
+    content.append(Text(f"Moves Evaluated: {summary.moves_evaluated}"))
+
+    if summary.average_centipawn_loss is not None:
+        avg_loss = f"{summary.average_centipawn_loss:.1f}"
+        content.append(Text(f"Avg Centipawn Loss: {avg_loss}"))
+
+    if summary.best_move_hit_rate is not None:
+        hit_rate = f"{summary.best_move_hit_rate:.1%}"
+        content.append(Text(f"Best Move Hit Rate: {hit_rate}"))
+
+    # Quality breakdown - always show all categories for consistent panel height
+    content.append(Text(""))  # spacing
+    content.append(Text("Move Quality Breakdown:", style="bold"))
+
+    for quality in MOVE_QUALITY_ORDER:
+        count = summary.quality_counts.get(quality, 0)
+        color = QUALITY_COLORS.get(quality, DEFAULT_QUALITY_TEXT_STYLE)
+        content.append(Text(f"  {quality.value.title()}: {count}", style=color))
+
+    # Combine all content
+    panel_content = Text()
+    for i, line in enumerate(content):
+        if i > 0:
+            panel_content.append("\n")
+        panel_content.append_text(line)
+
+    return Panel.fit(panel_content, title=player_text, padding=(1, 2))
+
+
+__all__ = ["display_board_with_context", "display_game_summary"]

@@ -46,70 +46,59 @@ interactions:
     uri: https://api.openai.com/v1/chat/completions
   response:
     body:
-      string: "{\n  \"id\": \"chatcmpl-CHuw2GN7TIElcq7E855lxatdRIExk\",\n  \"object\":
-        \"chat.completion\",\n  \"created\": 1758386470,\n  \"model\": \"gpt-4o-mini-2024-07-18\",\n
+      string: "{\n  \"id\": \"chatcmpl-CHzIzJM9g7HRXK1iGvv7iwixxa9i3\",\n  \"object\":
+        \"chat.completion\",\n  \"created\": 1758403269,\n  \"model\": \"gpt-4o-mini-2024-07-18\",\n
         \ \"choices\": [\n    {\n      \"index\": 0,\n      \"message\": {\n        \"role\":
-        \"assistant\",\n        \"content\": \"The current game state is the initial
-        position in chess, with all pieces in their starting squares. It's White's
-        move, and I need to choose a strong opening move.\\n\\n1. **Assessing the
-        Position**: This is the starting position of the game. All pieces are on their
-        original squares, and both players have all their pieces available.\\n\\n2.
-        **Opening Principles**: In the opening phase of chess, it's important to control
-        the center of the board, develop pieces (especially knights and bishops),
-        and ensure the safety of the king.\\n\\n3. **Potential Moves**:\\n   - I can
-        move a pawn forward, such as to e4 or d4, which would control the center.\\n
-        \  - I can develop a knight to f3 or c3, which would also help control the
-        center.\\n\\n4. **Evaluating e4**:\\n   - Moving the pawn to e4 (1.e4) controls
-        the center, opens lines for the bishop and queen, and is a very popular opening
-        move.\\n\\n5. **Evaluating d4**:\\n   - Moving the pawn to d4 (1.d4) also
-        controls the center but is less common than e4 at the start of the game.\\n\\n6.
-        **Evaluating Knight Moves**:\\n   - Moving Nf3 (1.Nf3) is also a strong move
-        as it develops a piece, but it does not control the center as directly as
-        e4 or d4.\\n\\n7. **Best Move**: Among all these options, 1.e4 is the most
-        aggressive and leads to a very dynamic game. It opens up lines for development
-        and is statistically one of the most successful opening moves.\\n\\nTherefore,
-        the strongest move is 1.e4.\\n\\nFinal Answer: e4\",\n        \"refusal\":
-        null,\n        \"annotations\": []\n      },\n      \"logprobs\": null,\n
-        \     \"finish_reason\": \"stop\"\n    },\n    {\n      \"index\": 1,\n      \"message\":
-        {\n        \"role\": \"assistant\",\n        \"content\": \"The current position
-        is the standard starting position in chess. As White, I have the first move,
-        and I want to choose a strong opening move that develops my pieces and controls
-        the center of the board.\\n\\n1. **Consideration of the strongest opening
-        moves**: \\n   - The most popular and strongest opening moves for White include
-        1.e4 and 1.d4. Both moves control the center and allow for rapid piece development.
-        \\n   - 1.e4 opens lines for both the queen and the bishop on f1, which can
-        lead to quick development.\\n   - 1.d4 also controls the center and prepares
-        for the development of the light-squared bishop.\\n\\n2. **Evaluating 1.e4**:
-        \\n   - After 1.e4, I gain immediate control of the center squares e5 and
-        d5.\\n   - This move opens up potential for rapid development of my pieces,
-        especially the knight to f3 after Black responds.\\n\\n3. **Evaluating 1.d4**:\\n
-        \  - After 1.d4, I control the center squares d5 and e5 as well, but it does
-        not open lines for the light-squared bishop as effectively as 1.e4.\\n\\n4.
-        **Conclusion**: \\n   - Between the two, 1.e4 is traditionally seen as a more
-        aggressive opening move that leads to a wide variety of tactical and strategic
-        possibilities. \\n\\nTherefore, I will play 1.e4 as my opening move.\\n\\nFinal
-        Answer: e4\",\n        \"refusal\": null,\n        \"annotations\": []\n      },\n
-        \     \"logprobs\": null,\n      \"finish_reason\": \"stop\"\n    },\n    {\n
-        \     \"index\": 2,\n      \"message\": {\n        \"role\": \"assistant\",\n
-        \       \"content\": \"Given the current game state in FEN: \\nrnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR
-        w KQkq - 0 1\\n\\nThis is the starting position of a chess game, where all
-        pieces are in their initial positions. As White, I have many options for my
-        first move. \\n\\nThe main goals in the opening phase of the game are to control
-        the center of the board, develop pieces effectively, and ensure king safety.
-        \\n\\n1. **Center Control**: One of the best ways to control the center is
-        to move the pawns to e4 or d4. Moving the pawn to e4 (1. e4) directly controls
-        the center and opens lines for the queen and bishop.\\n\\n2. **Development**:
-        Another excellent move is to develop a knight to f3 (1. Nf3), which also controls
-        the center and prepares for further development of other pieces.\\n\\n3. **Pawn
-        Moves**: Moving the pawn to d4 (1. d4) is also a solid option, as it immediately
-        takes space in the center and can lead to strong central control.\\n\\nAfter
-        analyzing these options, 1. e4 is typically one of the strongest and most
-        popular opening moves in chess, as it allows for quick development of pieces
-        and control of the center.\\n\\nTherefore, I will proceed with the move:\\n\\nFinal
+        \"assistant\",\n        \"content\": \"The current position is the starting
+        position of a chess game. I am playing as White, and it is my turn. \\n\\n1.
+        **Analyzing the Position**: The board is empty except for all the pieces in
+        their starting positions. The potential moves involve advancing pawns or developing
+        pieces.\\n\\n2. **Common Opening Moves**: In the opening phase, it's crucial
+        to control the center of the board. The central squares are d4, d5, e4, and
+        e5. \\n\\n3. **Best Move Choices**: \\n   - Moving a pawn to e4 (1.e4) or
+        d4 (1.d4) are both strong opening moves. \\n   - 1.e4 opens lines for the
+        queen and bishop and is one of the most popular opening moves in chess.\\n
+        \  - 1.d4 also controls the center and prepares for piece development, but
+        it is slightly less aggressive than 1.e4.\\n\\n4. **Choosing the Move**: Between
+        1.e4 and 1.d4, 1.e4 is more aggressive and aims to control the center immediately.
+        It also leads to a wide range of opening strategies and tactics. Therefore,
+        I will choose 1.e4.\\n\\nFinal Answer: e4\",\n        \"refusal\": null,\n
+        \       \"annotations\": []\n      },\n      \"logprobs\": null,\n      \"finish_reason\":
+        \"stop\"\n    },\n    {\n      \"index\": 1,\n      \"message\": {\n        \"role\":
+        \"assistant\",\n        \"content\": \"The current position in FEN indicates
+        that it's the start of a chess game, with all pieces in their original positions.
+        As White, I want to control the center of the board and develop my pieces
+        for better positioning.\\n\\n1. **Controlling the Center**: The center squares
+        (d4, d5, e4, e5) are crucial. Moving a pawn to e4 or d4 is a good strategy
+        as it allows for quick development of other pieces.\\n\\n2. **Development**:
+        I want to develop my pieces, particularly my knights and bishops, but first,
+        I should establish a strong pawn presence in the center.\\n\\n3. **Best Move**:
+        The move 1.e4 is a very strong opening move. It directly controls the center,
+        opens lines for both the queen and the bishop on f1, and is one of the most
+        popular opening moves in chess.\\n\\nTherefore, after considering these factors,
+        my move will be:\\n\\nFinal Answer: e4\",\n        \"refusal\": null,\n        \"annotations\":
+        []\n      },\n      \"logprobs\": null,\n      \"finish_reason\": \"stop\"\n
+        \   },\n    {\n      \"index\": 2,\n      \"message\": {\n        \"role\":
+        \"assistant\",\n        \"content\": \"The current game state is the starting
+        position of the chessboard, with both sides having all their pieces in their
+        initial positions. As White, I have a variety of strong opening moves to consider.\\n\\n1.
+        **Basic Principles**: In the opening phase of the game, it's generally good
+        to control the center of the board, develop pieces, and prepare for castling.
+        \\n\\n2. **Common Opening Moves**: The most common opening moves for White
+        include:\\n   - 1. e4 (King's Pawn Opening)\\n   - 1. d4 (Queen's Pawn Opening)\\n
+        \  - 1. c4 (English Opening)\\n   - 1. Nf3 (Reti Opening)\\n\\n3. **Evaluating
+        e4 and d4**:\\n   - **1. e4**: This move allows me to control the center (e4
+        and d5 squares) and opens up lines for both the queen and bishop on the f1-h4
+        diagonal.\\n   - **1. d4**: Similarly, this move also controls the center
+        (d4 and e5 squares) and opens lines for the queen and bishop on the c1-h6
+        diagonal.\\n\\n4. **Choosing the Best Move**: Both 1. e4 and 1. d4 are strong,
+        but 1. e4 is often considered more aggressive and leads to a wider variety
+        of tactical possibilities.\\n\\n5. **Final Decision**: I will play 1. e4 to
+        gain immediate control of the center and set the stage for further development.\\n\\nFinal
         Answer: e4\",\n        \"refusal\": null,\n        \"annotations\": []\n      },\n
         \     \"logprobs\": null,\n      \"finish_reason\": \"stop\"\n    }\n  ],\n
-        \ \"usage\": {\n    \"prompt_tokens\": 142,\n    \"completion_tokens\": 955,\n
-        \   \"total_tokens\": 1097,\n    \"prompt_tokens_details\": {\n      \"cached_tokens\":
+        \ \"usage\": {\n    \"prompt_tokens\": 142,\n    \"completion_tokens\": 766,\n
+        \   \"total_tokens\": 908,\n    \"prompt_tokens_details\": {\n      \"cached_tokens\":
         0,\n      \"audio_tokens\": 0\n    },\n    \"completion_tokens_details\":
         {\n      \"reasoning_tokens\": 0,\n      \"audio_tokens\": 0,\n      \"accepted_prediction_tokens\":
         0,\n      \"rejected_prediction_tokens\": 0\n    }\n  },\n  \"service_tier\":
@@ -122,10 +111,10 @@ interactions:
       Server:
       - cloudflare
       Set-Cookie:
-      - __cf_bm=bLM7v.wbDnIos1ApMZhaQjq3.MpUjTymubIUK048V9o-1758386478-1.0.1.1-VOFsPyBhgQZWZ9nH6z.3aeqKptbEM4NpeeJHvi3aRBVlybiM9LYXPGjNHUL6LkL6zyoL4I4XJzxR1CL4NFNVvWuTe6bayhttqYDhKNPZn4Y;
-        path=/; expires=Sat, 20-Sep-25 17:11:18 GMT; domain=.api.openai.com; HttpOnly;
+      - __cf_bm=Gs0FftQ9g5MswZ7uVmDf_WATxOAyxvAYWJZre4zpETE-1758403275-1.0.1.1-_DyyTh0Sr58Zafep2NrnGZWv8uiUQugycxJ.l590SgfwdRacI2oph7kNDb9w.RhGUm8iF6h7nQZGH_uFNqe7XqMVgnOOul5JIv2XIAFjoH0;
+        path=/; expires=Sat, 20-Sep-25 21:51:15 GMT; domain=.api.openai.com; HttpOnly;
         Secure; SameSite=None
-      - _cfuvid=6u19p2PBSs96DWtNfhI35Lr2_LBGjiFzq9J..bhdA1A-1758386478738-0.0.1.1-604800000;
+      - _cfuvid=k_0zXsDgYuRcsA1rDV3dBZpisMzHq8ojOa41Kcu7h74-1758403275836-0.0.1.1-604800000;
         path=/; domain=.api.openai.com; HttpOnly; Secure; SameSite=None
       Strict-Transport-Security:
       - max-age=31536000; includeSubDomains; preload
@@ -140,17 +129,17 @@ interactions:
       cf-cache-status:
       - DYNAMIC
       content-length:
-      - '5125'
+      - '4292'
       openai-organization:
       - user-aot8rlpgpoltgmjq3rrcwvq3
       openai-processing-ms:
-      - '8670'
+      - '6824'
       openai-project:
       - proj_mPL62zuq4MRiWekadSO6KuLd
       openai-version:
       - '2020-10-01'
       x-envoy-upstream-service-time:
-      - '8782'
+      - '6856'
       x-openai-proxy-wasm:
       - v0.1
       x-ratelimit-limit-requests:
@@ -158,13 +147,13 @@ interactions:
       x-ratelimit-limit-tokens:
       - '10000000'
       x-ratelimit-remaining-requests:
-      - '9999'
+      - '9998'
       x-ratelimit-remaining-tokens:
-      - '9999888'
+      - '9999831'
       x-ratelimit-reset-requests:
-      - 6ms
+      - 11ms
       x-ratelimit-reset-tokens:
-      - 0s
+      - 1ms
     status:
       code: 200
       message: OK
