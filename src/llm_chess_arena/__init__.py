@@ -1,6 +1,3 @@
-"""Top-level package for llm_chess_arena.
+"""Core package for the LLM Chess Arena modules."""
 
-This package bundles the chess arena components for language model agents.
-"""
-
-__all__ = ["renderer", "config", "exceptions", "game", "player", "types", "utils"]
+__all__ = ["config", "exceptions", "game", "player", "renderer", "types", "utils"]

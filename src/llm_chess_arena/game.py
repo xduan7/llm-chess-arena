@@ -7,14 +7,15 @@ from typing import Any
 import chess
 from loguru import logger
 
+from llm_chess_arena.exceptions import (
+    AmbiguousMoveError,
+    IllegalMoveError,
+    InvalidMoveError,
+)
 from llm_chess_arena.player.base_player import BasePlayer
 from llm_chess_arena.renderer import display_board_with_context
-from llm_chess_arena.exceptions import (
-    InvalidMoveError,
-    IllegalMoveError,
-    AmbiguousMoveError,
-)
 from llm_chess_arena.types import PlayerDecision
+from llm_chess_arena.metrics import MetricsTracker
 from llm_chess_arena.utils import parse_attempted_move_to_uci
 
 
@@ -26,6 +27,8 @@ class Game:
         white_player: BasePlayer,
         black_player: BasePlayer,
         display_board: bool = False,
+        enable_metrics: bool = True,
+        metrics_tracker: MetricsTracker | None = None,
     ) -> None:
         """Initialize a chess game.
 
@@ -33,6 +36,8 @@ class Game:
             white_player: Player controlling white pieces.
             black_player: Player controlling black pieces.
             display_board: Whether to display the board after each move.
+            enable_metrics: Whether to compute move quality metrics.
+            metrics_tracker: Optional preconfigured metrics tracker.
 
         Raises:
             ValueError: If players have incorrect colors assigned.
@@ -46,7 +51,24 @@ class Game:
         self.black_player = black_player
         self.board = chess.Board()
         self.display_board = display_board
-        logger.info(f"Game initialized: {white_player} vs {black_player}")
+        self.metrics_tracker = (
+            metrics_tracker
+            if metrics_tracker is not None
+            else (MetricsTracker.from_stockfish() if enable_metrics else None)
+        )
+
+        metrics_enabled = bool(
+            self.metrics_tracker is not None and self.metrics_tracker.enabled
+        )
+
+        if enable_metrics and not metrics_enabled:
+            logger.info(
+                "Game initialized without metrics (Stockfish unavailable): {} vs {}",
+                white_player,
+                black_player,
+            )
+        else:
+            logger.info("Game initialized: {} vs {}", white_player, black_player)
         self._outcome: chess.Outcome | None = None
 
     @property
@@ -128,20 +150,44 @@ class Game:
                 chess.BLACK if self.current_player.color == "white" else chess.WHITE
             ),
         )
-        logger.info(f"{self.current_player} resigns")
+        logger.info("{} resigns", self.current_player)
 
     def _handle_move(self, decision: PlayerDecision) -> None:
-        """Validate the player's move and apply it to the board."""
+        """Validate the player's move and apply it to the board.
+
+        Args:
+            decision: Move decision returned by the active player.
+
+        Raises:
+            InvalidMoveError: Missing or malformed move text.
+            IllegalMoveError: Move fails legality checks for the position.
+            AmbiguousMoveError: Move text is ambiguous within the position.
+        """
         if decision.attempted_move is None:
             raise InvalidMoveError("Move action requires attempted_move")
+
+        player = self.current_player
+        board_before_move = self.board.copy()
 
         uci_move = parse_attempted_move_to_uci(
             decision.attempted_move, self.board.fen()
         )
 
         move = chess.Move.from_uci(uci_move)
-        logger.debug(f"{self.current_player} plays: {uci_move}")
+        logger.debug("{} plays: {}", player, uci_move)
         self.board.push(move)
+
+        if self.metrics_tracker is not None:
+            try:
+                self.metrics_tracker.record_move(
+                    board_before_move,
+                    move,
+                    player_name=player.name,
+                )
+            except Exception as exc:  # pragma: no cover - safeguards metrics path
+                logger.warning(
+                    "Failed to record metrics for move {}: {}", uci_move, exc
+                )
 
     def play(self, max_num_moves: int | None = None) -> None:
         """Run the game until completion, illegal move, or max moves reached.
@@ -158,7 +204,7 @@ class Game:
             num_moves = 0
             while not self.finished:
                 if max_num_moves is not None and num_moves >= max_num_moves:
-                    logger.info(f"Stopping: Maximum moves ({max_num_moves}) reached")
+                    logger.info("Stopping: Maximum moves ({}) reached", max_num_moves)
                     self._outcome = chess.Outcome(
                         termination=chess.Termination.VARIANT_DRAW,  # Draw by max moves
                         winner=None,
@@ -188,7 +234,10 @@ class Game:
                     AmbiguousMoveError,
                 ) as e:
                     logger.warning(
-                        f"Game over due to {e.__class__.__name__} by {self.current_player}: {e}"
+                        "Game over due to {} by {}: {}",
+                        e.__class__.__name__,
+                        self.current_player,
+                        e,
                     )
                     self._outcome = chess.Outcome(
                         termination=chess.Termination.VARIANT_LOSS,  # Loss due to illegal/invalid move
@@ -201,16 +250,21 @@ class Game:
                     break
                 except Exception as e:
                     logger.exception(
-                        f"Unexpected error during player move by {self.current_player}: {e}"
+                        "Unexpected error during player move by {}: {}",
+                        self.current_player,
+                        e,
                     )
                     raise
 
             if self.outcome:
-                logger.info(f"Game finished after {len(self.board.move_stack)} moves")
-                logger.info(
-                    f"Winner: {self.winner}" if self.winner else "Game ended in a draw"
-                )
+                logger.info("Game finished after {} moves", len(self.board.move_stack))
+                if self.winner:
+                    logger.info("Winner: {}", self.winner)
+                else:
+                    logger.info("Game ended in a draw")
         finally:
+            if self.metrics_tracker is not None:
+                self._log_metrics_summary()
             # Clean up Stockfish subprocess and LLM connections
             self._cleanup_players()
 
@@ -221,13 +275,49 @@ class Game:
             try:
                 self.white_player.close()
             except Exception as e:
-                logger.warning(f"Error closing white player: {e}")
+                logger.warning("Error closing white player: {}", e)
 
         if hasattr(self.black_player, "close"):
             try:
                 self.black_player.close()
             except Exception as e:
-                logger.warning(f"Error closing black player: {e}")
+                logger.warning("Error closing black player: {}", e)
+
+        if self.metrics_tracker is not None:
+            try:
+                self.metrics_tracker.close()
+            except Exception as e:  # pragma: no cover - defensive cleanup
+                logger.warning("Error closing metrics tracker: {}", e)
+
+    def _log_metrics_summary(self) -> None:
+        """Log aggregated metrics for each player after the game."""
+        if self.metrics_tracker is None:
+            return
+
+        summaries = self.metrics_tracker.summarize()
+        for color, summary in summaries.items():
+            if summary.moves_evaluated == 0:
+                continue
+
+            player = self.white_player if color == "white" else self.black_player
+
+            avg_loss = (
+                f"{summary.average_centipawn_loss:.1f}"
+                if summary.average_centipawn_loss is not None
+                else "N/A"
+            )
+            hit_rate = (
+                f"{summary.best_move_hit_rate:.3f}"
+                if summary.best_move_hit_rate is not None
+                else "N/A"
+            )
+
+            logger.info(
+                "Metrics for {}: avg_centipawn_loss={}, best_move_hit_rate={}",
+                str(player),
+                avg_loss,
+                hit_rate,
+            )
 
     def __enter__(self) -> Game:
         """Context manager entry.

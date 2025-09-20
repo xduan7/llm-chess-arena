@@ -212,6 +212,11 @@ LICENSE
    - **Real-time evaluation**: Track metrics during gameplay, not just post-game
    - **Extensibility**: Plugin architecture for custom metrics
 
+11. **Move Metrics Evaluation**:
+    - Stockfish-backed evaluator computes centipawn loss, win probability delta, and best-move hits after every move.
+    - Aggregates per-player averages for centipawn loss and best-move hit rate that surface in post-game summaries.
+    - Gracefully disables when Stockfish is unavailable so development environments without the engine still function.
+
 
 ---
 
@@ -249,10 +254,10 @@ LICENSE
   - How: Parse tokens, cost, latency, retry count from LiteLLM response/headers
   - Scope: Update llm_connector.py and llm_player.py
 
-- [ ] **Add Stockfish centipawn evaluation hook**
+- [x] **Add Stockfish centipawn evaluation hook**
   - Why: Centipawn loss is core objective metric for rapid model comparisons
   - How: Depth-limited eval (configurable depth=10) after each move, emit engine_eval events
-  - Scope: New engines/stockfish_eval.py, small hook in game.py
+  - Scope: Extend metrics.py with Stockfish evaluator and integrate hooks in game.py
 
 - [ ] **Track legality and retry counters**
   - Why: Legality rate is key LLM capability metric, retries affect cost/latency
@@ -370,7 +375,6 @@ LICENSE
 - Head-to-head comparisons
 - Rating progression graphs
 </details>
-
 
 
 

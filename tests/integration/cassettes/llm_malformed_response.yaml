@@ -19,8 +19,8 @@ interactions:
       content-type:
       - application/json
       cookie:
-      - __cf_bm=cjMIyTtQViQhZrhhi1jNvDDytAorqFIUTQlCKBctgUk-1758252951-1.0.1.1-TJLrWxiCCgXrg.HLb6CnpjMIIGYQG6PYWO3Rpbix6Q4NF.BuULpG_OceNx.ytBuj.ysf9Yd5MuKkI_0N4MIC.Rn42MW0VvJ07f4JWnC34dI;
-        _cfuvid=CC3br50Ga8qj6..lUFyrlezUcqWucZ4KWxyZ3Sz12Jw-1758252951997-0.0.1.1-604800000
+      - __cf_bm=AfcBSb4jpoVq2np02OYLvWQCgAGHgYT_yUupora3UfQ-1758370748-1.0.1.1-8b35FLZn5JLvioz0oNTvxzRBH33YqYf1vnK4HFdl3jc4deUGGUPGSHST4aNAO_BlRlnOpqS.OzatwCIHAY8HEtzGjCECvrfAyltX1NVu9u8;
+        _cfuvid=dsvyYEp3Ueh9zUFWm7WW17atLJDmBvi4.JHtWqcLYNM-1758370748432-0.0.1.1-604800000
       host:
       - api.openai.com
       user-agent:
@@ -49,28 +49,26 @@ interactions:
     uri: https://api.openai.com/v1/chat/completions
   response:
     body:
-      string: "{\n  \"id\": \"chatcmpl-CHMD5L2AQhwRUcmKXRT0sxou6Kow0\",\n  \"object\":
-        \"chat.completion\",\n  \"created\": 1758252987,\n  \"model\": \"gpt-4o-mini-2024-07-18\",\n
+      string: "{\n  \"id\": \"chatcmpl-CHqr4SdJJkVz7JgZ9vCkImtTUO7BZ\",\n  \"object\":
+        \"chat.completion\",\n  \"created\": 1758370786,\n  \"model\": \"gpt-4o-mini-2024-07-18\",\n
         \ \"choices\": [\n    {\n      \"index\": 0,\n      \"message\": {\n        \"role\":
-        \"assistant\",\n        \"content\": \"To determine the best move in this
-        position, let's first analyze the current state of the chessboard represented
-        by the FEN:\\n\\n```\\nrnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq
-        - 0 1\\n```\\n\\n1. The board is in the initial position with all pieces in
-        their starting squares.\\n2. White has the advantage of the first move. In
-        chess, popular and strong opening moves for White include advancing the central
-        pawns and developing the knights.\\n3. Typical first moves include 1.e4 or
-        1.d4.\\n\\nLet's evaluate the two common moves:\\n\\n- **1.e4**: This move
-        advances the pawn in front of the king two squares, controlling the center
-        (e4 square) and opening lines for the queen and the bishop on f1. It is often
-        played in many classical chess openings.\\n- **1.d4**: This also controls
-        the center (d4 square) but is less aggressive than 1.e4 in terms of immediate
-        central control. It allows development of the other bishop.\\n\\nBoth moves
-        are very strong, but 1.e4 is more popular and can lead to active piece play
-        right from the start.\\n\\nConsidering both options and the principle of controlling
-        the center, I choose 1.e4 as my move.\\n\\nFinal Answer: e4\",\n        \"refusal\":
+        \"assistant\",\n        \"content\": \"Given the FEN: rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR
+        w KQkq - 0 1, it's clear that this is the initial position of a chess game
+        with all pieces in their starting squares. \\n\\nAs White, I need to make
+        an advantageous opening move. \\n\\n1. First, I consider the rules and principles
+        of the opening phase:\\n   - I want to control the center of the board.\\n
+        \  - I should develop my pieces efficiently.\\n   - I should prepare for castling
+        early if possible.\\n\\n2. The squares that are most important in the center
+        are e4 and d4 (for pawns) and the squares e5 and d5 if the opponent were to
+        respond.\\n\\n3. A very popular opening move for White is 1.e4, as it accomplishes
+        several goals:\\n   - It directly controls the center (specifically the e5
+        square).\\n   - It opens lines for both the queen and the bishop on the King's
+        side.\\n   - It allows for potential quick development for the knight on f3.\\n\\n4.
+        I will decide on 1.e4 as my move, as it is strong and compliant with the opening
+        principles outlined above.\\n\\nFinal Answer: e4\",\n        \"refusal\":
         null,\n        \"annotations\": []\n      },\n      \"logprobs\": null,\n
         \     \"finish_reason\": \"stop\"\n    }\n  ],\n  \"usage\": {\n    \"prompt_tokens\":
-        142,\n    \"completion_tokens\": 286,\n    \"total_tokens\": 428,\n    \"prompt_tokens_details\":
+        142,\n    \"completion_tokens\": 266,\n    \"total_tokens\": 408,\n    \"prompt_tokens_details\":
         {\n      \"cached_tokens\": 0,\n      \"audio_tokens\": 0\n    },\n    \"completion_tokens_details\":
         {\n      \"reasoning_tokens\": 0,\n      \"audio_tokens\": 0,\n      \"accepted_prediction_tokens\":
         0,\n      \"rejected_prediction_tokens\": 0\n    }\n  },\n  \"service_tier\":
@@ -95,17 +93,17 @@ interactions:
       cf-cache-status:
       - DYNAMIC
       content-length:
-      - '1960'
+      - '1842'
       openai-organization:
       - user-aot8rlpgpoltgmjq3rrcwvq3
       openai-processing-ms:
-      - '6339'
+      - '4697'
       openai-project:
       - proj_mPL62zuq4MRiWekadSO6KuLd
       openai-version:
       - '2020-10-01'
       x-envoy-upstream-service-time:
-      - '6382'
+      - '4726'
       x-openai-proxy-wasm:
       - v0.1
       x-ratelimit-limit-requests:

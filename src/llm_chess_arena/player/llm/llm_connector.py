@@ -12,6 +12,7 @@ from litellm import exceptions as litellm_exceptions
 # Cross-provider robustness: silently ignore unsupported params when switching between
 # models (OpenAI, Anthropic, Gemini) rather than erroring. Research code needs flexibility.
 litellm.drop_params = True
+# Disable verbose logging across litellm versions (set_verbose availability varies)
 if hasattr(litellm, "set_verbose"):
     setattr(litellm, "set_verbose", False)
 
@@ -72,7 +73,7 @@ class LLMConnector:
         if system_prompt:
             messages.append({"role": "system", "content": system_prompt})
         messages.append({"role": "user", "content": prompt})
-        logger.debug(f"Querying model {self.model} with messages: {messages}")
+        logger.debug("Querying model {} with messages: {}", self.model, messages)
 
         try:
             completion_kwargs: dict[str, Any] = {
@@ -92,11 +93,11 @@ class LLMConnector:
                 if content is None:
                     raise ConnectionError("LLM response missing content message")
                 contents.append(str(content))
-            logger.debug(f"{self.model} response choices: {contents}")
+            logger.debug("{} response choices: {}", self.model, contents)
             return contents
 
         except litellm_exceptions.Timeout as e:
-            logger.warning(f"Request timed out after {self.timeout}s: {e}")
+            logger.warning("Request timed out after {}s: {}", self.timeout, e)
             raise TimeoutError(f"Request timed out after {self.timeout}s") from e
 
         except (
@@ -104,7 +105,7 @@ class LLMConnector:
             litellm_exceptions.ServiceUnavailableError,
             litellm_exceptions.InternalServerError,
         ) as e:
-            logger.warning(f"Transient API error (may retry at higher level): {e}")
+            logger.warning("Transient API error (may retry at higher level): {}", e)
             raise ConnectionError(f"LLM API temporarily unavailable: {e}") from e
 
         except (
@@ -113,16 +114,16 @@ class LLMConnector:
             litellm_exceptions.BadRequestError,
             litellm_exceptions.ContentPolicyViolationError,
         ) as e:
-            logger.error(f"Permanent API error (will not retry): {e}")
+            logger.error("Permanent API error (will not retry): {}", e)
             raise ConnectionError(f"LLM API request invalid: {e}") from e
 
         except (
             litellm_exceptions.APIError,
             litellm_exceptions.APIConnectionError,
         ) as e:
-            logger.error(f"API error occurred: {e}")
+            logger.error("API error occurred: {}", e)
             raise ConnectionError(f"LLM API call failed: {e}") from e
 
         except Exception as e:
-            logger.error(f"Unexpected error during LLM API call: {e}")
+            logger.error("Unexpected error during LLM API call: {}", e)
             raise ConnectionError(f"Unexpected error: {e}") from e

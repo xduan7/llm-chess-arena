@@ -48,12 +48,19 @@ class BasePlayer(ABC):
 
     @abstractmethod
     def _make_decision(self, context: PlayerDecisionContext) -> PlayerDecision:
-        """Make a decision based on the provided context."""
-        pass
+        """Return a decision derived from the normalized ``context``.
+
+        Args:
+            context: Structured snapshot of the current game state.
+
+        Returns:
+            PlayerDecision: Decision model describing the desired action.
+        """
+        raise NotImplementedError
 
     def close(self) -> None:
         """Release resources for subclasses that manage external state."""
-        pass
+        return None
 
     def __str__(self) -> str:
         """Return the player name suffixed by its color initial."""

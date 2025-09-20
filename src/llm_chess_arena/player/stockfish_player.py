@@ -57,7 +57,8 @@ class StockfishPlayer(BasePlayer):
         self.engine_options = dict(engine_options) if engine_options else {}
 
         logger.debug(
-            f"StockfishPlayer configured with limits={self.engine_limits} (engine not started yet)"
+            "StockfishPlayer configured with limits={} (engine not started yet)",
+            self.engine_limits,
         )
 
     @staticmethod
@@ -90,23 +91,23 @@ class StockfishPlayer(BasePlayer):
             path = Path(env_path)
             if not path.exists():
                 logger.warning(
-                    f"Environment variable STOCKFISH_BINARY_PATH set to"
-                    f" {path}, but file does not exist."
+                    "Environment variable STOCKFISH_BINARY_PATH set to {} but file does not exist",
+                    path,
                 )
             elif not os.access(str(path), os.X_OK):
                 logger.warning(
-                    f"Stockfish binary from STOCKFISH_BINARY_PATH exists but"
-                    f" is not executable: {path}"
+                    "Stockfish binary from STOCKFISH_BINARY_PATH exists but is not executable: {}",
+                    path,
                 )
             else:
                 logger.debug(
-                    f"Found Stockfish binary from STOCKFISH_BINARY_PATH: {path}"
+                    "Found Stockfish binary from STOCKFISH_BINARY_PATH: {}", path
                 )
                 return str(path.resolve())
 
         system_path = shutil.which("stockfish")
         if system_path:
-            logger.debug(f"Found Stockfish binary in PATH: {system_path}")
+            logger.debug("Found Stockfish binary in PATH: {}", system_path)
             return system_path
 
         common_paths = [
@@ -119,7 +120,7 @@ class StockfishPlayer(BasePlayer):
         for common_path in common_paths:
             path = Path(common_path)
             if path.exists() and os.access(str(path), os.X_OK):
-                logger.debug(f"Found Stockfish binary in common path: {path}")
+                logger.debug("Found Stockfish binary in common path: {}", path)
                 return str(path.resolve())
 
         raise FileNotFoundError(
@@ -141,7 +142,7 @@ class StockfishPlayer(BasePlayer):
         try:
             self.engine = chess.engine.SimpleEngine.popen_uci(self.binary_path)
             self.engine.configure(self.engine_options)
-            logger.info(f"Stockfish engine started with limits={self.engine_limits}")
+            logger.info("Stockfish engine started with limits={}", self.engine_limits)
         except Exception as e:
             if self.engine:
                 try:
@@ -149,10 +150,22 @@ class StockfishPlayer(BasePlayer):
                 except Exception:
                     pass
                 self.engine = None
-            raise RuntimeError(f"Failed to initialize Stockfish engine: {e}") from e
+            raise RuntimeError(
+                "Failed to initialize Stockfish engine: {}".format(e)
+            ) from e
 
     def _make_decision(self, context: PlayerDecisionContext) -> PlayerDecision:
-        """Query Stockfish for the strongest move and wrap the response."""
+        """Query Stockfish for the strongest move and wrap the response.
+
+        Args:
+            context: Decision context describing the current board state.
+
+        Returns:
+            PlayerDecision: Move decision emitted by Stockfish.
+
+        Raises:
+            RuntimeError: If Stockfish fails to return a move.
+        """
         if self.engine is None:
             self._start_engine()
 
@@ -175,7 +188,7 @@ class StockfishPlayer(BasePlayer):
             return PlayerDecision(action="move", attempted_move=result.move.uci())
 
         except chess.engine.EngineError as e:
-            raise RuntimeError(f"Stockfish failed to generate move: {e}") from e
+            raise RuntimeError("Stockfish failed to generate move: {}".format(e)) from e
 
     def close(self) -> None:
         """Terminate the Stockfish subprocess if it was started.
@@ -188,6 +201,6 @@ class StockfishPlayer(BasePlayer):
                 self.engine.quit()
                 logger.debug("Stockfish engine closed successfully")
             except Exception as e:
-                logger.error(f"Error closing Stockfish engine: {e}")
+                logger.error("Error closing Stockfish engine: {}", e)
             finally:
                 self.engine = None

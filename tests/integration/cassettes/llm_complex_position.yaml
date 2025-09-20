@@ -46,35 +46,34 @@ interactions:
     uri: https://api.openai.com/v1/chat/completions
   response:
     body:
-      string: "{\n  \"id\": \"chatcmpl-CHMCOL1QGG1KYygTByi9Q62ePtdoa\",\n  \"object\":
-        \"chat.completion\",\n  \"created\": 1758252944,\n  \"model\": \"gpt-4o-mini-2024-07-18\",\n
+      string: "{\n  \"id\": \"chatcmpl-CHqqKBeDBA0fvj92SXAsoTEQn1Ibc\",\n  \"object\":
+        \"chat.completion\",\n  \"created\": 1758370740,\n  \"model\": \"gpt-4o-mini-2024-07-18\",\n
         \ \"choices\": [\n    {\n      \"index\": 0,\n      \"message\": {\n        \"role\":
-        \"assistant\",\n        \"content\": \"To determine the best move for White
-        in the given position, let's analyze the current board state represented by
-        the FEN: \\n\\n```\\nr1bqk2r/pp2bppp/2n1pn2/3p4/2PP4/2N1PN2/PP2BPPP/R1BQKR2
-        w Qkq - 2 9\\n```\\n\\n### Step 1: Evaluate the Position\\n- **Material Count**:
-        Both sides have equal material.\\n- **Piece Activity**: \\n  - White has a
-        well-placed knight on c3 and a bishop on e4, which is actively controlling
-        the center.\\n  - Black has a knight on c6 and a bishop on e7, but the knight
-        on d5 is somewhat advanced and can be a target.\\n  \\n### Step 2: Identify
-        Potential Moves\\n- **Knight Moves**: The knight on c3 can move to a4, b5,
-        or d5. Moving to d5 would capture the pawn and attack the knight on c6.\\n-
-        **Bishop Moves**: The bishop on e4 can move to f5 or d3, but these moves do
-        not seem to create immediate threats.\\n- **Pawn Moves**: The pawns on d4
-        and c4 can advance, but they do not create immediate threats either.\\n\\n###
-        Step 3: Consider Tactical Opportunities\\n- Moving the knight from c3 to d5
-        captures the pawn on d5 and attacks the knight on c6. This move also opens
-        up the possibility of further attacks on Black's position.\\n\\n### Step 4:
-        Evaluate the Move\\n- **Nxd5**: This move captures the pawn and puts pressure
-        on the knight on c6. If Black responds with exd5, White can then recapture
-        with the knight on d5, maintaining a strong position.\\n\\n### Conclusion\\nAfter
-        evaluating the position and considering the potential moves, the strongest
-        move for White is to capture the pawn on d5 with the knight.\\n\\nFinal Answer:
-        Nxd5\",\n        \"refusal\": null,\n        \"annotations\": []\n      },\n
-        \     \"logprobs\": null,\n      \"finish_reason\": \"stop\"\n    }\n  ],\n
-        \ \"usage\": {\n    \"prompt_tokens\": 154,\n    \"completion_tokens\": 416,\n
-        \   \"total_tokens\": 570,\n    \"prompt_tokens_details\": {\n      \"cached_tokens\":
-        0,\n      \"audio_tokens\": 0\n    },\n    \"completion_tokens_details\":
+        \"assistant\",\n        \"content\": \"Let's analyze the current position
+        based on the provided FEN: \\n\\n```\\nr1bqk2r/pp2bppp/2n1pn2/3p4/2PP4/2N1PN2/PP2BPPP/R1BQKR2
+        w Qkq - 2 9\\n```\\n\\n### Step 1: Identify the pieces and their positions\\n-
+        **White pieces**: \\n  - Rooks on a1 and b1\\n  - Knights on c3 and e2\\n
+        \ - Bishops on d1 and e4\\n  - Queen on d1\\n  - King on e1\\n  - Pawns on
+        a2, b2, c4, d4, e4, f2, g2, h2\\n\\n- **Black pieces**: \\n  - Rooks on a8
+        and h8\\n  - Knights on c6 and e4\\n  - Bishops on c8\\n  - Queen on d8\\n
+        \ - King on e8\\n  - Pawns on a7, b7, d5, e5, f7, g7, h7\\n\\n### Step 2:
+        Evaluate the position\\n- White has a slight lead in development with the
+        pieces more actively placed.\\n- The center is contested, with both sides
+        having pawns on d4 and d5.\\n- The knight on e4 is currently attacking the
+        bishop on e4, which is a potential target.\\n\\n### Step 3: Consider possible
+        moves\\n1. **Nxe4**: This captures the knight on e4, which is a strong move
+        as it removes a central piece and opens up the position.\\n2. **dxe5**: This
+        captures the pawn on e5, but it allows Black to recapture with the knight
+        on e4, which is not favorable.\\n3. **Bf4**: This develops the bishop but
+        does not address the immediate threat of the knight on e4.\\n4. **Nf3**: This
+        develops the knight but does not address the knight on e4.\\n\\n### Step 4:
+        Choose the best move\\nThe best move is to capture the knight on e4 with the
+        knight on c3. This not only removes a strong piece from Black but also maintains
+        pressure in the center.\\n\\n### Final Answer\\nFinal Answer: Nxe4\",\n        \"refusal\":
+        null,\n        \"annotations\": []\n      },\n      \"logprobs\": null,\n
+        \     \"finish_reason\": \"stop\"\n    }\n  ],\n  \"usage\": {\n    \"prompt_tokens\":
+        154,\n    \"completion_tokens\": 484,\n    \"total_tokens\": 638,\n    \"prompt_tokens_details\":
+        {\n      \"cached_tokens\": 0,\n      \"audio_tokens\": 0\n    },\n    \"completion_tokens_details\":
         {\n      \"reasoning_tokens\": 0,\n      \"audio_tokens\": 0,\n      \"accepted_prediction_tokens\":
         0,\n      \"rejected_prediction_tokens\": 0\n    }\n  },\n  \"service_tier\":
         \"default\",\n  \"system_fingerprint\": \"fp_560af6e559\"\n}\n"
@@ -86,10 +85,10 @@ interactions:
       Server:
       - cloudflare
       Set-Cookie:
-      - __cf_bm=cjMIyTtQViQhZrhhi1jNvDDytAorqFIUTQlCKBctgUk-1758252951-1.0.1.1-TJLrWxiCCgXrg.HLb6CnpjMIIGYQG6PYWO3Rpbix6Q4NF.BuULpG_OceNx.ytBuj.ysf9Yd5MuKkI_0N4MIC.Rn42MW0VvJ07f4JWnC34dI;
-        path=/; expires=Fri, 19-Sep-25 04:05:51 GMT; domain=.api.openai.com; HttpOnly;
+      - __cf_bm=AfcBSb4jpoVq2np02OYLvWQCgAGHgYT_yUupora3UfQ-1758370748-1.0.1.1-8b35FLZn5JLvioz0oNTvxzRBH33YqYf1vnK4HFdl3jc4deUGGUPGSHST4aNAO_BlRlnOpqS.OzatwCIHAY8HEtzGjCECvrfAyltX1NVu9u8;
+        path=/; expires=Sat, 20-Sep-25 12:49:08 GMT; domain=.api.openai.com; HttpOnly;
         Secure; SameSite=None
-      - _cfuvid=CC3br50Ga8qj6..lUFyrlezUcqWucZ4KWxyZ3Sz12Jw-1758252951997-0.0.1.1-604800000;
+      - _cfuvid=dsvyYEp3Ueh9zUFWm7WW17atLJDmBvi4.JHtWqcLYNM-1758370748432-0.0.1.1-604800000;
         path=/; domain=.api.openai.com; HttpOnly; Secure; SameSite=None
       Strict-Transport-Security:
       - max-age=31536000; includeSubDomains; preload
@@ -104,17 +103,17 @@ interactions:
       cf-cache-status:
       - DYNAMIC
       content-length:
-      - '2358'
+      - '2331'
       openai-organization:
       - user-aot8rlpgpoltgmjq3rrcwvq3
       openai-processing-ms:
-      - '8034'
+      - '7586'
       openai-project:
       - proj_mPL62zuq4MRiWekadSO6KuLd
       openai-version:
       - '2020-10-01'
       x-envoy-upstream-service-time:
-      - '8272'
+      - '7744'
       x-openai-proxy-wasm:
       - v0.1
       x-ratelimit-limit-requests:

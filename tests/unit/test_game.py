@@ -5,6 +5,7 @@ import pytest
 
 from llm_chess_arena.game import Game
 from llm_chess_arena.exceptions import IllegalMoveError
+from llm_chess_arena.metrics import MetricsTracker, MoveMetrics
 from tests.conftest import (
     IllegalMovePlayer,
     ScriptedPlayer,
@@ -181,3 +182,65 @@ class TestGameResult:
         assert game.finished
         assert game.winner is None
         assert game.outcome.result() == "1/2-1/2"
+
+
+class RecordingEvaluator:
+    """Test helper that records evaluation inputs and returns fixed metrics."""
+
+    def __init__(self) -> None:
+        self.calls: list[tuple[str, str, str]] = []
+        self.closed = False
+
+    def evaluate_move(self, board: chess.Board, move: chess.Move) -> MoveMetrics:
+        player_color = "white" if board.turn == chess.WHITE else "black"
+        self.calls.append((player_color, board.fen(), move.uci()))
+        return MoveMetrics(
+            player_color=player_color,
+            move_uci=move.uci(),
+            best_move_uci=move.uci(),
+            centipawn_loss=1.0,
+            win_probability_delta=0.0,
+            best_move_hit=True,
+        )
+
+    def close(self) -> None:
+        self.closed = True
+
+
+class TestGameMetrics:
+    """Integration tests for game-level metrics tracking."""
+
+    def test_game_records_metrics_per_move(self) -> None:
+        """Game should evaluate every executed move and summarize results."""
+        evaluator = RecordingEvaluator()
+        tracker = MetricsTracker(evaluator)
+
+        white_player = ScriptedPlayer(
+            "White",
+            "white",
+            ["e4", "Nf3"],
+        )
+        black_player = ScriptedPlayer(
+            "Black",
+            "black",
+            ["e5", "Nc6"],
+        )
+
+        game = Game(
+            white_player,
+            black_player,
+            metrics_tracker=tracker,
+        )
+        game.play(max_num_moves=4)
+
+        assert len(evaluator.calls) == 4
+        initial_fen = chess.Board().fen()
+        assert evaluator.calls[0][1] == initial_fen
+
+        summary = tracker.summarize()
+        assert summary["white"].moves_evaluated == 2
+        assert summary["white"].average_centipawn_loss == 1.0
+        assert summary["white"].best_move_hit_rate == 1.0
+        assert summary["black"].moves_evaluated == 2
+
+        assert evaluator.closed

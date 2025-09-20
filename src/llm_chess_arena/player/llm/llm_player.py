@@ -70,15 +70,20 @@ class LLMPlayer(BasePlayer):
         max_attempts = self.max_move_retries + 1
 
         for attempt in range(max_attempts):
+            fen_preview = f"{context.board_in_fen[:30]}..."
             logger.debug(
-                f"LLM player {self} move attempt {attempt + 1}/{max_attempts} "
-                f"for position FEN: {context.board_in_fen[:30]}..."
+                "LLM player {} move attempt {}/{} for position FEN: {}",
+                self,
+                attempt + 1,
+                max_attempts,
+                fen_preview,
             )
             try:
                 decision = self._get_most_voted_player_decision_from_llm(prompt)
                 logger.debug(
-                    f"LLM returned decision: action={decision.action}, "
-                    f"move={decision.attempted_move if decision.action == 'move' else 'N/A'}"
+                    "LLM returned decision: action={}, move={}",
+                    decision.action,
+                    decision.attempted_move if decision.action == "move" else "N/A",
                 )
                 self.last_move_attempts = attempt + 1
                 self.last_move_decision = decision
@@ -87,25 +92,39 @@ class LLMPlayer(BasePlayer):
                 # Network errors should propagate up - the game/tournament
                 # manager should decide how to handle network failures
                 logger.error(
-                    f"LLM player {self} network error after {attempt + 1} attempts: "
-                    f"{e.__class__.__name__}: {e}"
+                    "LLM player {} network error after {} attempts: {}: {}",
+                    self,
+                    attempt + 1,
+                    e.__class__.__name__,
+                    e,
                 )
                 raise
 
             try:
                 self._validate_player_decision_from_llm(decision, context.board_in_fen)
                 logger.info(
-                    f"LLM player {self} successfully generated valid move: {decision.attempted_move} "
-                    f"after {attempt + 1} attempt(s)"
+                    "LLM player {} successfully generated valid move {} after {} attempt(s)",
+                    self,
+                    decision.attempted_move,
+                    attempt + 1,
                 )
                 return decision
             except (InvalidMoveError, IllegalMoveError, AmbiguousMoveError) as e:
                 # These three exceptions indicate issues with the move (must
                 # contain a move and the action must be 'move')
+                retry_status = (
+                    "Will retry with context"
+                    if attempt < max_attempts - 1
+                    else "No retries left"
+                )
                 logger.warning(
-                    f"LLM player {self} attempt {attempt + 1} failed with {e.__class__.__name__}: {e}. "
-                    f"Invalid move: '{decision.attempted_move}'. "
-                    f"{'Will retry with context' if attempt < max_attempts - 1 else 'No retries left'}"
+                    "LLM player {} attempt {} failed with {}: {}. Invalid move: '{}'. {}",
+                    self,
+                    attempt + 1,
+                    e.__class__.__name__,
+                    e,
+                    decision.attempted_move,
+                    retry_status,
                 )
                 if attempt < max_attempts - 1:
                     prompt = self.handler.get_retry_prompt(
@@ -116,12 +135,15 @@ class LLMPlayer(BasePlayer):
                         **context.model_dump(),
                     )
                     logger.debug(
-                        f"Generated retry prompt with error context for {e.__class__.__name__}"
+                        "Generated retry prompt with error context for {}",
+                        e.__class__.__name__,
                     )
             except NotImplementedError:
                 # Unsupported action - no point in retrying
                 logger.error(
-                    f"LLM player {self} returned unsupported action '{decision.action}', resigning."
+                    "LLM player {} returned unsupported action '{}', resigning.",
+                    self,
+                    decision.action,
                 )
                 resign_decision = PlayerDecision(action="resign")
                 self.last_move_decision = resign_decision
@@ -130,8 +152,9 @@ class LLMPlayer(BasePlayer):
         # All attempts exhausted - fall back to deterministic move or resign
         self.last_move_attempts = max_attempts
         logger.warning(
-            f"LLM player {self} failed to produce a valid move after "
-            f"{max_attempts} attempts, resigning."
+            "LLM player {} failed to produce a valid move after {} attempts, resigning.",
+            self,
+            max_attempts,
         )
         self.last_move_decision = PlayerDecision(action="resign")
         return self.last_move_decision
@@ -141,7 +164,21 @@ class LLMPlayer(BasePlayer):
         decision: PlayerDecision,
         board_in_fen: str,
     ) -> PlayerDecision:
-        """Normalize the decision and ensure the move is legal for the position."""
+        """Normalize the decision and ensure the move is legal for the position.
+
+        Args:
+            decision: Decision returned by the language model handler.
+            board_in_fen: FEN string for the position the decision applies to.
+
+        Returns:
+            PlayerDecision: Decision with ``attempted_move`` normalized to UCI.
+
+        Raises:
+            NotImplementedError: When the decision action is unsupported.
+            InvalidMoveError: When the move text is missing or malformed.
+            IllegalMoveError: When the move violates the chess rules for the position.
+            AmbiguousMoveError: When the move text remains ambiguous after parsing.
+        """
 
         if decision.action == "resign":
             return decision
@@ -168,7 +205,7 @@ class LLMPlayer(BasePlayer):
         """Query the LLM and derive a decision using majority voting."""
         responses = self.connector.query(prompt, n=self.num_votes)
         logger.debug(
-            f"Requested {self.num_votes} response(s) from LLM for majority voting"
+            "Requested {} response(s) from LLM for majority voting", self.num_votes
         )
         decisions = []
 
@@ -179,17 +216,24 @@ class LLMPlayer(BasePlayer):
                 if decision is not None:
                     decisions.append(decision)
                     logger.debug(
-                        f"Vote {idx + 1}/{len(responses)}: Parsed move '{decision.attempted_move}' "
-                        f"from response"
+                        "Vote {}/{}: Parsed move '{}' from response",
+                        idx + 1,
+                        len(responses),
+                        decision.attempted_move,
                     )
             except ParseMoveError as e:
                 logger.warning(
-                    f"Vote {idx + 1}/{len(responses)}: Failed to parse LLM response: {e}"
+                    "Vote {}/{}: Failed to parse LLM response: {}",
+                    idx + 1,
+                    len(responses),
+                    e,
                 )
                 # Continue with other responses instead of crashing
 
         logger.debug(
-            f"Successfully parsed {len(decisions)}/{len(responses)} responses for voting"
+            "Successfully parsed {}/{} responses for voting",
+            len(decisions),
+            len(responses),
         )
 
         if not decisions:
@@ -216,12 +260,17 @@ class LLMPlayer(BasePlayer):
         ties = [t for t, c in vote_counts.items() if c == vote_count]
         if len(ties) > 1:
             logger.debug(
-                f"Tie in voting between {len(ties)} options with {vote_count} votes each. "
-                f"Selecting first occurrence: {most_voted_tuple}"
+                "Tie in voting between {} options with {} votes each. Selecting first occurrence: {}",
+                len(ties),
+                vote_count,
+                most_voted_tuple,
             )
         else:
             logger.debug(
-                f"Majority voting: {vote_count}/{len(decisions)} votes for {most_voted_tuple}"
+                "Majority voting: {}/{} votes for {}",
+                vote_count,
+                len(decisions),
+                most_voted_tuple,
             )
 
         # Find all decisions that match the winning tuple to preserve metadata
@@ -242,7 +291,8 @@ class LLMPlayer(BasePlayer):
                     all_responses.append(str(candidate_response))
             if all_responses:
                 logger.debug(
-                    f"Winning decision had {len(all_responses)} supporting responses"
+                    "Winning decision had {} supporting responses",
+                    len(all_responses),
                 )
 
         return most_voted_decision
@@ -255,4 +305,4 @@ class LLMPlayer(BasePlayer):
                 self.connector.close()
                 logger.debug("LLM connector closed successfully")
             except Exception as e:
-                logger.warning(f"Error closing LLM connector: {e}")
+                logger.warning("Error closing LLM connector: {}", e)

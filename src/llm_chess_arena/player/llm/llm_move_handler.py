@@ -186,7 +186,18 @@ class GameArenaLLMMoveHandler(BaseLLMMoveHandler):
         return super().get_prompt(**kwargs)
 
     def _extract_decision_text(self, response: str, **kwargs: Any) -> str:
-        """Extract and sanitize move text from LLM response."""
+        """Extract and sanitize move text from the raw LLM ``response``.
+
+        Args:
+            response: Raw model output produced for the current prompt.
+            **kwargs: Additional template context (unused by this implementation).
+
+        Returns:
+            str: Normalized move string suitable for downstream validation.
+
+        Raises:
+            ParseMoveError: When the response cannot be interpreted as a move.
+        """
         raw_move_text = self._extract_raw_move_text(response)
         move_text = self._sanitize_move_text(raw_move_text)
         if move_text is None:

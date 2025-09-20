@@ -136,13 +136,14 @@ _configure_board_palette()
 
 
 def get_piece_display(piece: chess.Piece | None, piece_map: dict[str, str]) -> str:
-    """Get the Unicode symbol for a chess piece.
+    """Return the glyph representing ``piece`` in the provided ``piece_map``.
 
     Args:
-        piece: Chess piece or None for empty square.
+        piece: Chess piece or ``None`` for an empty square.
+        piece_map: Mapping from python-chess piece symbols to display glyphs.
 
     Returns:
-        str: Unicode symbol for the piece or space for empty square.
+        str: Unicode symbol for the piece or a single space when ``piece`` is ``None``.
     """
     if piece is None:
         return " "
@@ -165,13 +166,14 @@ def get_square_color(square: int) -> str:
 
 
 def get_piece_color(piece: chess.Piece | None, is_light_square: bool) -> str:
-    """Get text color for a chess piece.
+    """Return the ANSI color code that should be used to draw ``piece``.
 
     Args:
-        piece: Chess piece or None.
+        piece: Chess piece or ``None`` for an empty square.
+        is_light_square: Whether the square background is light colored.
 
     Returns:
-        str: ANSI text color code.
+        str: ANSI text color code to apply before printing ``piece``.
     """
     if piece is None:
         return Colors.WHITE
@@ -262,7 +264,7 @@ def _print_board(
 
 
 def _format_move_history(board: chess.Board, limit: int = 8) -> list[str]:
-    """Return up to ``limit`` full-move rows with colour-coded SAN strings."""
+    """Return up to ``limit`` full-move rows with color-coded SAN strings."""
 
     history_board = chess.Board()
     rows: list[tuple[int, str | None, str | None]] = []
@@ -295,8 +297,8 @@ def _format_move_history(board: chess.Board, limit: int = 8) -> list[str]:
         white_disp = (white_san or "-").ljust(8)
         black_disp = (black_san or "-").ljust(8)
 
-        white_text = f"w: {white_disp}"
-        black_text = f"b: {black_disp}"
+        white_text = f"{white_disp}"
+        black_text = f"{black_disp}"
 
         if idx == last_index:
             white_fmt = f"{Colors.BOLD}{Colors.WHITE}{white_text}{Colors.RESET}"
@@ -311,7 +313,7 @@ def _format_move_history(board: chess.Board, limit: int = 8) -> list[str]:
 
 
 def _format_player_label(name: str | None, *, is_white: bool) -> str:
-    """Return a colourised label for a player name and side."""
+    """Return a colorized label for a player name and side."""
 
     side_name = "White" if is_white else "Black"
     color_code = Colors.WHITE if is_white else Colors.GRAY
@@ -331,7 +333,7 @@ def _status_line_with_players(
     black_player: str | None,
     current_player: str | None,
 ) -> str:
-    """Create a status line with consistent colouring."""
+    """Create a status line with consistent coloring."""
 
     if board.is_game_over():
         outcome = board.outcome()

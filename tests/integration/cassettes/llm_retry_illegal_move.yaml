@@ -19,8 +19,8 @@ interactions:
       content-type:
       - application/json
       cookie:
-      - __cf_bm=xY9v1QMwm3FnLiJRCNph4ak1WjebCPLKmAugFplHsUg-1758252962-1.0.1.1-BOcVMRjqKKixaKiXWvrdFYuq_NiBf.tHgLPUvx1OuQDdDacvB3BKCPG4wV1cfE1OR3V9r0Vo1DvDlfLgoW9TO3uUlxmTjpJKwXXTNXJzh3g;
-        _cfuvid=aXsfQt5qywaOOqgeItgv11IAWtCdgBcdy1dTk_yNJPM-1758252962955-0.0.1.1-604800000
+      - __cf_bm=YvAdiBn4ihL_9ub4_VQ0KB0V7VtQxcFA5phuDWrNcz4-1758370755-1.0.1.1-DhLx31jN1CcCKQ0Mk21J7Gl3jeISh0j590QrsGmPZJWYYLGJWV_HqSqpsp.acjL6L734raT7r12xAZx9zethUM80AwFwEKFiqxOIgJHkUu8;
+        _cfuvid=EeykYFrdx5GznIzYYr6_Fmq5PyRo6RdgUPhvQVq_DzM-1758370755115-0.0.1.1-604800000
       host:
       - api.openai.com
       user-agent:
@@ -49,33 +49,30 @@ interactions:
     uri: https://api.openai.com/v1/chat/completions
   response:
     body:
-      string: "{\n  \"id\": \"chatcmpl-CHMCh1lYqOiU7sgsEPTZjuEC15twc\",\n  \"object\":
-        \"chat.completion\",\n  \"created\": 1758252963,\n  \"model\": \"gpt-4o-mini-2024-07-18\",\n
+      string: "{\n  \"id\": \"chatcmpl-CHqqZ0i1EWQlynIER1Gng9XzB1tSL\",\n  \"object\":
+        \"chat.completion\",\n  \"created\": 1758370755,\n  \"model\": \"gpt-4o-mini-2024-07-18\",\n
         \ \"choices\": [\n    {\n      \"index\": 0,\n      \"message\": {\n        \"role\":
         \"assistant\",\n        \"content\": \"The current position is the starting
-        position of a chess game, where both players have all their pieces in their
-        original squares. As White, I have the first move, and I want to choose a
-        strong opening move.\\n\\n1. **Evaluate the position**: All pieces are in
-        their starting positions. I need to consider moves that control the center
-        of the board, develop my pieces, and prepare for future play.\\n\\n2. **Common
-        opening principles**:\\n   - Control the center (the squares e4, d4, e5, and
-        d5).\\n   - Develop pieces (knights and bishops) towards the center.\\n   -
-        Ensure king safety (usually by castling).\\n\\n3. **Potential moves**:\\n
-        \  - **e4**: This move controls the center and opens lines for the queen and
-        bishop. It's one of the most popular opening moves.\\n   - **d4**: This also
-        controls the center but is less common than e4 in the very first move.\\n
-        \  - **Nf3**: This develops a knight and controls the center, but it doesn't
-        control as much space as e4 or d4.\\n   - **c4**: This is the English Opening,
-        but it doesn't directly control the center squares as effectively as e4 or
-        d4.\\n\\n4. **Choosing the best move**: \\n   - e4 is a very strong move because
-        it immediately controls the center and allows for quick development of my
-        pieces. It is also a very common opening move that leads to many well-studied
-        positions.\\n\\nAfter considering these factors, I will play the move e4.\\n\\nFinal
-        Answer: e4\",\n        \"refusal\": null,\n        \"annotations\": []\n      },\n
-        \     \"logprobs\": null,\n      \"finish_reason\": \"stop\"\n    }\n  ],\n
-        \ \"usage\": {\n    \"prompt_tokens\": 142,\n    \"completion_tokens\": 329,\n
-        \   \"total_tokens\": 471,\n    \"prompt_tokens_details\": {\n      \"cached_tokens\":
-        0,\n      \"audio_tokens\": 0\n    },\n    \"completion_tokens_details\":
+        position of a chess game, represented by the FEN string: \\n\\n`rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR
+        w KQkq - 0 1`\\n\\nAs White, I have the first move. The goal is to control
+        the center of the board and develop my pieces effectively.\\n\\n1. **Control
+        the Center**: The center squares (d4, d5, e4, e5) are crucial for piece mobility
+        and control. A common opening move is to advance a pawn to e4 or d4.\\n\\n2.
+        **Piece Development**: Developing knights and bishops early is important for
+        controlling the center and preparing for castling.\\n\\n3. **Common Opening
+        Moves**: \\n   - **e4**: This move opens lines for the queen and bishop and
+        controls the center.\\n   - **d4**: This move also controls the center but
+        is less common than e4 in the opening.\\n\\n4. **Evaluating e4**: \\n   -
+        It is a strong move as it immediately controls the center and allows for quick
+        development of the pieces.\\n   - It is also a part of many well-known openings,
+        such as the King's Pawn Opening.\\n\\n5. **Evaluating d4**: \\n   - While
+        d4 is also a strong move, it does not control as many central squares as e4
+        does.\\n\\nGiven these considerations, the strongest move for White in this
+        position is to play **e4**.\\n\\nFinal Answer: e4\",\n        \"refusal\":
+        null,\n        \"annotations\": []\n      },\n      \"logprobs\": null,\n
+        \     \"finish_reason\": \"stop\"\n    }\n  ],\n  \"usage\": {\n    \"prompt_tokens\":
+        142,\n    \"completion_tokens\": 324,\n    \"total_tokens\": 466,\n    \"prompt_tokens_details\":
+        {\n      \"cached_tokens\": 0,\n      \"audio_tokens\": 0\n    },\n    \"completion_tokens_details\":
         {\n      \"reasoning_tokens\": 0,\n      \"audio_tokens\": 0,\n      \"accepted_prediction_tokens\":
         0,\n      \"rejected_prediction_tokens\": 0\n    }\n  },\n  \"service_tier\":
         \"default\",\n  \"system_fingerprint\": \"fp_560af6e559\"\n}\n"
@@ -99,17 +96,17 @@ interactions:
       cf-cache-status:
       - DYNAMIC
       content-length:
-      - '2217'
+      - '2055'
       openai-organization:
       - user-aot8rlpgpoltgmjq3rrcwvq3
       openai-processing-ms:
-      - '5797'
+      - '5415'
       openai-project:
       - proj_mPL62zuq4MRiWekadSO6KuLd
       openai-version:
       - '2020-10-01'
       x-envoy-upstream-service-time:
-      - '5811'
+      - '5615'
       x-openai-proxy-wasm:
       - v0.1
       x-ratelimit-limit-requests:
