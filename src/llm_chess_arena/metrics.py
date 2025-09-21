@@ -264,6 +264,8 @@ class StockfishMetricsEvaluator:
 
 @dataclass(frozen=True)
 class _PositionEvaluation:
+    """Lightweight container for engine evaluation results."""
+
     centipawns: float
     win_probability: float
     is_mate: bool
@@ -328,15 +330,14 @@ class MetricsTracker:
         self,
         board_before_move: chess.Board,
         move: chess.Move,
-        *,
-        player_name: str,
+        player_name: str | None = None,
     ) -> MoveMetrics | None:
         """Evaluate ``move`` and record the resulting metrics.
 
         Args:
             board_before_move: Position prior to applying ``move``.
             move: Move executed by the player.
-            player_name: Name of the player whose move is being recorded.
+            player_name: Optional display name for logging context.
 
         Returns:
             MoveMetrics | None: Metrics for the move when evaluation succeeds;
@@ -366,8 +367,10 @@ class MetricsTracker:
 
         self._metrics_by_color[metrics.player_color].append(metrics)
 
+        player_label = player_name or metrics.player_color
         logger.debug(
-            "Metrics for {}: centipawn_loss={:.1f}, win_prob_delta={:.3f}, best_move_hit={}, quality={}",
+            "Metrics for {} ({}): centipawn_loss={:.1f}, win_prob_delta={:.3f}, best_move_hit={}, quality={}",
+            player_label,
             metrics.move_uci,
             metrics.centipawn_loss,
             metrics.win_probability_delta,

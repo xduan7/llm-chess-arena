@@ -78,6 +78,7 @@ DEFAULT_PIECE_THEME = os.environ.get("LLM_CHESS_PIECE_THEME", "glyph").lower()
 
 
 def _resolve_piece_theme(theme: str | None) -> dict[str, str]:
+    """Return the symbol mapping for ``theme`` or fall back to the glyph set."""
     selected = (theme or DEFAULT_PIECE_THEME).lower()
     return PIECE_THEMES.get(selected, PIECE_THEMES["glyph"])
 
@@ -86,6 +87,7 @@ PIECE_SYMBOLS = _resolve_piece_theme(None)
 
 
 def _quality_annotation(quality: MoveQuality | None) -> Text | None:
+    """Convert a move quality into a styled Rich annotation."""
     if quality is None:
         return None
 
@@ -120,6 +122,7 @@ def _piece_symbol_solid(piece: chess.Piece | None) -> str:
 
 
 def _piece_style(piece: chess.Piece | None, square: int) -> str:
+    """Return the Rich style used to render ``piece``."""
     if piece is None:
         return ""
 
@@ -132,6 +135,7 @@ def _square_background(
     highlight_squares: set[int],
     last_move: chess.Move | None,
 ) -> str:
+    """Calculate the background color for ``square``."""
     file_idx = chess.square_file(square)
     rank_idx = chess.square_rank(square)
     base_color = (
@@ -155,6 +159,7 @@ def _build_board_table(
     highlight_squares: set[int],
     last_move: chess.Move | None,
 ) -> Table:
+    """Construct a Rich table that visualizes the board state."""
     table = Table.grid(padding=0, expand=False)
     # Columns: rank + space + 8 board squares + space + rank = 12 total
     table.add_column(justify="right", width=2)  # left rank numbers
@@ -242,6 +247,7 @@ def _build_move_history(
     history_length: int,
     move_qualities: Sequence[MoveQuality | None] | None,
 ) -> Panel:
+    """Render a panel containing the recent move history."""
     if not board.move_stack:
         return Panel.fit(
             Text("No moves yet.", style=DIM_TEXT_STYLE), title="Move History"
@@ -281,6 +287,7 @@ def _build_move_history(
 
 
 def _format_player_label(name: str | None, *, is_white: bool) -> Text:
+    """Return a styled player label for headers and summaries."""
     side_name = "White" if is_white else "Black"
     display_name = name or side_name
     color_style = WHITE_PLAYER_STYLE if is_white else BLACK_PLAYER_STYLE
@@ -293,6 +300,7 @@ def _status_line_with_players(
     black_player: str | None,
     current_player: str | None,
 ) -> Text:
+    """Build the status line describing whose turn it is or who won."""
     if board.is_game_over():
         status = Text()
         outcome = board.outcome()

@@ -184,7 +184,6 @@ class Game:
                 metrics = self.metrics_tracker.record_move(
                     board_before_move,
                     move,
-                    player_name=player.name,
                 )
                 if metrics is not None:
                     move_quality = metrics.quality

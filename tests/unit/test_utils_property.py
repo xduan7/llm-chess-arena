@@ -50,6 +50,7 @@ class TestMoveParsingProperties:
     @given(board=board_with_legal_move())
     @settings(max_examples=50, deadline=1000)
     def test_parse_legal_uci_move_parses_correctly(self, board):
+        """Verify UCI-formatted moves remain unchanged after parsing."""
         legal_moves = list(board.legal_moves)
         if not legal_moves:
             return  # Skip if no legal moves
@@ -67,6 +68,7 @@ class TestMoveParsingProperties:
     @given(board=board_with_legal_move())
     @settings(max_examples=50, deadline=1000)
     def test_parse_legal_san_move_converts_to_uci_correctly(self, board):
+        """Ensure SAN moves convert to equivalent UCI strings."""
         legal_moves = list(board.legal_moves)
         if not legal_moves:
             return
@@ -88,6 +90,7 @@ class TestMoveParsingProperties:
     )
     @settings(max_examples=30, deadline=1000)
     def test_parse_move_handles_extra_whitespace_correctly(self, board, extra_spaces):
+        """Confirm parser tolerates extraneous whitespace around SAN moves."""
         legal_moves = list(board.legal_moves)
         if not legal_moves:
             return
@@ -109,6 +112,7 @@ class TestMoveParsingProperties:
     @given(board=legal_board_positions())
     @settings(max_examples=30, deadline=1000)
     def test_get_legal_moves_returns_all_legal_moves_in_uci_format(self, board):
+        """Check that legal move enumeration matches python-chess output."""
         legal_moves = get_legal_moves_in_uci(board)
 
         # Property 1: Number of moves matches python-chess
@@ -131,6 +135,7 @@ class TestMoveParsingProperties:
     @given(board=legal_board_positions())
     @settings(max_examples=30, deadline=1000)
     def test_move_history_preserves_exact_order_of_moves(self, board):
+        """Move history should replay the original sequence faithfully."""
         history = get_move_history_in_uci(board)
 
         # Rebuild the game and verify each move
@@ -146,6 +151,7 @@ class TestMoveParsingProperties:
     @given(board=board_with_legal_move(), random_text=st.text(min_size=5, max_size=10))
     @settings(max_examples=20, deadline=1000)
     def test_parse_invalid_notation_raises_appropriate_error(self, board, random_text):
+        """Invalid text should raise a parsing-related error."""
         # Filter out text that might accidentally be valid
         if random_text.strip().lower() in ["o-o", "o-o-o", "0-0", "0-0-0"]:
             return  # Skip castling notation
@@ -156,6 +162,7 @@ class TestMoveParsingProperties:
     @given(board=board_with_legal_move())
     @settings(max_examples=30, deadline=1000)
     def test_parse_uci_move_is_idempotent(self, board):
+        """Repeated parsing of a UCI string should be idempotent."""
         legal_moves = list(board.legal_moves)
         if not legal_moves:
             return
@@ -182,11 +189,13 @@ class ChessGameStateMachine(RuleBasedStateMachine):
 
     @initialize()
     def setup(self):
+        """Start each run with a fresh board and empty history."""
         self.board = chess.Board()
         self.move_history = []
 
     @rule()
     def make_random_legal_move(self):
+        """Execute a randomly chosen legal move and track it."""
         if self.board.is_game_over():
             return
 
@@ -212,15 +221,18 @@ class ChessGameStateMachine(RuleBasedStateMachine):
 
     @invariant()
     def board_is_valid(self):
+        """The board representation remains valid after transitions."""
         assert self.board.is_valid()
 
     @invariant()
     def history_length_matches_halfmove_clock(self):
+        """Ensure recorded move history matches the engine move stack."""
         history = get_move_history_in_uci(self.board)
         assert len(history) == len(self.board.move_stack)
 
     @invariant()
     def can_reconstruct_position_from_history(self):
+        """Replaying recorded moves should reproduce the board position."""
         test_board = chess.Board()
         for uci_move in self.move_history:
             test_board.push_uci(uci_move)
@@ -232,8 +244,11 @@ TestChessGame = ChessGameStateMachine.TestCase
 
 
 class TestPromotionMoveProperties:
+    """Promotion scenarios maintain consistent parsing behavior."""
+
     @given(file=st.sampled_from("abcdefgh"), promotion_piece=st.sampled_from("qrbn"))
     def test_white_pawn_promotion_parses_correctly(self, file, promotion_piece):
+        """White pawn promotions should parse SAN and UCI forms equally."""
         # Set up board with white pawn on 7th rank
         # Create FEN with pawn at correct position
         file_index = ord(file) - ord("a")
@@ -269,6 +284,7 @@ class TestPromotionMoveProperties:
 
     @given(file=st.sampled_from("abcdefgh"), promotion_piece=st.sampled_from("qrbn"))
     def test_black_pawn_promotion_parses_correctly(self, file, promotion_piece):
+        """Black pawn promotions should parse SAN and UCI forms equally."""
         # Set up board with black pawn on 2nd rank
         # Create FEN with pawn at correct position
         file_index = ord(file) - ord("a")
@@ -288,8 +304,11 @@ class TestPromotionMoveProperties:
 
 
 class TestCastlingProperties:
+    """Castling notation variants map to their canonical UCI moves."""
+
     @given(color_is_white=st.booleans())
     def test_various_castling_notations_parse_correctly(self, color_is_white):
+        """All supported castling strings should resolve to their UCI equivalents."""
         if color_is_white:
             fen = "r3k2r/8/8/8/8/8/8/R3K2R w KQkq - 0 1"
             kingside_uci = "e1g1"

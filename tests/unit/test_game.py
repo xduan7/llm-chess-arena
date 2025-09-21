@@ -193,6 +193,7 @@ class RecordingEvaluator:
         self.closed = False
 
     def evaluate_move(self, board: chess.Board, move: chess.Move) -> MoveMetrics:
+        """Record the evaluation inputs and return a deterministic metric."""
         player_color = "white" if board.turn == chess.WHITE else "black"
         self.calls.append((player_color, board.fen(), move.uci()))
         return MoveMetrics(
@@ -206,6 +207,7 @@ class RecordingEvaluator:
         )
 
     def close(self) -> None:
+        """Mark the evaluator as closed for verification purposes."""
         self.closed = True
 
 

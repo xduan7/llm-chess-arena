@@ -86,22 +86,25 @@ Follow this 6-step workflow for EVERY task:
 ## Architecture
 
 ```
-llm_chess_arena/
-├── __init__.py
-├── config.py
-├── exceptions.py
-├── game.py
-├── types.py
-├── utils.py
-└── player/
-    ├── base_player.py
-    ├── random_player.py
-    ├── stockfish_player.py
-    └── llm/
-        ├── __init__.py
-        ├── llm_player.py
-        ├── llm_connector.py    # LiteLLM wrapper for testing isolation
-        └── llm_move_handler.py # Move parsing and templating
+src/
+└── llm_chess_arena/
+    ├── __init__.py
+    ├── config.py
+    ├── exceptions.py
+    ├── game.py
+    ├── metrics.py            # Stockfish-based move evaluation
+    ├── renderer.py           # Rich terminal board visualization
+    ├── types.py
+    ├── utils.py
+    └── player/
+        ├── base_player.py
+        ├── random_player.py
+        ├── stockfish_player.py
+        └── llm/
+            ├── __init__.py
+            ├── llm_player.py
+            ├── llm_connector.py    # LiteLLM wrapper for testing isolation
+            └── llm_move_handler.py # Move parsing and templating
 
 configs/              # Empty - Hydra configs to be implemented
 ├── config.yaml
@@ -120,6 +123,7 @@ demo/
 └── run_llm_game.py
 
 tests/
+├── __init__.py
 ├── conftest.py
 ├── test_demos.py
 ├── fixtures/
@@ -127,6 +131,7 @@ tests/
 ├── unit/
 │   ├── test_config.py
 │   ├── test_game.py
+│   ├── test_metrics.py
 │   ├── test_types.py
 │   ├── test_utils.py
 │   ├── test_utils_property.py  # Property-based tests with Hypothesis
@@ -142,15 +147,20 @@ tests/
     ├── test_chess_edge_cases.py
     ├── test_game_scenarios.py
     ├── test_llm_integration.py       # Environment-gated real API tests
-    ├── test_llm_integration_vcr.py   # VCR-based tests (future)
-    └── cassettes/                     # Empty - VCR recordings (future)
+    ├── test_llm_integration_vcr.py   # VCR-based tests with recordings
+    └── cassettes/                     # VCR HTTP recordings for testing
+        ├── llm_complex_position.yaml
+        ├── llm_endgame_position.yaml
+        ├── llm_majority_voting.yaml
+        └── [other VCR recordings...]
 
 .env                 # Local environment (gitignored)
 .env.example         # Template for API keys
 .pre-commit-config.yaml
 pyproject.toml
 README.md
-CLAUDE.md
+AGENTS.md
+CLAUDE.md -> AGENTS.md    # Symlink to AGENTS.md
 LICENSE
 ```
 
@@ -203,24 +213,13 @@ LICENSE
    - Clear error messages with actionable information
    - API key errors caught and displayed with setup instructions
 
-10. **Metrics System Design** (Planned):
-   - **Move-level metrics**: Quality scoring using Stockfish as ground truth
-   - **Centipawn loss**: Standard chess metric for move quality
-   - **LLM-specific metrics**: Legal move rate, retry count, prompt efficiency
-   - **Game phases**: Separate evaluation for opening, middlegame, endgame
-   - **Comparison framework**: ELO-style ratings for relative strength
-   - **Real-time evaluation**: Track metrics during gameplay, not just post-game
-   - **Extensibility**: Plugin architecture for custom metrics
-
-11. **Move Metrics Evaluation**:
-    - Stockfish-backed evaluator computes centipawn loss, win probability delta, and best-move hits after every move.
-    - Aggregates per-player averages for centipawn loss and best-move hit rate that surface in post-game summaries.
-    - Gracefully disables when Stockfish is unavailable so development environments without the engine still function.
-
-12. **Move Quality Buckets**:
-    - Stockfish evaluations classify every move into {best, excellent, good, inaccuracy, mistake, blunder} using centipawn-loss thresholds.
-    - Zero-loss alternatives to the engine's top line still count as "best" while missed forced mates are treated as blunders.
-    - Game summaries log ordered quality counts for quick post-run diagnostics without per-move INFO log spam.
+10. **Metrics System Implementation**:
+   - **Move-level metrics**: Stockfish-backed evaluation with centipawn loss, win probability delta, and best-move hits
+   - **Quality classification**: Six-tier system (best, excellent, good, inaccuracy, mistake, blunder) using centipawn thresholds
+   - **Real-time evaluation**: Tracks metrics during gameplay with per-player aggregation
+   - **Post-game summaries**: Quality count distribution and average metrics for each player
+   - **Graceful degradation**: Functions without Stockfish for development environments
+   - **Future extensibility**: Designed for additional LLM-specific metrics (legal move rate, retry count, prompt efficiency)
 
 ---
 
@@ -239,90 +238,63 @@ LICENSE
 - Pre-commit hooks (ruff, black, mypy)
 - Property-based tests with Hypothesis
 
+**Metrics & Evaluation:**
+- Stockfish-based move evaluation with centipawn loss
+- Move quality classification (best, excellent, good, inaccuracy, mistake, blunder)
+- Real-time move metrics tracking during gameplay
+- Per-player averages and post-game summaries
+
+**Visualization & Testing:**
+- Rich terminal board visualization with color-coded moves
+- Move quality annotations in game display
+- VCR-based HTTP recording for reliable LLM integration tests
+- Comprehensive test coverage with mocking and fixtures
+
 ---
 
-### Foundation - Metrics & Instrumentation
+### Core Research Experiments
 
-- [ ] **Add MetricsEvent and MetricsSink interface**
-  - Why: Establish structured stream for all research metrics without entangling logic
-  - How: Define MetricsEvent(dataclass) with type, timestamp, game_id, ply, player, payload. Inject emit points in LLMPlayer and Game for move_request, model_response, move_selected, move_applied, game_end
-  - Scope: New metrics.py, small changes to llm_player.py and game.py
+- [ ] **Add Hydra configuration system**
+  - Why: Enable massive batch experimentation and parameter sweeps essential for research
+  - How: Replace current config.py, create yaml configs for players/games, CLI integration
+  - Scope: Transform from single-game tool to research platform
 
-- [ ] **Implement JSONL metrics sink**
-  - Why: JSONL is standard research logging format for analysis and replay
-  - How: JsonlSink(file_path) appends structured events as lines, enable via CLI flag
-  - Scope: New sinks/jsonl_sink.py, wire-up in game bootstrap
+- [ ] **Opening-specific in-context learning experiment**
+  - Why: Tests whether LLMs genuinely learn strategic patterns vs statistical mimicry - core question about in-context learning mechanisms
+  - How: Show LLM 10 London System games vs 10 random games, measure counter-play improvement
+  - Scope: Could reveal fundamental differences in how transformers acquire strategic knowledge
 
-- [ ] **Add token/cost/latency capture from LiteLLM**
-  - Why: Cost/efficiency tracking essential for comparing strategies across runs
-  - How: Parse tokens, cost, latency, retry count from LiteLLM response/headers
-  - Scope: Update llm_connector.py and llm_player.py
+- [ ] **LLM tokenization effects on chess move processing**
+  - Why: How transformers internally tokenize chess moves could fundamentally limit reasoning - affects ALL other experiments
+  - How: Analyze how different LLMs tokenize chess notation, test if tokenization patterns correlate with performance
+  - Scope: Foundational finding about transformer limitations in structured reasoning tasks
 
-- [x] **Add Stockfish centipawn evaluation hook**
-  - Why: Centipawn loss is core objective metric for rapid model comparisons
-  - How: Depth-limited eval (configurable depth=10) after each move, emit engine_eval events
-  - Scope: Extend metrics.py with Stockfish evaluator and integrate hooks in game.py
+- [ ] **Information richness effects on LLM chess performance**
+  - Why: Tests whether giving LLMs richer context (opponent reasoning, board visualizations, position analysis) dramatically improves play vs basic move strings
+  - How: Compare LLM performance with: (1) just moves, (2) + opponent thoughts, (3) + board visualizations, (4) + position analysis
+  - Scope: Could reveal how much LLM chess limitations are due to information poverty vs reasoning capacity
+
+- [ ] **Human vs LLM learning curve comparison**
+  - Why: Direct test of whether LLMs learn like humans or just pattern-match differently
+  - How: Compare LLM improvement after seeing N games vs human improvement after N games
+  - Scope: Could reveal fundamental differences between transformer and human strategic knowledge acquisition
+
+### Supporting Infrastructure
+
+- [x] **Stockfish move evaluation metrics**
+  - Why: Provides objective ground truth for move quality assessment
+  - How: Centipawn loss, win probability delta, move quality classification
+  - Scope: Implemented in metrics.py with graceful degradation
 
 - [ ] **Track legality and retry counters**
-  - Why: Legality rate is key LLM capability metric, retries affect cost/latency
-  - How: Maintain per-game counters for illegal/parsing errors, emit summary at game_end
+  - Why: Essential diagnostic metrics for LLM reliability
+  - How: Per-game counters for illegal/parsing errors, emit summary at game_end
   - Scope: Updates to game.py and metrics.py
 
-### Experimentation Infrastructure
-
-- [ ] **Create DecisionStrategy interface above LLMPlayer**
-  - Why: Cleanly compare prompting strategies without refactoring core player logic
-  - How: Protocol with decide(board, context) -> MoveDecision. Implement SingleShot and VoteMajority strategies
-  - Scope: New strategies/base.py, adapt llm_player.py to delegate decisions
-
-- [ ] **Build minimal round-robin tournament CLI**
-  - Why: Repeatable head-to-head experiments and batching essential for research
-  - How: CLI args for players, games count, seeds, output path. Produces JSONL and CSV summary
-  - Scope: New cli/arena.py, extend existing tournament structure
-
-- [ ] **Add game lifecycle callbacks**
-  - Why: Decouple metrics, evaluation, and visualization from core game rules
-  - How: on_pre_move, on_post_move, on_game_end callback lists for extensibility
-  - Scope: Update game.py, optional new callbacks.py
-
-- [ ] **Create board/context serialization helpers**
-  - Why: Reliable replay and analysis require stable serialization formats
-  - How: to_ascii(board), to_json(game_state, context), leverage python-chess FEN/PGN
-  - Scope: New utils/serialization.py, minor calls in game.py
-
-### Analysis & Visualization
-
-- [ ] **Implement Rich terminal board visualization**
-  - Why: Fast human QA during research runs, better debugging experience
-  - How: render(board, last_move, centipawn?) with color, toggle via --visualize-every N
-  - Scope: New viz/rich_board.py, optional integration in CLI
-
-- [ ] **Build JSONL game viewer for replay**
-  - Why: Post-hoc debugging and qualitative assessment of games
-  - How: Stream JSONL events, reconstruct board state, step through with keypress
-  - Scope: New cli/view.py, reuse rich_board.py
-
-- [ ] **Add cost/metrics post-run summarizer**
-  - Why: Quick feedback loop on spend vs strength for experiment planning
-  - How: Read JSONL, aggregate tokens, cost, latency, legality, centipawn stats
-  - Scope: New analysis/cost_report.py, optional call from arena CLI
-
-### Modularity & Configuration
-
-- [ ] **Modularize prompt templates**
-  - Why: Enable clean A/B testing of prompts without code changes
-  - How: Load templates by name, support .format or Jinja2, expose via CLI
-  - Scope: New prompts/templates/ directory, update llm_player.py
-
-- [ ] **Create registry-based factory for players/strategies**
-  - Why: Avoid conditional explosions, simplify adding new baselines
-  - How: Simple dict name->callable registry for LLMPlayer, RandomPlayer, StockfishPlayer, strategies
-  - Scope: New registry.py, update arena CLI
-
-- [ ] **Add optional response cache for determinism**
-  - Why: Enable controlled experiments and reduced API spend during development
-  - How: Hash key = model+template+prompt+FEN+ply, file-backed cache with TTL
-  - Scope: New utils/cache.py, integration in llm_player.py
+- [ ] **Batch experiment runner**
+  - Why: Execute hundreds of games with different configurations automatically
+  - How: CLI interface with Hydra configs, parallel execution, results aggregation
+  - Scope: New cli/experiment.py with statistical analysis output
 
 ---
 
