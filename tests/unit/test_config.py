@@ -233,6 +233,24 @@ class TestHydraConfig:
         assert cfg.metrics.stockfish_depth == 18
         assert cfg.metrics.quality_thresholds.mistake == 250
 
+    def test_load_app_config__when_using_budget_llm_player__then_sets_budget_defaults(
+        self,
+    ):
+        overrides = [
+            "players@players.white=llm/gpt4o_mini",
+            "players@players.black=random",
+        ]
+
+        cfg = config.load_app_config(overrides=overrides)
+
+        assert cfg.players.white.kind == "llm"
+        assert cfg.players.white.name == "GPT-4o Mini"
+        assert cfg.players.white.max_move_retries == 1
+        assert cfg.players.white.num_votes == 1
+        assert cfg.players.white.connector.model == "gpt-4o-mini"
+        assert cfg.players.white.connector.max_tokens == 256
+        assert cfg.players.white.connector.max_retries == 2
+
     def test_load_app_config__when_using_stockfish_elo_profile__then_sets_engine_options(
         self,
     ):

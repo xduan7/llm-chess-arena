@@ -6,7 +6,7 @@ from collections import Counter
 from loguru import logger
 
 from llm_chess_arena.player.base_player import BasePlayer
-from llm_chess_arena.player.llm.llm_connector import LLMConnector
+from llm_chess_arena.player.llm.llm_connector import LLMConnector, UsageRecord
 from llm_chess_arena.player.llm.llm_move_handler import BaseLLMMoveHandler
 from llm_chess_arena.utils import parse_attempted_move_to_uci
 from llm_chess_arena.types import PlayerDecisionContext, PlayerDecision, Color
@@ -204,6 +204,7 @@ class LLMPlayer(BasePlayer):
     ) -> PlayerDecision:
         """Query the LLM and derive a decision using majority voting."""
         responses = self.connector.query(prompt, n=self.num_votes)
+        self._log_last_call_usage()
         logger.debug(
             "Requested {} response(s) from LLM for majority voting", self.num_votes
         )
@@ -240,10 +241,11 @@ class LLMPlayer(BasePlayer):
             # All responses failed to parse, in which case we create a
             # fake decision to trigger a retry
             logger.error("All LLM responses failed to parse, triggering retry ...")
+            first_response = responses[0] if responses else None
             return PlayerDecision(
                 action="move",
                 attempted_move="???",  # Invalid move to trigger retry
-                response=responses[0],  # Use first response for context for retry
+                response=first_response,  # Use first response for context for retry
             )
 
         # Majority voting implementation:
@@ -306,3 +308,39 @@ class LLMPlayer(BasePlayer):
                 logger.debug("LLM connector closed successfully")
             except Exception as e:
                 logger.warning("Error closing LLM connector: {}", e)
+
+    def get_usage_totals(self) -> UsageRecord:
+        """Return cumulative usage reported by the underlying connector."""
+
+        return self.connector.get_total_usage()
+
+    def reset_usage(self) -> None:
+        """Reset usage counters and transient move state for reuse."""
+
+        reset_hook = getattr(self.connector, "reset_usage", None)
+        if callable(reset_hook):
+            reset_hook()
+        self.last_move_attempts = 0
+        self.last_move_decision = None
+
+    def _log_last_call_usage(self) -> None:
+        """Log token and cost usage reported for the last connector call."""
+
+        usage = self.connector.get_last_usage()
+        if usage is None:
+            logger.debug(
+                "LLM player {} reported no usage metrics for the last call", self
+            )
+            return
+
+        votes_suffix = f" ({self.num_votes} votes)" if self.num_votes > 1 else ""
+        logger.info(
+            "LLM player {} usage this call{}: prompt_tokens={}, completion_tokens={}, "
+            "total_tokens={}, cost=${:.6f}",
+            self,
+            votes_suffix,
+            usage.prompt_tokens,
+            usage.completion_tokens,
+            usage.total_tokens,
+            usage.cost,
+        )

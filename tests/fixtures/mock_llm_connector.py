@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Iterable
 
-from llm_chess_arena.player.llm.llm_connector import LLMConnector
+from llm_chess_arena.player.llm.llm_connector import LLMConnector, UsageRecord
 
 
 class MockLLMConnector(LLMConnector):
@@ -25,17 +25,31 @@ class MockLLMConnector(LLMConnector):
             raise_on_query: Exception to raise on query (for error testing).
             **kwargs: Additional parameters captured but not used.
         """
-        self.model = model
+        temperature = kwargs.pop("temperature", 0.7)
+        max_tokens = kwargs.pop("max_tokens", None)
+        timeout = kwargs.pop("timeout", 30.0)
+        max_retries = kwargs.pop("max_retries", 3)
+        usage_records = kwargs.pop("usage_records", None)
+        super().__init__(
+            model=model,
+            temperature=temperature,
+            max_tokens=max_tokens,
+            timeout=timeout,
+            max_retries=max_retries,
+        )
+
         self.responses = responses or []
         self.raise_on_query = raise_on_query
         self.query_count = 0
         self.query_history = []
-        self.temperature = kwargs.get("temperature", 0.7)
-        self.timeout = kwargs.get("timeout", 30.0)
-        self.max_retries = kwargs.get("max_retries", 3)
+        self._usage_records = self._normalize_usage_records(usage_records)
 
     def query(
-        self, prompt: str, system_prompt: str | None = None, n: int = 1
+        self,
+        prompt: str,
+        n: int = 1,
+        system_prompt: str | None = None,
+        **kwargs: Any,
     ) -> list[str]:
         """Return predetermined responses or extract move from prompt.
 
@@ -83,6 +97,7 @@ class MockLLMConnector(LLMConnector):
                 else:
                     responses.append("Final Answer: e4")  # Default opening move
 
+        self._assign_usage()
         return responses
 
     def get_model_info(self) -> dict[str, Any]:
@@ -93,3 +108,50 @@ class MockLLMConnector(LLMConnector):
             "temperature": self.temperature,
             "timeout": self.timeout,
         }
+
+    def reset_usage(self) -> None:
+        """Reset accumulated usage statistics for the mock connector."""
+
+        self._last_usage = None
+        self._total_usage = UsageRecord()
+
+    def _assign_usage(self) -> None:
+        """Assign mock usage metrics to mimic LiteLLM accounting."""
+
+        if not self._usage_records:
+            self._last_usage = None
+            return
+
+        usage = self._usage_records.pop(0)
+        self._last_usage = usage.copy()
+        self._total_usage.add(usage)
+
+    @staticmethod
+    def _normalize_usage_records(
+        usage_records: Iterable[UsageRecord | dict[str, Any]] | None,
+    ) -> list[UsageRecord]:
+        """Normalize configurable usage records into dataclass instances."""
+
+        if usage_records is None:
+            return []
+
+        normalized: list[UsageRecord] = []
+        for record in usage_records:
+            if isinstance(record, UsageRecord):
+                normalized.append(record)
+                continue
+
+            if isinstance(record, dict):
+                normalized.append(
+                    UsageRecord(
+                        prompt_tokens=record.get("prompt_tokens", 0),
+                        completion_tokens=record.get("completion_tokens", 0),
+                        total_tokens=record.get("total_tokens", 0),
+                        cost=record.get("cost", 0.0),
+                    )
+                )
+                continue
+
+            raise TypeError("usage_records must contain UsageRecord or mapping entries")
+
+        return normalized

@@ -127,6 +127,87 @@ class TestLLMConnectorRetryLogic:
 
             assert mock_completion.call_count >= 1
 
+    def test_query_tracks_usage_statistics(self):
+        """Connector should capture prompt/completion tokens and cost per call."""
+        with (
+            patch("litellm.completion") as mock_completion,
+            patch("litellm.completion_cost") as mock_completion_cost,
+        ):
+            first_response = Mock()
+            first_response.choices = [Mock(message=Mock(content="First"))]
+            first_response.usage = {
+                "prompt_tokens": 12,
+                "completion_tokens": 34,
+                "total_tokens": 46,
+            }
+
+            second_response = Mock()
+            second_response.choices = [Mock(message=Mock(content="Second"))]
+            second_response.usage = Mock(
+                prompt_tokens=20,
+                completion_tokens=10,
+                total_tokens=30,
+            )
+
+            mock_completion.side_effect = [first_response, second_response]
+            mock_completion_cost.side_effect = [0.0123, 0.0456]
+
+            connector = LLMConnector(model="gpt-4o")
+
+            connector.query("Test prompt")
+            first_usage = connector.get_last_usage()
+
+            assert first_usage is not None
+            assert first_usage.prompt_tokens == 12
+            assert first_usage.completion_tokens == 34
+            assert first_usage.total_tokens == 46
+            assert first_usage.cost == pytest.approx(0.0123)
+
+            connector.query("Second prompt")
+            second_usage = connector.get_last_usage()
+            assert second_usage is not None
+            assert second_usage.prompt_tokens == 20
+            assert second_usage.completion_tokens == 10
+            assert second_usage.total_tokens == 30
+            assert second_usage.cost == pytest.approx(0.0456)
+
+        totals = connector.get_total_usage()
+        assert totals.prompt_tokens == 32
+        assert totals.completion_tokens == 44
+        assert totals.total_tokens == 76
+        assert totals.cost == pytest.approx(0.0579)
+
+    def test_reset_usage_clears_accumulated_totals(self):
+        """Connector reset should clear last and total usage metrics."""
+        with (
+            patch("litellm.completion") as mock_completion,
+            patch("litellm.completion_cost") as mock_completion_cost,
+        ):
+            response = Mock()
+            response.choices = [Mock(message=Mock(content="Final"))]
+            response.usage = {
+                "prompt_tokens": 5,
+                "completion_tokens": 7,
+                "total_tokens": 12,
+            }
+
+            mock_completion.return_value = response
+            mock_completion_cost.return_value = 0.01
+
+            connector = LLMConnector(model="gpt-4")
+
+            connector.query("Prompt")
+            assert connector.get_last_usage() is not None
+
+            connector.reset_usage()
+
+            assert connector.get_last_usage() is None
+            totals = connector.get_total_usage()
+            assert totals.prompt_tokens == 0
+            assert totals.completion_tokens == 0
+            assert totals.total_tokens == 0
+            assert totals.cost == pytest.approx(0.0)
+
 
 class TestLLMConnectorConfiguration:
     """Configuration-level tests for the connector."""
@@ -134,7 +215,7 @@ class TestLLMConnectorConfiguration:
     def test_global_litellm_settings_are_configured_correctly(self):
         """Global LiteLLM tweaks should match expected defaults."""
         assert litellm.drop_params
-        assert not litellm.set_verbose
+        assert getattr(litellm, "verbose", False) is False
 
     @patch("litellm.completion")
     def test_all_initialization_parameters_forwarded_to_litellm_completion(

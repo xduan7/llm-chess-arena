@@ -118,6 +118,105 @@ class TestLLMPlayerMoveGeneration:
         assert third_move_decision.action == "move"
         assert third_move_decision.attempted_move == "d2d4"
 
+    def test_player_tracks_and_exposes_usage_totals(self, handler):
+        """Player should expose aggregated token usage for reporting."""
+        connector = MockLLMConnector(
+            responses=["Final Answer: e4", "Final Answer: Nf3"],
+            usage_records=[
+                {
+                    "prompt_tokens": 15,
+                    "completion_tokens": 5,
+                    "total_tokens": 20,
+                    "cost": 0.101,
+                },
+                {
+                    "prompt_tokens": 10,
+                    "completion_tokens": 8,
+                    "total_tokens": 18,
+                    "cost": 0.081,
+                },
+            ],
+        )
+
+        llm_player = LLMPlayer(
+            connector=connector,
+            handler=handler,
+            color="white",
+            name="UsageTester",
+            num_votes=1,
+        )
+
+        board = chess.Board()
+        llm_player(board)
+        first_totals = llm_player.get_usage_totals()
+
+        assert first_totals.prompt_tokens == 15
+        assert first_totals.completion_tokens == 5
+        assert first_totals.total_tokens == 20
+        assert first_totals.cost == pytest.approx(0.101)
+
+        second_board = chess.Board()
+        llm_player(second_board)
+        final_totals = llm_player.get_usage_totals()
+
+        assert final_totals.prompt_tokens == 25
+        assert final_totals.completion_tokens == 13
+        assert final_totals.total_tokens == 38
+        assert final_totals.cost == pytest.approx(0.182)
+
+    def test_player_reset_usage_resets_totals(self, handler):
+        """Reset hook should clear connector usage and move metadata."""
+        connector = MockLLMConnector(
+            responses=["Final Answer: e4"],
+            usage_records=[
+                {
+                    "prompt_tokens": 9,
+                    "completion_tokens": 3,
+                    "total_tokens": 12,
+                    "cost": 0.05,
+                }
+            ],
+        )
+
+        llm_player = LLMPlayer(
+            connector=connector,
+            handler=handler,
+            color="white",
+            name="ResetTester",
+        )
+
+        board = chess.Board()
+        llm_player(board)
+        assert llm_player.last_move_attempts == 1
+        assert llm_player.last_move_decision is not None
+        assert llm_player.get_usage_totals().prompt_tokens == 9
+
+        llm_player.reset_usage()
+
+        totals = llm_player.get_usage_totals()
+        assert totals.prompt_tokens == 0
+        assert totals.completion_tokens == 0
+        assert totals.total_tokens == 0
+        assert totals.cost == pytest.approx(0.0)
+        assert llm_player.last_move_attempts == 0
+        assert llm_player.last_move_decision is None
+
+    def test_get_most_voted_handles_empty_response_list(self, handler):
+        """Ensure empty response batches trigger retry without crashing."""
+        connector = MockLLMConnector(responses=[])
+        connector.query = Mock(return_value=[])
+
+        llm_player = LLMPlayer(
+            connector=connector,
+            handler=handler,
+            color="white",
+            name="EmptyResponseTester",
+        )
+
+        decision = llm_player._get_most_voted_player_decision_from_llm("prompt")
+        assert decision.attempted_move == "???"
+        assert decision.response is None
+
 
 class TestLLMPlayerRetryLogic:
     """Retry and recovery behavior when LLM responses initially fail."""

@@ -208,6 +208,7 @@ class Game:
             Illegal moves cause the offending player to forfeit.
             Other exceptions are logged and re-raised.
         """
+        self._reset_llm_usage_counters()
         try:
             num_moves = 0
             while not self.finished:
@@ -272,6 +273,7 @@ class Game:
                 else:
                     logger.info("Game ended in a draw")
         finally:
+            self._log_llm_usage_summary()
             if self.metrics_tracker is not None:
                 self._log_metrics_summary()
             # Clean up Stockfish subprocess and LLM connections
@@ -358,6 +360,50 @@ class Game:
             if count:
                 parts.append(f"{quality.value}:{count}")
         return ", ".join(parts) if parts else "none"
+
+    def _log_llm_usage_summary(self) -> None:
+        """Log cumulative LiteLLM usage for each player if available."""
+
+        players = (self.white_player, self.black_player)
+
+        for player in players:
+            get_usage = getattr(player, "get_usage_totals", None)
+            if not callable(get_usage):
+                continue
+
+            try:
+                usage = get_usage()
+            except Exception as exc:  # pragma: no cover - guard optional hook
+                logger.debug("Failed to retrieve usage totals for {}: {}", player, exc)
+                continue
+
+            if usage is None:
+                continue
+
+            logger.info(
+                "LLM player {} total usage: prompt_tokens={}, completion_tokens={}, "
+                "total_tokens={}, cost=${:.6f}",
+                player,
+                usage.prompt_tokens,
+                usage.completion_tokens,
+                usage.total_tokens,
+                usage.cost,
+            )
+
+    def _reset_llm_usage_counters(self) -> None:
+        """Reset usage counters on players that support it before a game."""
+
+        players = (self.white_player, self.black_player)
+
+        for player in players:
+            reset_usage = getattr(player, "reset_usage", None)
+            if not callable(reset_usage):
+                continue
+
+            try:
+                reset_usage()
+            except Exception as exc:  # pragma: no cover - defensive hook
+                logger.debug("Failed to reset usage for {}: {}", player, exc)
 
     def __enter__(self) -> Game:
         """Context manager entry.
