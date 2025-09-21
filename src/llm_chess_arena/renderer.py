@@ -2,34 +2,36 @@
 
 from __future__ import annotations
 
-from typing import Iterable, Sequence
+from typing import Any, Iterable, Literal, Sequence
 
 import os
 
 import chess
 from rich.align import Align
-from rich.console import Console
+from rich.console import Console, RenderableType
 from rich.panel import Panel
+from rich.style import Style
 from rich.table import Table
 from rich.text import Text
 
 from llm_chess_arena.metrics import MOVE_QUALITY_ORDER, MetricsSummary, MoveQuality
+from llm_chess_arena.utils import GameOutcomeSummary
 
 console = Console()
 
 LIGHT_SQUARE_COLOR = "#d2b48c"
 DARK_SQUARE_COLOR = "#b58863"
-HIGHLIGHT_COLOR = "#6aaa64"
-LAST_MOVE_FROM_COLOR = "#f59e0b"
-LAST_MOVE_TO_COLOR = "#ef4444"
+HIGHLIGHT_COLOR = "#166534"
+LAST_MOVE_FROM_COLOR = "#b45309"
+LAST_MOVE_TO_COLOR = "#b91c1c"
 
-WHITE_PLAYER_STYLE = "bold white"
+WHITE_PLAYER_STYLE = "bold grey93"
 BLACK_PLAYER_STYLE = "bold grey50"
 WHITE_MOVE_ENTRY_STYLE = WHITE_PLAYER_STYLE
 BLACK_MOVE_ENTRY_STYLE = BLACK_PLAYER_STYLE
 ACCENT_TEXT_STYLE = "cyan"
 DIM_TEXT_STYLE = "dim"
-MISSING_MOVE_ENTRY_STYLE = "grey58"
+MISSING_MOVE_ENTRY_STYLE = "grey70"
 WIN_TEXT_STYLE = "bold green"
 DRAW_TEXT_STYLE = "bold cyan"
 CHECK_TEXT_STYLE = "bold red"
@@ -37,7 +39,7 @@ TURN_TEXT_STYLE = "cyan"
 HEADER_SEPARATOR_STYLE = "cyan"
 PIECE_WHITE_STYLE = "bold white"
 PIECE_BLACK_STYLE = "bold black"
-DEFAULT_QUALITY_TEXT_STYLE = "white"
+DEFAULT_QUALITY_TEXT_STYLE = "default"
 
 QUALITY_SUFFIXES: dict[MoveQuality, str] = {
     MoveQuality.BLUNDER: "??",
@@ -49,12 +51,13 @@ QUALITY_SUFFIXES: dict[MoveQuality, str] = {
 }
 
 QUALITY_COLORS: dict[MoveQuality, str] = {
-    MoveQuality.BLUNDER: "bold red",
-    MoveQuality.MISTAKE: "dark_orange3",
-    MoveQuality.INACCURACY: "gold1",
-    MoveQuality.GOOD: "deepskyblue1",
-    MoveQuality.EXCELLENT: "spring_green1",
-    MoveQuality.BEST: "chartreuse3",
+    # Cool-leaning best moves through warm blunders for a readable gradient across terminal themes.
+    MoveQuality.BLUNDER: "bold #dc2626",
+    MoveQuality.MISTAKE: "bold #f97316",
+    MoveQuality.INACCURACY: "bold #facc15",
+    MoveQuality.GOOD: "bold #65a30d",
+    MoveQuality.EXCELLENT: "bold #22c55e",
+    MoveQuality.BEST: "bold #0ea5e9",
 }
 
 PIECE_THEMES: dict[str, dict[str, str]] = {
@@ -406,54 +409,158 @@ def display_game_summary(
     black_player: str | None,
     white_summary: "MetricsSummary | None",
     black_summary: "MetricsSummary | None",
-    game_result: str | None = None,
-) -> None:
-    """Display post-game metrics summary with Rich panels for each player.
+    outcome_summary: GameOutcomeSummary | None = None,
+) -> bool:
+    """Display post-game outcome details and per-player metrics.
 
-    Args:
-        white_player: Name of the white player.
-        black_player: Name of the black player.
-        white_summary: Performance metrics for the white player.
-        black_summary: Performance metrics for the black player.
-        game_result: Final game result string (unused, kept for compatibility).
+    Returns:
+        bool: True if any Rich content was rendered, False otherwise.
     """
 
-    if white_summary is None and black_summary is None:
-        return
+    metrics_renderable = _build_metrics_layout(
+        white_player=white_player,
+        black_player=black_player,
+        white_summary=white_summary,
+        black_summary=black_summary,
+    )
 
-    # Create panels for each player
+    components: list[RenderableType] = []
+    if outcome_summary is not None:
+        components.append(_build_outcome_panel(outcome_summary))
+    if metrics_renderable is not None:
+        components.append(metrics_renderable)
+
+    if not components:
+        return False
+
+    target_width = max(_measure_renderable_width(component) for component in components)
+    target_width = max(target_width, 1)
+
+    column = Table.grid(expand=False, padding=(0, 0))
+    column.add_column(no_wrap=True, width=target_width)
+
+    if outcome_summary is not None:
+        column.add_row(_build_outcome_panel(outcome_summary, width=target_width))
+
+    if metrics_renderable is not None:
+        column.add_row(Align.left(metrics_renderable, width=target_width))
+
+    console.print()
+    console.print(Align.center(column))
+    console.print()
+    return True
+
+
+def _measure_renderable_width(renderable: RenderableType) -> int:
+    """Compute the printable width of a Rich renderable."""
+
+    lines = console.render_lines(renderable, options=console.options, pad=False)
+    width = 0
+    for line in lines:
+        cell_len = sum(segment.cell_length for segment in line)
+        width = max(width, cell_len)
+    return width
+
+
+def _build_outcome_panel(
+    summary: GameOutcomeSummary, width: int | None = None
+) -> Panel:
+    """Create a compact outcome panel summarizing the game result."""
+
+    horizontal_padding = 2
+    border_space = 2
+    inner_width = (
+        None
+        if width is None
+        else max(width - (horizontal_padding * 2) - border_space, 0)
+    )
+
+    def _format_line(
+        text: str,
+        *,
+        style: str | Style | None = None,
+        justify: Literal["default", "left", "center", "right", "full"] | None = None,
+    ) -> Text:
+        if inner_width is not None and inner_width > 0:
+            text = text.center(inner_width)
+        text_kwargs: dict[str, Any] = {}
+        if style is not None:
+            text_kwargs["style"] = style
+        if justify is not None:
+            text_kwargs["justify"] = justify
+        return Text(text, **text_kwargs)
+
+    content = []
+
+    outcome_style = "bold"
+    content.append(
+        _format_line(summary.outcome_line, style=outcome_style, justify="center")
+    )
+    content.append(_format_line(summary.termination_line, justify="center"))
+
+    if summary.winner_line:
+        content.append(
+            _format_line(
+                summary.winner_line,
+                style=WIN_TEXT_STYLE,
+                justify="center",
+            )
+        )
+
+    content.append(_format_line(summary.total_moves_line, justify="center"))
+
+    text_block = Text()
+    for index, line in enumerate(content):
+        if index > 0:
+            text_block.append("\n")
+        text_block.append_text(line)
+
+    return Panel.fit(text_block, title="Game Outcome", padding=(1, 2), width=width)
+
+
+def _build_metrics_layout(
+    *,
+    white_player: str | None,
+    black_player: str | None,
+    white_summary: "MetricsSummary | None",
+    black_summary: "MetricsSummary | None",
+) -> RenderableType | None:
+    """Assemble side-by-side player metrics panels when data is available."""
+
+    if white_summary is None and black_summary is None:
+        return None
+
     panels: list[Panel] = []
 
     if white_summary is not None and white_summary.moves_evaluated > 0:
-        white_panel = _build_metrics_panel(
-            player_name=white_player or "White", summary=white_summary, is_white=True
+        panels.append(
+            _build_metrics_panel(
+                player_name=white_player or "White",
+                summary=white_summary,
+                is_white=True,
+            )
         )
-        panels.append(white_panel)
 
     if black_summary is not None and black_summary.moves_evaluated > 0:
-        black_panel = _build_metrics_panel(
-            player_name=black_player or "Black", summary=black_summary, is_white=False
+        panels.append(
+            _build_metrics_panel(
+                player_name=black_player or "Black",
+                summary=black_summary,
+                is_white=False,
+            )
         )
-        panels.append(black_panel)
 
     if not panels:
-        return
+        return None
 
-    # Display panels side by side if both players have metrics
-    layout: Panel | Table
+    if len(panels) == 1:
+        return panels[0]
 
-    if len(panels) == 2:
-        grid = Table.grid(expand=False, padding=(0, 3))
-        grid.add_column()
-        grid.add_column()
-        grid.add_row(panels[0], panels[1])
-        layout = grid
-    else:
-        layout = panels[0]
-
-    console.print()
-    console.print(Align.center(layout))
-    console.print()
+    grid = Table.grid(expand=False, padding=(0, 3))
+    grid.add_column()
+    grid.add_column()
+    grid.add_row(panels[0], panels[1])
+    return grid
 
 
 def _build_metrics_panel(

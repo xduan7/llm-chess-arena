@@ -1,8 +1,12 @@
 """Utility helpers for chess move serialization, validation, and system utilities."""
 
+from __future__ import annotations
+
 import os
 import shutil
+from dataclasses import dataclass
 from pathlib import Path
+from typing import Final
 
 import chess
 from loguru import logger
@@ -158,4 +162,88 @@ def find_stockfish_binary(explicit_path: str | None = None) -> str:
         "     macOS: brew install stockfish\n"
         "     Ubuntu/Debian: apt-get install stockfish\n"
         "     Windows: Download from https://stockfishchess.org/download/"
+    )
+
+
+TERMINATION_LABELS: Final[dict[chess.Termination, str]] = {
+    chess.Termination.CHECKMATE: "Checkmate",
+    chess.Termination.STALEMATE: "Stalemate",
+    chess.Termination.INSUFFICIENT_MATERIAL: "Insufficient material",
+    chess.Termination.SEVENTYFIVE_MOVES: "75-move rule",
+    chess.Termination.FIVEFOLD_REPETITION: "Fivefold repetition",
+    chess.Termination.THREEFOLD_REPETITION: "Threefold repetition",
+    chess.Termination.FIFTY_MOVES: "50-move rule",
+    chess.Termination.VARIANT_WIN: "Variant-specific win",
+    chess.Termination.VARIANT_LOSS: "Variant-specific loss",
+    chess.Termination.VARIANT_DRAW: "Variant-specific draw",
+}
+
+
+@dataclass(slots=True)
+class GameOutcomeSummary:
+    """Structured outcome data for post-game displays and logging."""
+
+    outcome_line: str
+    termination_line: str
+    total_moves_line: str
+    winner_line: str | None
+    winner_name: str | None
+    winner_color: chess.Color | None
+
+
+def humanize_termination(termination: chess.Termination | None) -> str:
+    """Convert a python-chess termination enum to a readable label."""
+
+    if termination is None:
+        return "Game in progress"
+
+    return TERMINATION_LABELS.get(
+        termination, termination.name.replace("_", " ").title()
+    )
+
+
+def build_game_outcome_summary(
+    outcome: chess.Outcome | None,
+    white_player_name: str,
+    black_player_name: str,
+    total_moves: int,
+) -> GameOutcomeSummary:
+    """Create human-friendly summary strings for a finished game."""
+
+    if outcome is None:
+        return GameOutcomeSummary(
+            outcome_line="Outcome: Game did not finish",
+            termination_line="Termination: Unknown",
+            total_moves_line=f"Total moves: {total_moves}",
+            winner_line=None,
+            winner_name=None,
+            winner_color=None,
+        )
+
+    winner_color = outcome.winner
+    termination_label = humanize_termination(outcome.termination)
+    termination_line = f"Termination: {termination_label}"
+
+    is_draw = winner_color is None
+    if is_draw:
+        outcome_line = "Outcome: Draw"
+        winner_name: str | None = None
+        winner_line = None
+    else:
+        winner_name = (
+            white_player_name if winner_color == chess.WHITE else black_player_name
+        )
+        color_label = "White" if winner_color == chess.WHITE else "Black"
+        outcome_line = f"Outcome: {winner_name} ({color_label}) wins"
+        winner_line = None
+
+    total_moves_line = f"Total moves: {total_moves}"
+
+    return GameOutcomeSummary(
+        outcome_line=outcome_line,
+        termination_line=termination_line,
+        total_moves_line=total_moves_line,
+        winner_line=winner_line,
+        winner_name=winner_name,
+        winner_color=winner_color,
     )

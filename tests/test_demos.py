@@ -26,7 +26,7 @@ def test_demo__should_complete_successfully__when_running_random_game():
         f"STDERR:\n{result.stderr}"
     )
 
-    assert "Result:" in result.stdout
+    assert "Outcome:" in result.stdout
     assert "Termination:" in result.stdout
     assert "Total moves:" in result.stdout
 
@@ -50,4 +50,4 @@ def test_demo__should_complete_successfully__when_running_stockfish_game():
         f"STDERR:\n{result.stderr}"
     )
 
-    assert "Result:" in result.stdout or "Winner:" in result.stdout
+    assert "Outcome:" in result.stdout

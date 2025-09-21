@@ -26,6 +26,7 @@ from llm_chess_arena.player.llm import (
 from llm_chess_arena.player.random_player import RandomPlayer
 from llm_chess_arena.player.stockfish_player import StockfishPlayer
 from llm_chess_arena.types import Color
+from llm_chess_arena.utils import build_game_outcome_summary
 
 # Track whether environment has been loaded
 _ENV_LOADED = False
@@ -436,22 +437,29 @@ def format_game_summary(game: Game) -> list[str]:
         list[str]: Ordered summary lines describing the outcome.
     """
 
-    if not game.finished or game.outcome is None:
+    if not game.finished:
         return ["Game did not finish."]
 
-    result_lines = [
-        f"Result: {game.outcome.result()}",
-        f"Termination: {game.outcome.termination.name}",
+    if getattr(game, "_rendered_metrics_summary", False):
+        return []
+
+    outcome_summary = build_game_outcome_summary(
+        outcome=game.outcome,
+        white_player_name=str(game.white_player),
+        black_player_name=str(game.black_player),
+        total_moves=len(game.board.move_stack),
+    )
+
+    lines = [
+        outcome_summary.outcome_line,
+        outcome_summary.termination_line,
+        outcome_summary.total_moves_line,
     ]
 
-    winner = game.winner
-    if winner is not None:
-        result_lines.append(f"Winner: {winner.name}")
-    else:
-        result_lines.append("Winner: Draw")
+    if outcome_summary.winner_line:
+        lines.insert(2, outcome_summary.winner_line)
 
-    result_lines.append(f"Total moves: {len(game.board.move_stack)}")
-    return result_lines
+    return lines
 
 
 def _build_player(config: PlayerConfig) -> BasePlayer:

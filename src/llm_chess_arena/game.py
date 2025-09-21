@@ -16,7 +16,10 @@ from llm_chess_arena.player.base_player import BasePlayer
 from llm_chess_arena.renderer import display_board_with_context, display_game_summary
 from llm_chess_arena.types import PlayerDecision
 from llm_chess_arena.metrics import MOVE_QUALITY_ORDER, MetricsTracker, MoveQuality
-from llm_chess_arena.utils import parse_attempted_move_to_uci
+from llm_chess_arena.utils import (
+    build_game_outcome_summary,
+    parse_attempted_move_to_uci,
+)
 
 
 class Game:
@@ -57,6 +60,7 @@ class Game:
             else (MetricsTracker.from_stockfish() if enable_metrics else None)
         )
         self._move_qualities: list[MoveQuality | None] = []
+        self._rendered_metrics_summary = False
 
         metrics_enabled = bool(
             self.metrics_tracker is not None and self.metrics_tracker.enabled
@@ -303,27 +307,21 @@ class Game:
         white_summary = summaries.get("white")
         black_summary = summaries.get("black")
 
-        # Get game result for display
-        game_result = None
-        if self.board.is_game_over():
-            outcome = self.board.outcome()
-            if outcome:
-                if outcome.winner == chess.WHITE:
-                    game_result = f"{self.white_player} WINS!"
-                elif outcome.winner == chess.BLACK:
-                    game_result = f"{self.black_player} WINS!"
-                else:
-                    game_result = "DRAW"
-            else:
-                game_result = "Game Over"
+        outcome_summary = build_game_outcome_summary(
+            outcome=self.outcome,
+            white_player_name=str(self.white_player),
+            black_player_name=str(self.black_player),
+            total_moves=len(self.board.move_stack),
+        )
 
-        display_game_summary(
+        rendered = display_game_summary(
             white_player=str(self.white_player),
             black_player=str(self.black_player),
             white_summary=white_summary,
             black_summary=black_summary,
-            game_result=game_result,
+            outcome_summary=outcome_summary,
         )
+        self._rendered_metrics_summary = rendered
 
         # Still log for debugging/records
         for color, summary in summaries.items():
