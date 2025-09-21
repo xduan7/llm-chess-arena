@@ -1,0 +1,7 @@
+kind: stockfish
+name: Stockfish 1400
+binary_path: null
+engine_limits: null
+engine_options:
+  UCI_LimitStrength: true
+  UCI_Elo: 1400

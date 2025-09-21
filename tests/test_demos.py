@@ -1,7 +1,6 @@
 """Smoke tests covering the demo entry points."""
 
 import subprocess
-import sys
 from pathlib import Path
 
 import pytest
@@ -12,10 +11,10 @@ DEMO_DIR = Path(__file__).parent.parent / "demo"
 @pytest.mark.smoke
 def test_demo__should_complete_successfully__when_running_random_game():
     """Smoke test for the random-vs-random demo script."""
-    script_path = DEMO_DIR / "run_game.py"
+    script_path = DEMO_DIR / "run_random_game.sh"
 
     result = subprocess.run(
-        [sys.executable, str(script_path)],
+        ["bash", str(script_path)],
         capture_output=True,
         text=True,
         timeout=10,
@@ -36,10 +35,10 @@ def test_demo__should_complete_successfully__when_running_random_game():
 @pytest.mark.requires_stockfish
 def test_demo__should_complete_successfully__when_running_stockfish_game():
     """Smoke test for the Stockfish demo script."""
-    script_path = DEMO_DIR / "run_stockfish_game.py"
+    script_path = DEMO_DIR / "run_stockfish_game.sh"
 
     result = subprocess.run(
-        [sys.executable, str(script_path)],
+        ["bash", str(script_path)],
         capture_output=True,
         text=True,
         timeout=30,

@@ -113,7 +113,7 @@ class LLMPlayer(BasePlayer):
                 # These three exceptions indicate issues with the move (must
                 # contain a move and the action must be 'move')
                 retry_status = (
-                    "Will retry with context"
+                    "Retrying with prior response and invalid move context"
                     if attempt < max_attempts - 1
                     else "No retries left"
                 )

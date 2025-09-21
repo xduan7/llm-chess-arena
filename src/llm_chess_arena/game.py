@@ -13,7 +13,7 @@ from llm_chess_arena.exceptions import (
     InvalidMoveError,
 )
 from llm_chess_arena.player.base_player import BasePlayer
-from llm_chess_arena.renderer import display_board_with_context
+from llm_chess_arena.renderer import display_board_with_context, display_game_summary
 from llm_chess_arena.types import PlayerDecision
 from llm_chess_arena.metrics import MOVE_QUALITY_ORDER, MetricsTracker, MoveQuality
 from llm_chess_arena.utils import parse_attempted_move_to_uci
@@ -298,8 +298,6 @@ class Game:
         """Display aggregated metrics for each player after the game."""
         if self.metrics_tracker is None:
             return
-
-        from llm_chess_arena.renderer import display_game_summary
 
         summaries = self.metrics_tracker.summarize()
         white_summary = summaries.get("white")

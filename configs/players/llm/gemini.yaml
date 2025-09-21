@@ -1,0 +1,12 @@
+kind: llm
+name: Gemini 1.5 Pro
+max_move_retries: 3
+num_votes: 1
+connector:
+  model: gemini-1.5-pro
+  temperature: 0.4
+  max_tokens: 1500
+  timeout: 60.0
+  max_retries: 3
+handler:
+  kind: game_arena

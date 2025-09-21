@@ -106,21 +106,36 @@ src/
             ├── llm_connector.py    # LiteLLM wrapper for testing isolation
             └── llm_move_handler.py # Move parsing and templating
 
-configs/              # Empty - Hydra configs to be implemented
+configs/
 ├── config.yaml
-├── player/
+├── env/
+│   └── default.yaml
+├── game/
+│   └── classical.yaml
+├── metrics/
+│   └── default.yaml
+├── players/
 │   ├── random.yaml
 │   ├── stockfish.yaml
-│   ├── gpt4.yaml
-│   └── claude.yaml
-└── game/
-    ├── classical.yaml
-    └── blitz.yaml
+│   ├── stockfish/
+│   │   ├── elo_2800.yaml
+│   │   ├── elo_2400.yaml
+│   │   ├── elo_2000.yaml
+│   │   ├── elo_1800.yaml
+│   │   ├── elo_1600.yaml
+│   │   ├── elo_1400.yaml
+│   │   └── elo_1200.yaml
+│   └── llm/
+│       ├── gpt4.yaml
+│       ├── claude.yaml
+│       └── gemini.yaml
+└── hydra/
+    └── default.yaml
 
 demo/
-├── run_game.py
-├── run_stockfish_game.py
-└── run_llm_game.py
+├── run_random_game.sh
+├── run_stockfish_game.sh
+└── run_llm_game.sh
 
 tests/
 ├── __init__.py
@@ -221,6 +236,12 @@ LICENSE
    - **Graceful degradation**: Functions without Stockfish for development environments
    - **Future extensibility**: Designed for additional LLM-specific metrics (legal move rate, retry count, prompt efficiency)
 
+11. **Hydra Configuration System**:
+    - **Structured schema**: Dataclass-backed config parsing in `config.py` with runtime helpers colocated in `config.py` to instantiate players and metrics safely.
+    - **Composable YAML groups**: Presets in `configs/` for game modes, players (including LLM connectors and Stockfish ELO tiers (1320/1600/2000/2400/2800) (1320/1600/2000/2400/2800)), metrics defaults (with configurable thresholds), and Hydra runtime settings.
+    - **Unified execution**: Hydra CLI runner (`python -m llm_chess_arena.cli.play`) and demo wrappers share the same configuration pipeline with override support.
+    - **Sweep readiness**: Supports Hydra multirun parameter sweeps and reproducible output directories.
+
 ---
 
 ## TODO List
@@ -254,7 +275,7 @@ LICENSE
 
 ### Core Research Experiments
 
-- [ ] **Add Hydra configuration system**
+- [x] **Add Hydra configuration system**
   - Why: Enable massive batch experimentation and parameter sweeps essential for research
   - How: Replace current config.py, create yaml configs for players/games, CLI integration
   - Scope: Transform from single-game tool to research platform
@@ -351,13 +372,4 @@ LICENSE
 - Head-to-head comparisons
 - Rating progression graphs
 </details>
-
-
-
-
-
-
-
-
-
 

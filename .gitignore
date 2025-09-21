@@ -275,8 +275,10 @@ celerybeat.pid
 .env.*.local
 .venv
 env/
-venv/
 ENV/
+!configs/env/
+!configs/env/**
+venv/
 env.bak/
 venv.bak/
 
@@ -325,3 +327,7 @@ pyrightconfig.json
 
 # Claude Code settings
 .claude/
+
+# Results folder
+results/
+outputs/

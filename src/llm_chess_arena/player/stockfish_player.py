@@ -80,17 +80,7 @@ class StockfishPlayer(BasePlayer):
             ) from e
 
     def _make_decision(self, context: PlayerDecisionContext) -> PlayerDecision:
-        """Query Stockfish for the strongest move and wrap the response.
-
-        Args:
-            context: Decision context describing the current board state.
-
-        Returns:
-            PlayerDecision: Move decision emitted by Stockfish.
-
-        Raises:
-            RuntimeError: If Stockfish fails to return a move.
-        """
+        """Query Stockfish for the strongest move and wrap the response."""
         if self.engine is None:
             self._start_engine()
 

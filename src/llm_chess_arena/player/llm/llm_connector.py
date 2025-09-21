@@ -13,8 +13,11 @@ from litellm import exceptions as litellm_exceptions
 # models (OpenAI, Anthropic, Gemini) rather than erroring. Research code needs flexibility.
 litellm.drop_params = True
 # Disable verbose logging across litellm versions (set_verbose availability varies)
-if hasattr(litellm, "set_verbose"):
-    setattr(litellm, "set_verbose", False)
+set_verbose = getattr(litellm, "set_verbose", None)
+if callable(set_verbose):
+    set_verbose(False)
+else:
+    setattr(litellm, "verbose", False)
 
 
 class LLMConnector:

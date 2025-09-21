@@ -22,6 +22,19 @@ CP_LOSS_THRESHOLD_INACCURACY = 200
 CP_LOSS_THRESHOLD_MISTAKE = 300
 
 
+@dataclass(frozen=True)
+class MoveQualityThresholds:
+    """Centipawn thresholds that define move quality buckets."""
+
+    excellent: float = CP_LOSS_THRESHOLD_EXCELLENT
+    good: float = CP_LOSS_THRESHOLD_GOOD
+    inaccuracy: float = CP_LOSS_THRESHOLD_INACCURACY
+    mistake: float = CP_LOSS_THRESHOLD_MISTAKE
+
+
+DEFAULT_MOVE_QUALITY_THRESHOLDS = MoveQualityThresholds()
+
+
 class MoveQuality(Enum):
     """Discrete categorization of move quality based on engine evaluation."""
 
@@ -49,6 +62,7 @@ def classify_move_quality(
     centipawn_loss: float,
     best_move_is_mate: bool,
     played_move_is_mate: bool,
+    thresholds: MoveQualityThresholds = DEFAULT_MOVE_QUALITY_THRESHOLDS,
 ) -> MoveQuality:
     """Categorize move quality based on engine evaluation results.
 
@@ -68,13 +82,13 @@ def classify_move_quality(
         return MoveQuality.BEST
 
     loss = centipawn_loss
-    if loss < CP_LOSS_THRESHOLD_EXCELLENT:
+    if loss < thresholds.excellent:
         return MoveQuality.EXCELLENT
-    if loss < CP_LOSS_THRESHOLD_GOOD:
+    if loss < thresholds.good:
         return MoveQuality.GOOD
-    if loss < CP_LOSS_THRESHOLD_INACCURACY:
+    if loss < thresholds.inaccuracy:
         return MoveQuality.INACCURACY
-    if loss < CP_LOSS_THRESHOLD_MISTAKE:
+    if loss < thresholds.mistake:
         return MoveQuality.MISTAKE
     return MoveQuality.BLUNDER
 
@@ -132,6 +146,7 @@ class StockfishMetricsEvaluator:
         depth: int = 10,
         binary_path: str | None = None,
         engine_options: Mapping[str, Any] | None = None,
+        thresholds: MoveQualityThresholds | None = None,
     ) -> None:
         """Initialize the Stockfish-backed evaluator.
 
@@ -139,12 +154,14 @@ class StockfishMetricsEvaluator:
             depth: Search depth for analysis.
             binary_path: Optional explicit Stockfish binary path.
             engine_options: Optional UCI engine options.
+            thresholds: Optional thresholds used when classifying move quality.
         """
         self.depth = depth
         self.binary_path = find_stockfish_binary(binary_path)
         self.engine_options = dict(engine_options or {})
         self._engine: chess.engine.SimpleEngine | None = None
         self._wdl_model: chess.engine.WdlModel = "sf"
+        self._thresholds = thresholds or DEFAULT_MOVE_QUALITY_THRESHOLDS
 
     def evaluate_move(self, board: chess.Board, move: chess.Move) -> MoveMetrics:
         """Evaluate ``move`` and compare it with the engine-recommended alternative.
@@ -199,6 +216,7 @@ class StockfishMetricsEvaluator:
                 centipawn_loss=centipawn_loss,
                 best_move_is_mate=best_metrics.is_mate,
                 played_move_is_mate=actual_metrics.is_mate,
+                thresholds=self._thresholds,
             ),
             best_move_centipawns=best_metrics.centipawns,
             actual_centipawns=actual_metrics.centipawns,
@@ -299,6 +317,7 @@ class MetricsTracker:
         depth: int = 10,
         binary_path: str | None = None,
         engine_options: Mapping[str, Any] | None = None,
+        thresholds: MoveQualityThresholds | None = None,
     ) -> "MetricsTracker":
         """Construct a tracker backed by a Stockfish-powered evaluator.
 
@@ -306,6 +325,7 @@ class MetricsTracker:
             depth: Search depth used for Stockfish analysis.
             binary_path: Optional explicit path to the Stockfish executable.
             engine_options: Optional UCI options passed to Stockfish.
+            thresholds: Optional override for move quality thresholds.
 
         Returns:
             MetricsTracker: Tracker instance that evaluates moves with Stockfish
@@ -316,6 +336,7 @@ class MetricsTracker:
                 depth=depth,
                 binary_path=binary_path,
                 engine_options=engine_options,
+                thresholds=thresholds,
             )
         except (FileNotFoundError, chess.engine.EngineError, OSError) as exc:
             logger.warning(

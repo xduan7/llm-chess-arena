@@ -19,8 +19,8 @@ interactions:
       content-type:
       - application/json
       cookie:
-      - __cf_bm=Gs0FftQ9g5MswZ7uVmDf_WATxOAyxvAYWJZre4zpETE-1758403275-1.0.1.1-_DyyTh0Sr58Zafep2NrnGZWv8uiUQugycxJ.l590SgfwdRacI2oph7kNDb9w.RhGUm8iF6h7nQZGH_uFNqe7XqMVgnOOul5JIv2XIAFjoH0;
-        _cfuvid=k_0zXsDgYuRcsA1rDV3dBZpisMzHq8ojOa41Kcu7h74-1758403275836-0.0.1.1-604800000
+      - __cf_bm=vf.yJzozuSXlPB56qfM3arva1oD4GznN6vetaotNQsA-1758487096-1.0.1.1-a9gn78fLBdCZGlx7UbAmDXBeg2dI0QyXSCNhalrZQx9Uts14rMQ21OI_2i.bkpVaiaM3xmECbllMstxKNFW9jOQDVgPQEaVYOxc9331u9Ow;
+        _cfuvid=I9LDSBjH1QA.NmwJhz0O_.MURr7I6qHWGKTUpXL52aA-1758487096869-0.0.1.1-604800000
       host:
       - api.openai.com
       user-agent:
@@ -49,29 +49,30 @@ interactions:
     uri: https://api.openai.com/v1/chat/completions
   response:
     body:
-      string: "{\n  \"id\": \"chatcmpl-CHzJsFiMO4VxpTBxRhD6jbOeflnN7\",\n  \"object\":
-        \"chat.completion\",\n  \"created\": 1758403324,\n  \"model\": \"gpt-4o-mini-2024-07-18\",\n
+      string: "{\n  \"id\": \"chatcmpl-CIL7orIbA89KJDlfwI9ppYI0sPnha\",\n  \"object\":
+        \"chat.completion\",\n  \"created\": 1758487144,\n  \"model\": \"gpt-4o-mini-2024-07-18\",\n
         \ \"choices\": [\n    {\n      \"index\": 0,\n      \"message\": {\n        \"role\":
-        \"assistant\",\n        \"content\": \"In the current game state, it is my
-        turn as White, and the board is set up in the initial position. I am tasked
-        with choosing my strongest move. \\n\\nTo determine the best move, I'll consider
-        the general opening principles of chess:\\n1. Control the center of the board.\\n2.
-        Develop pieces efficiently.\\n3. Ensure king safety.\\n\\nIn this position,
-        one of the strongest opening moves for White is to control the center and
-        open lines for development. The two popular moves that accomplish this are:\\n-
-        **e4**: This move occupies the center and opens up lines for the queen and
-        the bishop.\\n- **d4**: This move also controls the center but might be slower
-        in terms of development compared to e4.\\n\\nBoth moves are valid and popular
-        in chess openings. However, **e4** has the added benefit of attacking the
-        f5 square and creating space for rapid piece development.\\n\\nLet's analyze
-        **1. e4** further:\\n- It directly contributes to control of the center (e4
-        and d5 squares).\\n- It facilitates quick development of the kingside knight
-        (Nf3) and the bishop (Bc4).\\n- It allows for easy kingside castling later,
-        which is essential for king safety.\\n\\nTherefore, I will choose to play
-        **1. e4** as my move.\\n\\nFinal Answer: e4\",\n        \"refusal\": null,\n
-        \       \"annotations\": []\n      },\n      \"logprobs\": null,\n      \"finish_reason\":
-        \"stop\"\n    }\n  ],\n  \"usage\": {\n    \"prompt_tokens\": 142,\n    \"completion_tokens\":
-        272,\n    \"total_tokens\": 414,\n    \"prompt_tokens_details\": {\n      \"cached_tokens\":
+        \"assistant\",\n        \"content\": \"The current game state is the initial
+        position in chess. As White, I am looking for a strong first move. In this
+        position, several common and strong opening moves are available. \\n\\n1.
+        **Pawns moves**: \\n   - **e4**: This is one of the strongest opening moves
+        as it controls the center squares (d5 and f5) and allows for quick development
+        of the bishop and queen.\\n   - **d4**: Another strong move that opens up
+        the center and also prepares to activate pieces.\\n   - **c4**: This is known
+        as the English Opening, which is solid and aims for control of the center
+        but does not immediately occupy as much space as e4 or d4.\\n\\n2. **Knight
+        moves**: \\n   - **Nf3**: This develops a knight toward the center, preparing
+        to control e5 and d4 squares. \\n   - **Nc3**: This develops the knight as
+        well but doesn\u2019t control the central squares as effectively as Nf3.\\n\\nConsidering
+        the above options, the move **e4** stands out because it immediately takes
+        control of the center, which is a fundamental principle in chess openings.
+        Controlling the center allows for better piece development and mobility.\\n\\nAfter
+        considering potential responses from Black and evaluating that e4 is an active
+        and aggressive first move, I will go ahead and play it.\\n\\nFinal Answer:
+        e4\",\n        \"refusal\": null,\n        \"annotations\": []\n      },\n
+        \     \"logprobs\": null,\n      \"finish_reason\": \"stop\"\n    }\n  ],\n
+        \ \"usage\": {\n    \"prompt_tokens\": 142,\n    \"completion_tokens\": 284,\n
+        \   \"total_tokens\": 426,\n    \"prompt_tokens_details\": {\n      \"cached_tokens\":
         0,\n      \"audio_tokens\": 0\n    },\n    \"completion_tokens_details\":
         {\n      \"reasoning_tokens\": 0,\n      \"audio_tokens\": 0,\n      \"accepted_prediction_tokens\":
         0,\n      \"rejected_prediction_tokens\": 0\n    }\n  },\n  \"service_tier\":
@@ -96,17 +97,17 @@ interactions:
       cf-cache-status:
       - DYNAMIC
       content-length:
-      - '2026'
+      - '2069'
       openai-organization:
       - user-aot8rlpgpoltgmjq3rrcwvq3
       openai-processing-ms:
-      - '5365'
+      - '5491'
       openai-project:
       - proj_mPL62zuq4MRiWekadSO6KuLd
       openai-version:
       - '2020-10-01'
       x-envoy-upstream-service-time:
-      - '5390'
+      - '5504'
       x-openai-proxy-wasm:
       - v0.1
       x-ratelimit-limit-requests:

@@ -1,0 +1,8 @@
+run:
+  dir: ${oc.env:HYDRA_RUN_DIR,${hydra:runtime.cwd}}
+sweep:
+  dir: ${oc.env:HYDRA_SWEEP_DIR,${hydra:runtime.cwd}}
+  subdir: ""
+output_subdir: null
+job:
+  chdir: false

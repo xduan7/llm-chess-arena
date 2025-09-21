@@ -1,7 +1,10 @@
 """Unit tests for configuration module."""
 
 import os
+
 from unittest.mock import patch
+
+from omegaconf import OmegaConf
 
 from llm_chess_arena import config
 
@@ -198,6 +201,109 @@ GOOGLE_API_KEY=goog-test789
         assert os.environ.get("ANTHROPIC_API_KEY") == "ant-test456"
         assert os.environ.get("GOOGLE_API_KEY") == "goog-test789"
 
+
+class TestHydraConfig:
+    """Tests validating Hydra-backed configuration helpers."""
+
+    def test_load_app_config__when_defaults_requested__then_returns_expected_players(
+        self,
+    ):
+        cfg = config.load_app_config()
+
+        assert cfg.game.display_board is True
+        assert cfg.players.white.kind == "random"
+        assert cfg.players.black.kind == "random"
+        assert cfg.metrics.stockfish_depth == 10
+        assert cfg.metrics.quality_thresholds.excellent == 50.0
+
+    def test_load_app_config__when_overrides_supplied__then_applies_changes(self):
+        overrides = [
+            "players@players.white=stockfish",
+            "+players.white.engine_limits.depth=16",
+            "players@players.black=llm/gpt4",
+            "metrics.stockfish_depth=18",
+            "metrics.quality_thresholds.mistake=250",
+        ]
+        cfg = config.load_app_config(overrides=overrides)
+
+        assert cfg.players.white.kind == "stockfish"
+        assert cfg.players.white.engine_limits["depth"] == 16
+        assert cfg.players.black.kind == "llm"
+        assert cfg.players.black.connector.model == "gpt-4"
+        assert cfg.metrics.stockfish_depth == 18
+        assert cfg.metrics.quality_thresholds.mistake == 250
+
+    def test_load_app_config__when_using_stockfish_elo_profile__then_sets_engine_options(
+        self,
+    ):
+        overrides = [
+            "players@players.white=stockfish/elo_1320",
+            "players@players.black=stockfish/elo_2800",
+        ]
+        cfg = config.load_app_config(overrides=overrides)
+
+        assert cfg.players.white.engine_options == {
+            "UCI_LimitStrength": True,
+            "UCI_Elo": 1320,
+        }
+        assert cfg.players.black.engine_options == {
+            "UCI_LimitStrength": True,
+            "UCI_Elo": 2800,
+        }
+
+    def test_app_config_from_dictconfig__when_given_raw_dict__then_returns_dataclasses(
+        self,
+    ):
+        dict_cfg = OmegaConf.create(
+            {
+                "env": {
+                    "load_dotenv": False,
+                    "log_level": "DEBUG",
+                },
+                "game": {
+                    "display_board": True,
+                    "enable_metrics": False,
+                    "max_num_moves": 10,
+                },
+                "metrics": {
+                    "stockfish_depth": 12,
+                    "stockfish_binary_path": "/tmp/stockfish",
+                    "stockfish_engine_options": {"Threads": 4},
+                    "quality_thresholds": {
+                        "excellent": 45,
+                        "good": 90,
+                        "inaccuracy": 180,
+                        "mistake": 260,
+                    },
+                },
+                "players": {
+                    "white": {
+                        "kind": "random",
+                        "color": "white",
+                        "name": "White",
+                        "seed": 1,
+                    },
+                    "black": {
+                        "kind": "random",
+                        "color": "black",
+                        "name": "Black",
+                        "seed": 2,
+                    },
+                },
+            }
+        )
+
+        app_cfg = config.app_config_from_dictconfig(dict_cfg)
+
+        assert app_cfg.env.log_level == "DEBUG"
+        assert app_cfg.game.display_board is True
+        assert app_cfg.metrics.stockfish_depth == 12
+        assert app_cfg.metrics.stockfish_binary_path == "/tmp/stockfish"
+        assert app_cfg.metrics.stockfish_engine_options == {"Threads": 4}
+        assert app_cfg.metrics.quality_thresholds.excellent == 45
+        assert app_cfg.players.white.kind == "random"
+        assert app_cfg.players.black.seed == 2
+
     @patch("llm_chess_arena.config.logger")
     def test_load_env_logs_appropriately(self, mock_logger, tmp_path):
         """Test that load_env logs debug messages appropriately."""
@@ -209,7 +315,9 @@ GOOGLE_API_KEY=goog-test789
 
         # Load existing file
         config.load_env(str(env_file))
-        mock_logger.debug.assert_called_with(f"Loaded environment from: {env_file}")
+        mock_logger.debug.assert_called_with(
+            "Loaded environment from: {}", str(env_file)
+        )
 
         # Reset mock
         mock_logger.reset_mock()
@@ -217,4 +325,6 @@ GOOGLE_API_KEY=goog-test789
 
         # Try loading non-existent file
         config.load_env("nonexistent.env")
-        mock_logger.debug.assert_called_with("No .env file found: nonexistent.env")
+        mock_logger.debug.assert_called_with(
+            "No .env file found: {}", "nonexistent.env"
+        )

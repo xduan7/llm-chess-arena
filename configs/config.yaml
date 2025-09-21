@@ -1,0 +1,10 @@
+defaults:
+  - env: default
+  - game: default
+  - metrics: default
+  - players@players.white: random
+  - players@players.black: random
+  - hydra: default
+  - override hydra/job_logging: disabled
+  - override hydra/hydra_logging: disabled
+  - _self_

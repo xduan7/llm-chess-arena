@@ -1,0 +1,8 @@
+stockfish_depth: 10
+stockfish_binary_path: null
+stockfish_engine_options: {}
+quality_thresholds:
+  excellent: 50
+  good: 100
+  inaccuracy: 200
+  mistake: 300
