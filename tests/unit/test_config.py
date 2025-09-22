@@ -248,7 +248,7 @@ class TestHydraConfig:
         assert cfg.players.white.max_move_retries == 1
         assert cfg.players.white.num_votes == 1
         assert cfg.players.white.connector.model == "gpt-4o-mini"
-        assert cfg.players.white.connector.max_tokens == 256
+        assert cfg.players.white.connector.max_tokens == 1500
         assert cfg.players.white.connector.max_retries == 2
 
     def test_load_app_config__when_using_stockfish_elo_profile__then_sets_engine_options(

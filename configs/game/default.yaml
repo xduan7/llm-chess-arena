@@ -1,3 +1,4 @@
 display_board: true
 enable_metrics: true
 max_num_moves: null
+history_output_path: null

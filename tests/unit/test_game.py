@@ -8,6 +8,7 @@ from llm_chess_arena.game import Game
 from llm_chess_arena.exceptions import IllegalMoveError
 from llm_chess_arena.metrics import MetricsTracker, MoveMetrics, MoveQuality
 from tests.conftest import (
+    FailingPlayer,
     IllegalMovePlayer,
     ScriptedPlayer,
     assert_game_terminated,
@@ -291,3 +292,65 @@ def test_format_move_history_includes_glyphs_and_quality_annotations() -> None:
     assert black_entry.style == renderer.BLACK_MOVE_ENTRY_STYLE
     assert black_entry.plain.startswith("♟ e7e5")
     assert black_entry.plain.endswith("?")
+
+
+class TestGameHistory:
+    """PGN export behavior."""
+
+    def test_play_writes_pgn_to_history_output_path(self, tmp_path) -> None:
+        """Completed games should be persisted to the configured PGN path."""
+        white_player = ScriptedPlayer(
+            "White",
+            "white",
+            ["e4", "Qh5", "Bc4", "Qxf7#"],
+        )
+        black_player = ScriptedPlayer(
+            "Black",
+            "black",
+            ["e5", "Nc6", "Nf6"],
+        )
+        output_path = tmp_path / "game_history.pgn"
+
+        game = Game(
+            white_player,
+            black_player,
+            enable_metrics=False,
+            history_output_path=output_path,
+        )
+
+        game.play()
+
+        assert output_path.exists()
+        pgn_contents = output_path.read_text(encoding="utf-8")
+        assert '[Event "LLM Chess Arena"]' in pgn_contents
+        assert '[Date "' in pgn_contents
+        assert '[White "White (W)"]' in pgn_contents
+        assert '[Black "Black (B)"]' in pgn_contents
+        assert "1. e4" in pgn_contents
+
+    def test_no_history_written_when_game_aborts(self, tmp_path) -> None:
+        """Abortive games should not emit a PGN file."""
+        white_player = FailingPlayer(
+            name="Failing",
+            color="white",
+            fail_after_moves=1,
+            seed=1,
+        )
+        black_player = ScriptedPlayer(
+            "Black",
+            "black",
+            ["e5"],
+        )
+        output_path = tmp_path / "should_not_exist.pgn"
+
+        game = Game(
+            white_player,
+            black_player,
+            enable_metrics=False,
+            history_output_path=output_path,
+        )
+
+        with pytest.raises(RuntimeError):
+            game.play()
+
+        assert not output_path.exists()

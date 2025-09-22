@@ -317,6 +317,11 @@ LICENSE
   - How: CLI interface with Hydra configs, parallel execution, results aggregation
   - Scope: New cli/experiment.py with statistical analysis output
 
+- [x] **Configurable PGN history export**
+  - Why: Persist completed games for downstream analysis and replay
+  - How: Config-driven PGN output path written after successful games
+  - Scope: Game loop integration, Hydra config update, and regression tests
+
 ---
 
 ### Implementation Philosophy
@@ -372,4 +377,3 @@ LICENSE
 - Head-to-head comparisons
 - Rating progression graphs
 </details>
-

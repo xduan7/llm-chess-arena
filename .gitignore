@@ -328,6 +328,6 @@ pyrightconfig.json
 # Claude Code settings
 .claude/
 
-# Results folder
-results/
-outputs/
+# Output files
+output/
+

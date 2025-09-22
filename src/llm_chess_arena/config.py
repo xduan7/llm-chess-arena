@@ -48,6 +48,7 @@ class GameConfig:
     display_board: bool = False
     enable_metrics: bool = True
     max_num_moves: int | None = None
+    history_output_path: str | None = None
 
 
 @dataclass(slots=True)
@@ -416,6 +417,7 @@ def run_game_from_config(app_config: AppConfig) -> Game:
         display_board=app_config.game.display_board,
         enable_metrics=True,
         metrics_tracker=metrics_tracker,
+        history_output_path=app_config.game.history_output_path,
     )
 
     try:

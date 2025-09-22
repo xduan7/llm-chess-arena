@@ -2,9 +2,12 @@
 
 from __future__ import annotations
 
+from datetime import UTC, datetime
+from pathlib import Path
 from typing import Any, Mapping
 
 import chess
+import chess.pgn
 from loguru import logger
 
 from llm_chess_arena.exceptions import (
@@ -32,6 +35,7 @@ class Game:
         display_board: bool = False,
         enable_metrics: bool = True,
         metrics_tracker: MetricsTracker | None = None,
+        history_output_path: str | Path | None = None,
     ) -> None:
         """Initialize a chess game.
 
@@ -41,6 +45,8 @@ class Game:
             display_board: Whether to display the board after each move.
             enable_metrics: Whether to compute move quality metrics.
             metrics_tracker: Optional preconfigured metrics tracker.
+            history_output_path: Optional file path for writing PGN history when
+                the game completes. When ``None``, no history file is written.
 
         Raises:
             ValueError: If players have incorrect colors assigned.
@@ -61,6 +67,11 @@ class Game:
         )
         self._move_qualities: list[MoveQuality | None] = []
         self._rendered_metrics_summary = False
+        self._history_output_path = (
+            Path(history_output_path).expanduser()
+            if history_output_path is not None
+            else None
+        )
 
         metrics_enabled = bool(
             self.metrics_tracker is not None and self.metrics_tracker.enabled
@@ -274,6 +285,7 @@ class Game:
                     logger.info("Game ended in a draw")
         finally:
             self._log_llm_usage_summary()
+            self._save_history_if_configured()
             if self.metrics_tracker is not None:
                 self._log_metrics_summary()
             # Clean up Stockfish subprocess and LLM connections
@@ -404,6 +416,38 @@ class Game:
                 reset_usage()
             except Exception as exc:  # pragma: no cover - defensive hook
                 logger.debug("Failed to reset usage for {}: {}", player, exc)
+
+    def _save_history_if_configured(self) -> None:
+        """Persist the PGN history when configuration requests it."""
+
+        if self._history_output_path is None:
+            return
+        if not self.finished:
+            return
+
+        try:
+            target_path = self._history_output_path
+            target_path.parent.mkdir(parents=True, exist_ok=True)
+
+            board_copy = self.board.copy(stack=True)
+            pgn_game = chess.pgn.Game.from_board(board_copy)
+            pgn_game.headers["Event"] = "LLM Chess Arena"
+            pgn_game.headers["Date"] = datetime.now(UTC).strftime("%Y.%m.%d")
+            pgn_game.headers["White"] = str(self.white_player)
+            pgn_game.headers["Black"] = str(self.black_player)
+            pgn_game.headers["Result"] = board_copy.result(claim_draw=True)
+
+            exporter = chess.pgn.StringExporter(
+                headers=True,
+                variations=False,
+                comments=False,
+            )
+            target_path.write_text(pgn_game.accept(exporter), encoding="utf-8")
+            logger.info("Saved PGN history to {}", target_path)
+        except Exception as exc:  # pragma: no cover - defensive logging
+            logger.warning(
+                "Failed to save PGN history to {}: {}", self._history_output_path, exc
+            )
 
     def __enter__(self) -> Game:
         """Context manager entry.
