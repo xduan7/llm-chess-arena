@@ -531,8 +531,5 @@ def _configure_logging(level: str) -> None:
     """Apply Loguru logging configuration for the application."""
 
     normalized_level = level.upper()
-    try:
-        logger.remove()
-    except ValueError:
-        pass
+    logger.remove()
     logger.add(sys.stderr, level=normalized_level)

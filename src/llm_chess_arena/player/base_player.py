@@ -56,11 +56,9 @@ class BasePlayer(ABC):
         Returns:
             PlayerDecision: Decision model describing the desired action.
         """
-        raise NotImplementedError
 
     def close(self) -> None:
         """Release resources for subclasses that manage external state."""
-        return None
 
     def __str__(self) -> str:
         """Return the player name suffixed by its color initial."""

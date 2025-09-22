@@ -70,10 +70,7 @@ class StockfishPlayer(BasePlayer):
             logger.info("Stockfish engine started with limits={}", self.engine_limits)
         except Exception as e:
             if self.engine:
-                try:
-                    self.engine.quit()
-                except Exception:
-                    pass
+                self.engine.quit()
                 self.engine = None
             raise RuntimeError(
                 "Failed to initialize Stockfish engine: {}".format(e)

@@ -129,7 +129,6 @@ class BaseLLMMoveHandler(ABC):
         **kwargs: Any,
     ) -> str | None:
         """Return the move text extracted from the LLM response."""
-        pass
 
 
 GAME_ARENA_PROMPT_TEMPLATE = """Let's play chess. The current game state in FEN is:
