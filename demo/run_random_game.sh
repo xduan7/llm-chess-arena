@@ -11,6 +11,8 @@ OUTPUT_FILE="${OUTPUT_ROOT}/$(date -u +"%Y%m%dT%H%M%SZ").pgn"
 
 python -m llm_chess_arena.cli.main \
   "game.history_output_path=${OUTPUT_FILE}" \
+  game.max_num_moves=100 \
+  game.enable_metrics=false \
   players@players.white=random \
   players.white.seed=42 \
   players.white.name="RandomBot 42" \

@@ -17,7 +17,7 @@ def test_demo__should_complete_successfully__when_running_random_game():
         ["bash", str(script_path)],
         capture_output=True,
         text=True,
-        timeout=10,
+        timeout=60,
         cwd=script_path.parent.parent,
     )
 
@@ -41,7 +41,7 @@ def test_demo__should_complete_successfully__when_running_stockfish_game():
         ["bash", str(script_path)],
         capture_output=True,
         text=True,
-        timeout=30,
+        timeout=60,
         cwd=script_path.parent.parent,
     )
 

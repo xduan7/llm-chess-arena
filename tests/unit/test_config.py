@@ -213,7 +213,8 @@ class TestHydraConfig:
         assert cfg.game.display_board is True
         assert cfg.players.white.kind == "random"
         assert cfg.players.black.kind == "random"
-        assert cfg.metrics.stockfish_depth == 10
+        assert cfg.metrics.stockfish_depth == 20
+        assert cfg.metrics.stockfish_engine_options == {"Threads": 4, "Hash": 1024}
         assert cfg.metrics.quality_thresholds.excellent == 50.0
 
     def test_load_app_config__when_overrides_supplied__then_applies_changes(self):
@@ -248,8 +249,10 @@ class TestHydraConfig:
         assert cfg.players.white.max_move_retries == 1
         assert cfg.players.white.num_votes == 1
         assert cfg.players.white.connector.model == "gpt-4o-mini"
-        assert cfg.players.white.connector.max_tokens == 1500
-        assert cfg.players.white.connector.max_retries == 2
+        assert cfg.players.white.connector.temperature == 0.2
+        assert cfg.players.white.connector.max_tokens == 2000
+        assert cfg.players.white.connector.timeout == 300.0
+        assert cfg.players.white.connector.max_retries == 3
 
     def test_load_app_config__when_using_stockfish_elo_profile__then_sets_engine_options(
         self,

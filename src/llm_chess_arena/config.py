@@ -109,6 +109,8 @@ class LLMConnectorConfig:
     max_tokens: int | None = None
     timeout: float = 30.0
     max_retries: int = 3
+    provider: str | None = None
+    api_base: str | None = None
 
 
 @dataclass(slots=True)
@@ -409,13 +411,16 @@ def run_game_from_config(app_config: AppConfig) -> Game:
     """
 
     white_player, black_player = build_players(app_config.players)
-    metrics_tracker = create_metrics_tracker(app_config.metrics)
+    if app_config.game.enable_metrics:
+        metrics_tracker = create_metrics_tracker(app_config.metrics)
+    else:
+        metrics_tracker = None
 
     game = Game(
         white_player=white_player,
         black_player=black_player,
         display_board=app_config.game.display_board,
-        enable_metrics=True,
+        enable_metrics=app_config.game.enable_metrics,
         metrics_tracker=metrics_tracker,
         history_output_path=app_config.game.history_output_path,
     )
@@ -426,7 +431,8 @@ def run_game_from_config(app_config: AppConfig) -> Game:
     finally:
         _close_player(white_player)
         _close_player(black_player)
-        metrics_tracker.close()
+        if metrics_tracker is not None:
+            metrics_tracker.close()
 
 
 def format_game_summary(game: Game) -> list[str]:
@@ -494,6 +500,8 @@ def _build_player(config: PlayerConfig) -> BasePlayer:
             max_tokens=connector_cfg.max_tokens,
             timeout=connector_cfg.timeout,
             max_retries=connector_cfg.max_retries,
+            provider=connector_cfg.provider,
+            api_base=connector_cfg.api_base,
         )
 
         handler = _build_llm_handler(config.handler)

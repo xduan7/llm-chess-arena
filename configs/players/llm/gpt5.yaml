@@ -1,12 +1,13 @@
 kind: llm
-name: Gemini 1.5 Pro
+name: GPT-5
 max_move_retries: 3
 num_votes: 1
 connector:
-  model: gemini-1.5-pro
-  temperature: 0.4
-  max_tokens: 1500
-  timeout: 60.0
+  model: gpt5
+  temperature: 0.2
+  max_tokens: 2000
+  timeout: 900.0
   max_retries: 3
+  provider: null
 handler:
   kind: game_arena

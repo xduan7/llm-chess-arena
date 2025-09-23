@@ -192,7 +192,15 @@ class GameOutcomeSummary:
 
 
 def humanize_termination(termination: chess.Termination | None) -> str:
-    """Convert a python-chess termination enum to a readable label."""
+    """Convert a python-chess termination enum to a readable label.
+
+    Args:
+        termination: Termination enum from python-chess, or ``None`` if the game
+            is in progress.
+
+    Returns:
+        str: Human-friendly description of the termination state.
+    """
 
     if termination is None:
         return "Game in progress"
@@ -208,7 +216,17 @@ def build_game_outcome_summary(
     black_player_name: str,
     total_moves: int,
 ) -> GameOutcomeSummary:
-    """Create human-friendly summary strings for a finished game."""
+    """Create human-friendly summary strings for a finished game.
+
+    Args:
+        outcome: python-chess outcome information, or ``None`` if unavailable.
+        white_player_name: Display name for the white player.
+        black_player_name: Display name for the black player.
+        total_moves: Number of moves played in the game.
+
+    Returns:
+        GameOutcomeSummary: Structured summary fields for logs and rendering.
+    """
 
     if outcome is None:
         return GameOutcomeSummary(

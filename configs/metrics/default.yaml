@@ -1,6 +1,8 @@
-stockfish_depth: 10
+stockfish_depth: 20
 stockfish_binary_path: null
-stockfish_engine_options: {}
+stockfish_engine_options:
+  Threads: 4
+  Hash: 1024
 quality_thresholds:
   excellent: 50
   good: 100

@@ -413,6 +413,13 @@ def display_game_summary(
 ) -> bool:
     """Display post-game outcome details and per-player metrics.
 
+    Args:
+        white_player: Display name for the white player.
+        black_player: Display name for the black player.
+        white_summary: Metrics summary for white, when collected.
+        black_summary: Metrics summary for black, when collected.
+        outcome_summary: Optional structured outcome lines for the game result.
+
     Returns:
         bool: True if any Rich content was rendered, False otherwise.
     """

@@ -3,10 +3,15 @@
 import os
 from unittest.mock import Mock, patch
 
+import httpx
 import litellm
 import pytest
 
-from llm_chess_arena.player.llm.llm_connector import LLMConnector
+from llm_chess_arena.player.llm.llm_connector import (
+    ARGO_DEFAULT_API_BASE,
+    ARGO_PROVIDER,
+    LLMConnector,
+)
 from llm_chess_arena.config import load_env
 
 load_env()
@@ -207,6 +212,172 @@ class TestLLMConnectorRetryLogic:
             assert totals.completion_tokens == 0
             assert totals.total_tokens == 0
             assert totals.cost == pytest.approx(0.0)
+
+
+class TestLLMConnectorArgoProvider:
+    """Argo-specific provider integration tests."""
+
+    @pytest.mark.parametrize(
+        "provided,expected",
+        [
+            ("claudeopus4-20240229", "claudeopus4"),
+            ("gpto4mini-20240101", "gpto4mini"),
+            ("gemini25pro", "gemini25pro"),
+        ],
+    )
+    def test_normalise_argo_model_name_strips_version_suffix(self, provided, expected):
+        assert LLMConnector._normalise_argo_model_name(provided) == expected
+
+    def test_argo_provider_requires_username_environment(self, monkeypatch):
+        monkeypatch.delenv("ARGO_USERNAME", raising=False)
+
+        with pytest.raises(
+            ValueError, match="ARGO_USERNAME environment variable must be set"
+        ):
+            LLMConnector(model="gpt4", provider=ARGO_PROVIDER)
+
+    @patch("httpx.Client")
+    def test_argo_provider_issues_post_request_with_expected_payload(
+        self, mock_client_cls, monkeypatch
+    ):
+        monkeypatch.setenv("ARGO_USERNAME", "chesstester")
+        mock_client = mock_client_cls.return_value.__enter__.return_value
+        mock_response = Mock(status_code=200)
+        mock_response.json.return_value = {"response": "Move"}
+        mock_response.raise_for_status.return_value = None
+        mock_client.post.return_value = mock_response
+
+        connector = LLMConnector(model="gpt4", provider=ARGO_PROVIDER)
+        result = connector.query("Play a move")
+
+        assert result == ["Move"]
+        mock_client.post.assert_called_once()
+        url_arg = mock_client.post.call_args.args[0]
+        payload = mock_client.post.call_args.kwargs["json"]
+        assert url_arg == f"{ARGO_DEFAULT_API_BASE}/chat/"
+        assert payload["user"] == "chesstester"
+        assert payload["model"] == "gpt4"
+        assert payload["messages"][0]["content"].startswith("Play a move")
+
+    @patch("httpx.Client")
+    def test_argo_provider_trims_temperature_for_restricted_models(
+        self, mock_client_cls, monkeypatch
+    ):
+        monkeypatch.setenv("ARGO_USERNAME", "chesstester")
+        mock_client = mock_client_cls.return_value.__enter__.return_value
+        mock_response = Mock(status_code=200)
+        mock_response.json.return_value = {"response": "Move"}
+        mock_response.raise_for_status.return_value = None
+        mock_client.post.return_value = mock_response
+
+        connector = LLMConnector(
+            model="o1-preview",
+            temperature=0.3,
+            provider=ARGO_PROVIDER,
+        )
+        connector.query("Play a move", top_p=0.7, n=2)
+
+        payload = mock_client.post.call_args.kwargs["json"]
+        assert "temperature" not in payload
+        assert "top_p" not in payload
+        assert mock_client.post.call_count == 2
+
+    @patch("httpx.Client")
+    def test_argo_provider_respects_custom_api_base(self, mock_client_cls, monkeypatch):
+        monkeypatch.setenv("ARGO_USERNAME", "chesstester")
+        mock_client = mock_client_cls.return_value.__enter__.return_value
+        mock_response = Mock(status_code=200)
+        mock_response.json.return_value = {"response": "Move"}
+        mock_response.raise_for_status.return_value = None
+        mock_client.post.return_value = mock_response
+
+        connector = LLMConnector(
+            model="gemini25pro",
+            provider=ARGO_PROVIDER,
+            api_base="https://argo.example.com/api",
+        )
+        connector.query("Play a move")
+
+        url_arg = mock_client.post.call_args.args[0]
+        assert url_arg == "https://argo.example.com/api/chat/"
+        payload = mock_client.post.call_args.kwargs["json"]
+        assert payload["model"] == "gemini25pro"
+
+    @patch("httpx.Client")
+    def test_argo_provider_uses_default_api_base_when_none_provided(
+        self, mock_client_cls, monkeypatch
+    ):
+        monkeypatch.setenv("ARGO_USERNAME", "chesstester")
+        mock_client = mock_client_cls.return_value.__enter__.return_value
+        mock_response = Mock(status_code=200)
+        mock_response.json.return_value = {"response": "Move"}
+        mock_response.raise_for_status.return_value = None
+        mock_client.post.return_value = mock_response
+
+        connector = LLMConnector(model="gpt4", provider=ARGO_PROVIDER)
+        connector.query("Play a move")
+
+        url_arg = mock_client.post.call_args.args[0]
+        assert url_arg == f"{ARGO_DEFAULT_API_BASE}/chat/"
+
+    @pytest.mark.parametrize(
+        "model,api_base",
+        [
+            ("gpt4", None),
+            ("gpto4mini", None),
+            ("claudeopus4", "https://apps-dev.inside.anl.gov/argoapi/api/v1/resource"),
+            ("gemini25pro", "https://apps-dev.inside.anl.gov/argoapi/api/v1/resource"),
+        ],
+    )
+    @patch("httpx.Client")
+    def test_argo_connector_sends_expected_model_id(
+        self, mock_client_cls, monkeypatch, model, api_base
+    ):
+        monkeypatch.setenv("ARGO_USERNAME", "chesstester")
+        mock_client = mock_client_cls.return_value.__enter__.return_value
+        mock_response = Mock(status_code=200)
+        mock_response.json.return_value = {"response": "Move"}
+        mock_response.raise_for_status.return_value = None
+        mock_client.post.return_value = mock_response
+
+        connector_kwargs = {
+            "model": model,
+            "provider": ARGO_PROVIDER,
+            "temperature": 0.5,
+        }
+        if api_base is not None:
+            connector_kwargs["api_base"] = api_base
+
+        connector = LLMConnector(**connector_kwargs)
+        connector.query("Play a move")
+
+        payload = mock_client.post.call_args.kwargs["json"]
+        assert payload["model"] == model
+
+    @patch("httpx.Client")
+    @patch("time.sleep", return_value=None)
+    def test_argo_provider_retries_on_http_error(
+        self, mock_sleep, mock_client_cls, monkeypatch
+    ):
+        monkeypatch.setenv("ARGO_USERNAME", "chesstester")
+        mock_client = mock_client_cls.return_value.__enter__.return_value
+        dummy_request = httpx.Request("POST", "https://argo.example.com/chat/")
+        dummy_response = httpx.Response(404, request=dummy_request)
+        http_error = httpx.HTTPStatusError(
+            "not found", request=dummy_request, response=dummy_response
+        )
+
+        success_response = Mock()
+        success_response.json.return_value = {"response": "Move"}
+        success_response.raise_for_status.return_value = None
+
+        mock_client.post.side_effect = [http_error, http_error, success_response]
+
+        connector = LLMConnector(model="gpt-4", provider=ARGO_PROVIDER, max_retries=3)
+        result = connector.query("Play a move")
+
+        assert result == ["Move"]
+        assert mock_client.post.call_count == 3
 
 
 class TestLLMConnectorConfiguration:
