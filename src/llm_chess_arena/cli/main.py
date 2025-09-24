@@ -19,7 +19,7 @@ from llm_chess_arena.config import (
 
 
 def _render_summary(lines: Iterable[str]) -> None:
-    """Print each summary line emitted at game completion."""
+    """Print game completion summary lines."""
     for line in lines:
         print(line)
 

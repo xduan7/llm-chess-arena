@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any, Iterable
 
-from llm_chess_arena.player.llm.llm_connector import LLMConnector, UsageRecord
+from llm_chess_arena.player.llm.connector import LLMConnector, UsageRecord
 
 
 class MockLLMConnector(LLMConnector):
@@ -17,14 +17,6 @@ class MockLLMConnector(LLMConnector):
         raise_on_query: Exception | None = None,
         **kwargs,
     ):
-        """Initialize mock connector.
-
-        Args:
-            model: Model name for testing.
-            responses: Predetermined responses to return in order.
-            raise_on_query: Exception to raise on query (for error testing).
-            **kwargs: Additional parameters captured but not used.
-        """
         temperature = kwargs.pop("temperature", 0.7)
         max_tokens = kwargs.pop("max_tokens", None)
         timeout = kwargs.pop("timeout", 30.0)
@@ -51,19 +43,7 @@ class MockLLMConnector(LLMConnector):
         system_prompt: str | None = None,
         **kwargs: Any,
     ) -> list[str]:
-        """Return predetermined responses or extract move from prompt.
-
-        Args:
-            prompt: The prompt to send.
-            system_prompt: Optional system prompt.
-            n: Number of responses to generate for voting.
-
-        Returns:
-            list[str]: Response strings in query order.
-
-        Raises:
-            Exception: If ``raise_on_query`` was configured with an error.
-        """
+        """Return predetermined responses or extract move from prompt."""
         self.query_count += 1  # Count each query call, not each response
         self.query_history.append(
             {

@@ -1,7 +1,6 @@
 """Comprehensive tests for LLM voting logic edge cases."""
 
 import chess
-import pytest
 from unittest.mock import Mock
 
 from llm_chess_arena.player.llm import LLMPlayer, GameArenaLLMMoveHandler
@@ -231,7 +230,7 @@ class TestLLMVotingEdgeCases:
         assert decision.attempted_move == "e2e4"
 
     def test_voting_with_network_error_during_sampling(self):
-        """Test that network errors during voting result in resignation."""
+        """Network errors during sampling should resign immediately."""
 
         def raise_timeout(*args, **kwargs):
             raise TimeoutError("Network timeout")
@@ -250,10 +249,9 @@ class TestLLMVotingEdgeCases:
 
         board = chess.Board()
 
-        # Network errors should propagate up
-        with pytest.raises(TimeoutError, match="Network timeout"):
-            player(board)
-        # Network errors fail fast - only one attempt
+        decision = player(board)
+        assert decision.action == "resign"
+        assert player.last_move_attempts == 1
         assert connector.query.call_count == 1
 
     def test_voting_preserves_context_between_retries(self):

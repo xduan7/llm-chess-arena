@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any, Mapping
+from typing import Mapping
 
 import chess
 import chess.pgn
@@ -243,7 +243,6 @@ class Game:
                         display_board_with_context(
                             self.board,
                             current_player=self.current_player.name,
-                            move_count=self.board.fullmove_number,
                             last_move=current_move,
                             white_player=str(self.white_player),
                             black_player=str(self.black_player),
@@ -447,21 +446,3 @@ class Game:
             logger.warning(
                 "Failed to save PGN history to {}: {}", self._history_output_path, exc
             )
-
-    def __enter__(self) -> Game:
-        """Context manager entry.
-
-        Returns:
-            Game: Self reference for use in with statements.
-        """
-        return self
-
-    def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
-        """Context manager exit - ensures cleanup.
-
-        Args:
-            exc_type: Exception type if an exception occurred.
-            exc_val: Exception value if an exception occurred.
-            exc_tb: Exception traceback if an exception occurred.
-        """
-        self._cleanup_players()

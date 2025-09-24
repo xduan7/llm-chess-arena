@@ -3,7 +3,7 @@
 import chess
 import pytest
 
-from llm_chess_arena.player.llm.llm_move_handler import GameArenaLLMMoveHandler
+from llm_chess_arena.player.llm.prompting import GameArenaLLMMoveHandler
 from llm_chess_arena.exceptions import ParseMoveError
 
 
@@ -33,6 +33,7 @@ class TestGameArenaPromptGeneration:
     def test_prompt_includes_board_state_player_color_and_move_history_from_kwargs(
         self,
     ):
+        """Prompt should embed FEN, color, and move history."""
         move_handler = GameArenaLLMMoveHandler()
         starting_board = chess.Board()
 
@@ -48,6 +49,7 @@ class TestGameArenaPromptGeneration:
         assert "e2e4 e7e5" in generated_prompt
 
     def test_prompt_correctly_identifies_black_as_player_color_after_white_moves(self):
+        """Prompt must correctly indicate black to move."""
         move_handler = GameArenaLLMMoveHandler()
         board_after_white_e4 = chess.Board()
         board_after_white_e4.push_san("e4")
@@ -65,6 +67,7 @@ class TestGameArenaPromptGeneration:
     def test_prompt_template_cannot_access_private_attributes_starting_with_underscore(
         self,
     ):
+        """Templates should not access private attributes automatically."""
         move_handler = GameArenaLLMMoveHandler()
         move_handler.prompt_template = "Access {_private_attr}"
         move_handler._private_attr = "secret_data"
@@ -75,6 +78,7 @@ class TestGameArenaPromptGeneration:
     def test_prompt_generation_raises_error_when_template_references_nonexistent_field(
         self,
     ):
+        """Missing template fields should raise KeyError."""
         move_handler = GameArenaLLMMoveHandler()
         move_handler.prompt_template = "Missing {nonexistent_field}"
 
@@ -82,6 +86,7 @@ class TestGameArenaPromptGeneration:
             move_handler.get_prompt()
 
     def test_prompt_generation_passes_kwargs_to_template_fields_correctly(self):
+        """Prompt rendering should substitute provided kwargs."""
         move_handler = GameArenaLLMMoveHandler()
         starting_board = chess.Board()
 
@@ -97,6 +102,7 @@ class TestGameArenaPromptGeneration:
     def test_prompt_template_raises_error_when_required_field_not_provided_in_kwargs(
         self,
     ):
+        """Omitting required kwargs must raise KeyError."""
         move_handler = GameArenaLLMMoveHandler()
         move_handler.prompt_template = "{player_color}"
 
@@ -128,6 +134,7 @@ class TestMoveExtractionFromLLMResponse:
     def test_extracts_move_text_after_final_answer_marker_in_various_formats(
         self, response, expected
     ):
+        """Raw extraction should handle diverse formatting cases."""
         move_handler = GameArenaLLMMoveHandler()
         assert move_handler._extract_raw_move_text(response) == expected
 
@@ -155,6 +162,7 @@ class TestMoveTextSanitization:
     def test_removes_move_numbers_and_evaluation_symbols_while_preserving_check_notation(
         self, text, expected
     ):
+        """Sanitizer should strip noise but keep vital annotations."""
         move_handler = GameArenaLLMMoveHandler()
         assert move_handler._sanitize_move_text(text) == expected
 
@@ -163,6 +171,7 @@ class TestMoveParsingFromSanitizedText:
     """End-to-end parsing checks once moves are sanitized."""
 
     def test_returns_player_decision_with_san_move(self):
+        """Parsing SAN should produce a move decision."""
         move_handler = GameArenaLLMMoveHandler()
 
         decision = move_handler.parse_decision_from_response("Final Answer: e4")
@@ -171,6 +180,7 @@ class TestMoveParsingFromSanitizedText:
         assert decision.attempted_move == "e4"
 
     def test_returns_player_decision_with_uci_move(self):
+        """Parsing UCI should yield the raw UCI move string."""
         move_handler = GameArenaLLMMoveHandler()
 
         decision = move_handler.parse_decision_from_response("Final Answer: e2e4")
@@ -179,6 +189,7 @@ class TestMoveParsingFromSanitizedText:
         assert decision.attempted_move == "e2e4"
 
     def test_normalizes_castling_variations(self):
+        """Different castling formats should normalize to canonical SAN."""
         move_handler = GameArenaLLMMoveHandler()
 
         compact = move_handler.parse_decision_from_response("Final Answer: O-O")
@@ -188,6 +199,7 @@ class TestMoveParsingFromSanitizedText:
         assert spaced.attempted_move == "O-O"
 
     def test_preserves_promotion_notation(self):
+        """Promotion notation must be preserved during parsing."""
         move_handler = GameArenaLLMMoveHandler()
 
         decision = move_handler.parse_decision_from_response("Final Answer: e8=Q")
@@ -195,6 +207,7 @@ class TestMoveParsingFromSanitizedText:
         assert decision.attempted_move == "e8=Q"
 
     def test_returns_raw_text_for_later_validation(self):
+        """Unknown moves should be returned for later normalization."""
         move_handler = GameArenaLLMMoveHandler()
 
         decision = move_handler.parse_decision_from_response("Final Answer: xyz")
@@ -202,6 +215,7 @@ class TestMoveParsingFromSanitizedText:
         assert decision.attempted_move == "xyz"
 
     def test_raises_parse_error_when_marker_missing(self):
+        """Responses without the marker should raise ParseMoveError."""
         move_handler = GameArenaLLMMoveHandler()
 
         from llm_chess_arena.exceptions import ParseMoveError
@@ -216,6 +230,7 @@ class TestRetryPromptGeneration:
     def test_generates_retry_prompt_explaining_parse_failure_with_original_response(
         self,
     ):
+        """Retry prompt should explain parse failures using prior response."""
         move_handler = GameArenaLLMMoveHandler()
 
         retry_prompt_after_parse_error = move_handler.get_retry_prompt(
@@ -229,6 +244,7 @@ class TestRetryPromptGeneration:
         assert "I play e4" in retry_prompt_after_parse_error
 
     def test_includes_attempted_illegal_move_in_retry_prompt_for_context(self):
+        """Illegal move retries must mention the offending move."""
         move_handler = GameArenaLLMMoveHandler()
 
         retry_prompt_after_illegal = move_handler.get_retry_prompt(
@@ -239,6 +255,7 @@ class TestRetryPromptGeneration:
         assert "e5" in retry_prompt_after_illegal
 
     def test_requests_disambiguation_when_move_could_refer_to_multiple_pieces(self):
+        """Ambiguous moves should prompt for disambiguation."""
         move_handler = GameArenaLLMMoveHandler()
 
         retry_prompt_for_ambiguous = move_handler.get_retry_prompt(
@@ -251,6 +268,7 @@ class TestRetryPromptGeneration:
         assert "Nf3" in retry_prompt_for_ambiguous
 
     def test_handles_missing_fields_gracefully_by_substituting_none(self):
+        """Missing context fields should default to string 'None'."""
         move_handler = GameArenaLLMMoveHandler()
 
         retry_prompt_with_missing_response = move_handler.get_retry_prompt(
@@ -261,6 +279,7 @@ class TestRetryPromptGeneration:
         assert "None" in retry_prompt_with_missing_response
 
     def test_raises_error_for_unknown_exception_type_without_retry_template(self):
+        """Unsupported error types should raise ValueError."""
         move_handler = GameArenaLLMMoveHandler()
 
         with pytest.raises(ValueError, match="No retry prompt defined"):
@@ -269,6 +288,7 @@ class TestRetryPromptGeneration:
 
 class TestSpecialMoveHandling:
     def test_correctly_parses_en_passant_capture_notation(self):
+        """En passant notation should be preserved after parsing."""
         move_handler = GameArenaLLMMoveHandler()
 
         en_passant_response = "Final Answer: exd6"
@@ -277,6 +297,7 @@ class TestSpecialMoveHandling:
         assert decision.attempted_move == "exd6"
 
     def test_parses_uci_format_promotion_with_lowercase_piece_indicator(self):
+        """Lowercase promotion piece should stay intact."""
         move_handler = GameArenaLLMMoveHandler()
 
         uci_promotion_response = "Final Answer: e7e8q"
@@ -285,6 +306,7 @@ class TestSpecialMoveHandling:
         assert decision.attempted_move == "e7e8q"
 
     def test_successfully_falls_back_from_invalid_san_to_valid_uci_parsing(self):
+        """Fallback should handle UCI strings when SAN parsing fails."""
         move_handler = GameArenaLLMMoveHandler()
 
         # "e2e4" is UCI notation, not SAN
@@ -294,6 +316,7 @@ class TestSpecialMoveHandling:
         assert decision.attempted_move == "e2e4"
 
     def test_preserves_check_notation_while_parsing_move_correctly(self):
+        """Check symbols must remain after parsing."""
         move_handler = GameArenaLLMMoveHandler()
 
         check_move_response = "Final Answer: Re2+"
@@ -302,6 +325,7 @@ class TestSpecialMoveHandling:
         assert decision.attempted_move == "Re2+"
 
     def test_preserves_checkmate_notation_while_parsing_move_correctly(self):
+        """Checkmate symbols must remain after parsing."""
         move_handler = GameArenaLLMMoveHandler()
 
         checkmate_response = "Final Answer: Qh5#"
@@ -310,6 +334,7 @@ class TestSpecialMoveHandling:
         assert decision.attempted_move == "Qh5#"
 
     def test_extracts_move_correctly_even_with_trailing_explanation_text(self):
+        """Trailing explanations should not affect extracted move."""
         move_handler = GameArenaLLMMoveHandler()
 
         response_with_reasoning = "Final Answer: e4 because it controls the center"

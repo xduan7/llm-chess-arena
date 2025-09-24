@@ -77,13 +77,6 @@ class ScriptedPlayer(BasePlayer):
     """Player that plays a predetermined sequence of moves."""
 
     def __init__(self, name: str, color: Color, move_sequence: Sequence[str]):
-        """Initialize scripted player with a fixed SAN move sequence.
-
-        Args:
-            name: Display name used in logs.
-            color: Player color literal.
-            move_sequence: Iterable of SAN moves to execute in order.
-        """
         super().__init__(name, color)
         self.move_sequence = list(move_sequence)
         self.current_move_index = 0
@@ -105,7 +98,6 @@ class RecordingPlayer(RandomPlayer):
     """RandomPlayer that records board states it observes."""
 
     def __init__(self, *args, **kwargs) -> None:
-        """Track observed FEN strings while retaining RandomPlayer behavior."""
         super().__init__(*args, **kwargs)
         self.observed_board_fens = []
 
@@ -124,13 +116,6 @@ class FailingPlayer(RandomPlayer):
         *args,
         **kwargs,
     ) -> None:
-        """Set up a player that raises after a fixed number of decisions.
-
-        Args:
-            fail_after_moves: Number of decisions before raising an error.
-            *args: Positional arguments forwarded to RandomPlayer.
-            **kwargs: Keyword arguments forwarded to RandomPlayer.
-        """
         super().__init__(*args, **kwargs)
         self.fail_after_moves = fail_after_moves
         self.moves_requested_count = 0
@@ -152,13 +137,6 @@ class IllegalMovePlayer(BasePlayer):
         color: Color,
         illegal_move_uci: str = "b1e4",
     ) -> None:
-        """Initialize player configured to respond with an illegal UCI move.
-
-        Args:
-            name: Display name used in diagnostics.
-            color: Player color literal.
-            illegal_move_uci: Always-returned illegal move in UCI notation.
-        """
         super().__init__(name, color)
         self.illegal_move_uci = illegal_move_uci
 
@@ -173,13 +151,7 @@ def assert_game_terminated(
     expected_termination: chess.Termination,
     expected_winner: BasePlayer | None = None,
 ) -> None:
-    """Assert that a game finished with the specified termination state.
-
-    Args:
-        game: Game instance that should be finished.
-        expected_termination: Expected chess.Termination enum value.
-        expected_winner: Optional winning player instance.
-    """
+    """Assert that a game finished with the specified termination state."""
     assert game.finished
     assert game.outcome is not None
     assert game.outcome.termination == expected_termination
@@ -198,16 +170,7 @@ def setup_game_from_fen(
     white_player: BasePlayer | None = None,
     black_player: BasePlayer | None = None,
 ) -> Game:
-    """Create a game whose board starts from the provided FEN.
-
-    Args:
-        fen_string: FEN string describing the desired starting position.
-        white_player: Optional preconfigured white player instance.
-        black_player: Optional preconfigured black player instance.
-
-    Returns:
-        Game: Newly instantiated game object with the desired board state.
-    """
+    """Create a game whose board starts from the provided FEN."""
     if white_player is None:
         white_player = RandomPlayer(name="White", color="white")
     if black_player is None:

@@ -15,16 +15,9 @@ from hydra.errors import HydraException
 from loguru import logger
 from omegaconf import DictConfig, OmegaConf
 
+from llm_chess_arena.factory import GameFactory
 from llm_chess_arena.game import Game
-from llm_chess_arena.metrics import MoveQualityThresholds, MetricsTracker
 from llm_chess_arena.player.base_player import BasePlayer
-from llm_chess_arena.player.llm import (
-    GameArenaLLMMoveHandler,
-    LLMConnector,
-    LLMPlayer,
-)
-from llm_chess_arena.player.random_player import RandomPlayer
-from llm_chess_arena.player.stockfish_player import StockfishPlayer
 from llm_chess_arena.types import Color
 from llm_chess_arena.utils import build_game_outcome_summary
 
@@ -201,7 +194,6 @@ def _ensure_color(config: PlayerConfig, fallback: Color) -> PlayerConfig:
         PlayerConfig: Updated configuration with color set.
     """
 
-    # Always set the color to the fallback to ensure correct assignment
     return replace(config, color=fallback)
 
 
@@ -233,19 +225,19 @@ def _parse_player_config(raw: Mapping[str, Any], fallback_color: Color) -> Playe
 
 
 def _parse_env_config(raw: Mapping[str, Any]) -> EnvConfig:
-    """Return structured environment settings."""
+    """Parse environment configuration from raw mapping."""
 
     return EnvConfig(**raw)
 
 
 def _parse_game_config(raw: Mapping[str, Any]) -> GameConfig:
-    """Return game-related configuration values."""
+    """Parse game configuration from raw mapping."""
 
     return GameConfig(**raw)
 
 
 def _parse_metrics_config(raw: Mapping[str, Any]) -> MetricsConfig:
-    """Build metrics configuration including quality thresholds."""
+    """Parse metrics configuration with quality thresholds."""
 
     thresholds_raw = raw.get("quality_thresholds", {})
     thresholds = MoveQualityThresholdsConfig(**thresholds_raw)
@@ -254,7 +246,7 @@ def _parse_metrics_config(raw: Mapping[str, Any]) -> MetricsConfig:
 
 
 def _parse_players_config(raw: Mapping[str, Any]) -> PlayersConfig:
-    """Return both player configurations with enforced colors."""
+    """Parse both player configurations with enforced colors."""
 
     white_raw = raw.get("white")
     black_raw = raw.get("black")
@@ -354,51 +346,6 @@ def apply_env_config(config: EnvConfig) -> None:
     _configure_logging(config.log_level)
 
 
-def build_players(players_config: PlayersConfig) -> tuple[BasePlayer, BasePlayer]:
-    """Instantiate players for both sides based on configuration.
-
-    Args:
-        players_config: Structured configuration for both white and black players.
-
-    Returns:
-        tuple[BasePlayer, BasePlayer]: Instantiated white and black players.
-    """
-
-    white_player = _build_player(players_config.white)
-    black_player = _build_player(players_config.black)
-    return white_player, black_player
-
-
-def create_metrics_tracker(metrics_config: MetricsConfig) -> MetricsTracker:
-    """Construct a metrics tracker using Stockfish settings from config.
-
-    Args:
-        metrics_config: Configuration containing engine settings and thresholds.
-
-    Returns:
-        MetricsTracker: Tracker ready to evaluate moves during gameplay.
-    """
-
-    engine_options: Mapping[str, object] | None = None
-    if metrics_config.stockfish_engine_options:
-        engine_options = dict(metrics_config.stockfish_engine_options)
-
-    thresholds_cfg = metrics_config.quality_thresholds
-    thresholds = MoveQualityThresholds(
-        excellent=thresholds_cfg.excellent,
-        good=thresholds_cfg.good,
-        inaccuracy=thresholds_cfg.inaccuracy,
-        mistake=thresholds_cfg.mistake,
-    )
-
-    return MetricsTracker.from_stockfish(
-        depth=metrics_config.stockfish_depth,
-        binary_path=metrics_config.stockfish_binary_path,
-        engine_options=engine_options,
-        thresholds=thresholds,
-    )
-
-
 def run_game_from_config(app_config: AppConfig) -> Game:
     """Play a single chess game using the provided application configuration.
 
@@ -409,29 +356,16 @@ def run_game_from_config(app_config: AppConfig) -> Game:
         Game: Completed game instance containing outcome information.
     """
 
-    white_player, black_player = build_players(app_config.players)
-    if app_config.game.enable_metrics:
-        metrics_tracker = create_metrics_tracker(app_config.metrics)
-    else:
-        metrics_tracker = None
-
-    game = Game(
-        white_player=white_player,
-        black_player=black_player,
-        display_board=app_config.game.display_board,
-        enable_metrics=app_config.game.enable_metrics,
-        metrics_tracker=metrics_tracker,
-        history_output_path=app_config.game.history_output_path,
-    )
+    game = GameFactory.create_game(app_config)
 
     try:
         game.play(max_num_moves=app_config.game.max_num_moves)
         return game
     finally:
-        _close_player(white_player)
-        _close_player(black_player)
-        if metrics_tracker is not None:
-            metrics_tracker.close()
+        _close_player(game.white_player)
+        _close_player(game.black_player)
+        if game.metrics_tracker is not None:
+            game.metrics_tracker.close()
 
 
 def format_game_summary(game: Game) -> list[str]:
@@ -469,62 +403,6 @@ def format_game_summary(game: Game) -> list[str]:
     return lines
 
 
-def _build_player(config: PlayerConfig) -> BasePlayer:
-    """Instantiate a player based on its configuration variant."""
-
-    if isinstance(config, RandomPlayerConfig):
-        name = config.name or f"Random {config.color.capitalize()}"
-        return RandomPlayer(name=name, color=config.color, seed=config.seed)
-
-    if isinstance(config, StockfishPlayerConfig):
-        name = config.name or "Stockfish"
-        limits = dict(config.engine_limits) if config.engine_limits else None
-        options = dict(config.engine_options) if config.engine_options else None
-        return StockfishPlayer(
-            name=name,
-            color=config.color,
-            binary_path=config.binary_path,
-            engine_limits=limits,
-            engine_options=options,
-        )
-
-    if isinstance(config, LLMPlayerConfig):
-        if config.connector is None:
-            raise ValueError("LLM player configuration requires connector settings")
-
-        connector_cfg = config.connector
-        connector = LLMConnector(
-            model=connector_cfg.model,
-            temperature=connector_cfg.temperature,
-            max_tokens=connector_cfg.max_tokens,
-            timeout=connector_cfg.timeout,
-            max_retries=connector_cfg.max_retries,
-            provider=connector_cfg.provider,
-            api_base=connector_cfg.api_base,
-        )
-
-        handler = _build_llm_handler(config.handler)
-        name = config.name or connector_cfg.model
-        return LLMPlayer(
-            name=name,
-            color=config.color,
-            connector=connector,
-            handler=handler,
-            max_move_retries=config.max_move_retries,
-            num_votes=config.num_votes,
-        )
-
-    raise ValueError(f"Unsupported player configuration: {config}")
-
-
-def _build_llm_handler(config: LLMHandlerConfig) -> GameArenaLLMMoveHandler:
-    """Return the configured LLM move handler implementation."""
-
-    if config.kind == "game_arena":
-        return GameArenaLLMMoveHandler()
-    raise ValueError(f"Unsupported LLM handler kind: {config.kind}")
-
-
 def _close_player(player: BasePlayer) -> None:
     """Silently close player resources when supported."""
 
@@ -540,28 +418,3 @@ def _configure_logging(level: str) -> None:
     normalized_level = level.upper()
     logger.remove()
     logger.add(sys.stderr, level=normalized_level)
-
-
-def register_structured_configs() -> bool:
-    """Register existing config classes with Hydra's ConfigStore for structured config support.
-
-    This is optional and provides a foundation for future structured config usage.
-    Returns True if registration succeeded, False if Hydra ConfigStore is unavailable.
-    """
-    try:
-        from hydra.core.config_store import ConfigStore
-
-        cs = ConfigStore.instance()
-        cs.store(name="base_game_config", node=GameConfig)
-        cs.store(group="players", name="random_config", node=RandomPlayerConfig)
-        cs.store(group="players", name="stockfish_config", node=StockfishPlayerConfig)
-        cs.store(group="players", name="llm_config", node=LLMPlayerConfig)
-
-        logger.debug("Registered config dataclasses with Hydra ConfigStore")
-        return True
-    except ImportError:
-        # Hydra not available or ConfigStore not accessible
-        logger.debug(
-            "Hydra ConfigStore unavailable - skipping structured config registration"
-        )
-        return False

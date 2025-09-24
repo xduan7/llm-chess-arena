@@ -4,8 +4,6 @@ from __future__ import annotations
 
 from typing import Any, Iterable, Literal, Sequence
 
-import os
-
 import chess
 from rich.align import Align
 from rich.console import Console, RenderableType
@@ -60,34 +58,6 @@ QUALITY_COLORS: dict[MoveQuality, str] = {
     MoveQuality.BEST: "bold #0ea5e9",
 }
 
-PIECE_THEMES: dict[str, dict[str, str]] = {
-    "glyph": {
-        "K": "♔",
-        "Q": "♕",
-        "R": "♖",
-        "B": "♗",
-        "N": "♘",
-        "P": "♙",
-        "k": "♚",
-        "q": "♛",
-        "r": "♜",
-        "b": "♝",
-        "n": "♞",
-        "p": "♟",
-    },
-}
-
-DEFAULT_PIECE_THEME = os.environ.get("LLM_CHESS_PIECE_THEME", "glyph").lower()
-
-
-def _resolve_piece_theme(theme: str | None) -> dict[str, str]:
-    """Return the symbol mapping for ``theme`` or fall back to the glyph set."""
-    selected = (theme or DEFAULT_PIECE_THEME).lower()
-    return PIECE_THEMES.get(selected, PIECE_THEMES["glyph"])
-
-
-PIECE_SYMBOLS = _resolve_piece_theme(None)
-
 
 def _quality_annotation(quality: MoveQuality | None) -> Text | None:
     """Convert a move quality into a styled Rich annotation."""
@@ -124,7 +94,7 @@ def _piece_symbol_solid(piece: chess.Piece | None) -> str:
     return solid_map.get(piece.symbol(), piece.symbol())
 
 
-def _piece_style(piece: chess.Piece | None, square: int) -> str:
+def _piece_style(piece: chess.Piece | None) -> str:
     """Return the Rich style used to render ``piece``."""
     if piece is None:
         return ""
@@ -189,7 +159,7 @@ def _build_board_table(
             square = chess.square(file_idx, rank)
             piece = board.piece_at(square)
             bg_color = _square_background(square, highlight_squares, last_move)
-            style = _piece_style(piece, square)
+            style = _piece_style(piece)
             style = f"{style} on {bg_color}" if style else f"on {bg_color}"
             symbol = _piece_symbol_solid(piece)
             row_cells.append(Text(f" {symbol} ", style=style, justify="center"))
@@ -338,13 +308,9 @@ def _status_line_with_players(
 def display_board_with_context(
     board: chess.Board,
     current_player: str | None = None,
-    move_count: int | None = None,
     last_move: chess.Move | None = None,
     clear_before: bool = False,
     *,
-    piece_theme: (
-        str | None
-    ) = None,  # Accepted for API compatibility; unused with Rich rendering.
     highlight_squares: Iterable[int] | None = None,
     white_player: str | None = None,
     black_player: str | None = None,
@@ -356,10 +322,8 @@ def display_board_with_context(
     Args:
         board: Chess board state to render.
         current_player: Name of the player whose turn it is.
-        move_count: Current move number (unused, kept for compatibility).
         last_move: Most recent move to highlight on the board.
         clear_before: Whether to clear the terminal before rendering.
-        piece_theme: Piece display theme (unused with Rich rendering).
         highlight_squares: Square indices to highlight on the board.
         white_player: Name of the white player.
         black_player: Name of the black player.
@@ -407,8 +371,8 @@ def display_board_with_context(
 def display_game_summary(
     white_player: str | None,
     black_player: str | None,
-    white_summary: "MetricsSummary | None",
-    black_summary: "MetricsSummary | None",
+    white_summary: MetricsSummary | None,
+    black_summary: MetricsSummary | None,
     outcome_summary: GameOutcomeSummary | None = None,
 ) -> bool:
     """Display post-game outcome details and per-player metrics.

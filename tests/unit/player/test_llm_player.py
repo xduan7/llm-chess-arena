@@ -215,11 +215,10 @@ class TestLLMPlayerMoveGeneration:
             name="EmptyResponseTester",
         )
 
-        # Empty responses should now raise ConnectionError (network issue, not move issue)
         with pytest.raises(
             ConnectionError, match="No responses received from LLM provider"
         ):
-            llm_player._get_most_voted_player_decision_from_llm("prompt")
+            llm_player._vote_aggregator.aggregate_responses([])
 
     def test_variable_scoping_when_response_value_is_none(self, handler):
         """Test fix for variable scoping bug when response_value is None.
@@ -229,11 +228,7 @@ class TestLLMPlayerMoveGeneration:
         """
         from llm_chess_arena.types import PlayerDecision
 
-        # Create a mock decision with no response attribute
         mock_decision = PlayerDecision(action="move", attempted_move="e4")
-        # Ensure response attribute is None or missing
-        if hasattr(mock_decision, "response"):
-            delattr(mock_decision, "response")
 
         connector = MockLLMConnector(responses=["Final Answer: e4"])
         llm_player = LLMPlayer(
@@ -248,8 +243,7 @@ class TestLLMPlayerMoveGeneration:
             return_value=mock_decision
         )
 
-        # This should not raise NameError despite response_value being None
-        decision = llm_player._get_most_voted_player_decision_from_llm("test prompt")
+        decision = llm_player._vote_aggregator.aggregate_responses(["Final Answer: e4"])
 
         # Verify the method completes successfully
         assert decision.action == "move"
@@ -364,7 +358,10 @@ class TestLLMPlayerRetryLogic:
 
 
 class TestLLMPlayerNetworkErrors:
-    def test_network_timeout_error_propagates_immediately_without_chess_retry(self):
+    """Network failure handling for immediate resignation scenarios."""
+
+    def test_network_timeout_error_resigns_immediately(self):
+        """TimeoutError should trigger an immediate resignation."""
         timeout_connector = MockLLMConnector()
         timeout_connector.query = Mock(side_effect=TimeoutError("API timeout"))
         game_arena_handler = GameArenaLLMMoveHandler()
@@ -377,13 +374,15 @@ class TestLLMPlayerNetworkErrors:
         )
 
         starting_board = chess.Board()
-        with pytest.raises(TimeoutError, match="API timeout"):
-            player_experiencing_timeout(starting_board)
+        decision = player_experiencing_timeout(starting_board)
 
-        # Network error should fail immediately, not retry
+        assert decision.action == "resign"
+
+        # Connector already exhausted its own retries; player should not loop further.
         assert timeout_connector.query.call_count == 1
 
-    def test_connection_error_propagates_immediately_without_chess_retry(self):
+    def test_connection_error_resigns_immediately(self):
+        """ConnectionError should also trigger an immediate resignation."""
         connection_error_connector = MockLLMConnector()
         connection_error_connector.query = Mock(
             side_effect=ConnectionError("Network unavailable")
@@ -398,9 +397,11 @@ class TestLLMPlayerNetworkErrors:
         )
 
         mid_game_board = chess.Board()
-        with pytest.raises(ConnectionError, match="Network unavailable"):
-            player_with_connection_issue(mid_game_board)
+        decision = player_with_connection_issue(mid_game_board)
 
+        assert decision.action == "resign"
+
+        # Only the initial attempt should occur before resignation.
         assert connection_error_connector.query.call_count == 1
 
 
@@ -525,7 +526,7 @@ class TestLLMPlayerMajorityVoting:
         assert normalized_notation_decision.action == "move"
         assert normalized_notation_decision.attempted_move == "e2e4"
 
-    def test_network_error_during_voting_propagates_immediately(self):
+    def test_network_error_during_voting_resigns_immediately(self):
         error_during_voting_connector = MockLLMConnector()
         error_during_voting_connector.query = Mock(
             side_effect=ConnectionError("API down")
@@ -537,12 +538,14 @@ class TestLLMPlayerMajorityVoting:
             handler=game_arena_handler,
             color="white",
             num_votes=3,
+            max_move_retries=3,
         )
 
         starting_board = chess.Board()
-        with pytest.raises(ConnectionError, match="API down"):
-            player_with_voting_network_error(starting_board)
+        decision = player_with_voting_network_error(starting_board)
 
+        assert decision.action == "resign"
+        assert player_with_voting_network_error.last_move_attempts == 1
         assert error_during_voting_connector.query.call_count == 1
 
 

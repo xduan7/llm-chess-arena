@@ -11,6 +11,7 @@ from typing import Final
 import chess
 from loguru import logger
 
+from llm_chess_arena.core.policies import move_validation
 from llm_chess_arena.exceptions import (
     IllegalMoveError,
     InvalidMoveError,
@@ -42,6 +43,7 @@ def get_move_history_in_uci(board: chess.Board) -> list[str]:
     return [move.uci() for move in board.move_stack]
 
 
+@move_validation
 def parse_attempted_move_to_uci(attempted_move: str, board_in_fen: str) -> str:
     """Parse a move string to UCI format, trying UCI first then SAN.
 

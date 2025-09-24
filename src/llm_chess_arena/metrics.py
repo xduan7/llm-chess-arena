@@ -11,6 +11,7 @@ import chess
 import chess.engine
 from loguru import logger
 
+from llm_chess_arena.core.policies import metrics_operation
 from llm_chess_arena.utils import find_stockfish_binary
 from llm_chess_arena.types import Color
 
@@ -81,14 +82,13 @@ def classify_move_quality(
     if best_move_hit or centipawn_loss <= ZERO_LOSS_EPSILON:
         return MoveQuality.BEST
 
-    loss = centipawn_loss
-    if loss < thresholds.excellent:
+    if centipawn_loss < thresholds.excellent:
         return MoveQuality.EXCELLENT
-    if loss < thresholds.good:
+    if centipawn_loss < thresholds.good:
         return MoveQuality.GOOD
-    if loss < thresholds.inaccuracy:
+    if centipawn_loss < thresholds.inaccuracy:
         return MoveQuality.INACCURACY
-    if loss < thresholds.mistake:
+    if centipawn_loss < thresholds.mistake:
         return MoveQuality.MISTAKE
     return MoveQuality.BLUNDER
 
@@ -350,6 +350,7 @@ class MetricsTracker:
             evaluator = None
         return cls(evaluator)
 
+    @metrics_operation
     def record_move(
         self,
         board_before_move: chess.Board,

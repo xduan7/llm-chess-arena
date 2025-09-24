@@ -90,7 +90,15 @@ src/
 └── llm_chess_arena/
     ├── __init__.py
     ├── config.py
+    ├── core/
+    │   ├── __init__.py
+    │   └── policies.py         # Centralized error-handling decorators
     ├── exceptions.py
+    ├── factory/              # Object construction helpers
+    │   ├── __init__.py
+    │   ├── game_factory.py
+    │   ├── metrics_factory.py
+    │   └── player_factory.py
     ├── game.py
     ├── metrics.py            # Stockfish-based move evaluation
     ├── renderer.py           # Rich terminal board visualization
@@ -102,9 +110,17 @@ src/
         ├── stockfish_player.py
         └── llm/
             ├── __init__.py
-            ├── llm_player.py
-            ├── llm_connector.py    # LiteLLM wrapper for testing isolation
-            └── llm_move_handler.py # Move parsing and templating
+            ├── connector.py       # LiteLLM wrapper for testing isolation
+            ├── player.py          # Orchestrates prompting, voting, retries
+            ├── prompting/
+            │   ├── __init__.py
+            │   ├── handlers.py    # Move parsing and templating
+            │   └── session.py     # Prompt generation & retry context
+            └── decision/
+                ├── __init__.py
+                ├── aggregator.py  # Majority voting with tie-breaking
+                ├── parser.py      # Move validation & normalization
+                └── retry.py       # Retry budgeting & resignation helpers
 
 configs/
 ├── config.yaml
@@ -145,6 +161,10 @@ tests/
 │   └── mock_llm_connector.py
 ├── unit/
 │   ├── test_config.py
+│   ├── factory/
+│   │   ├── test_game_factory.py
+│   │   ├── test_metrics_factory.py
+│   │   └── test_player_factory.py
 │   ├── test_game.py
 │   ├── test_metrics.py
 │   ├── test_types.py
@@ -157,12 +177,20 @@ tests/
 │       ├── test_llm_connector.py
 │       ├── test_llm_player.py
 │       ├── test_llm_move_handler.py
-│       └── test_llm_voting.py
+│       ├── test_llm_voting.py
+│       └── llm/
+│           ├── test_move_parser.py
+│           ├── test_prompt_session.py
+│           ├── test_retry_controller.py
+│           └── test_vote_aggregator.py
 └── integration/
     ├── test_chess_edge_cases.py
     ├── test_game_scenarios.py
+    ├── test_golden_master.py
     ├── test_llm_integration.py       # Environment-gated real API tests
     ├── test_llm_integration_vcr.py   # VCR-based tests with recordings
+    ├── test_llm_player_refactored.py
+    ├── test_llm_player_snapshots.py
     └── cassettes/                     # VCR HTTP recordings for testing
         ├── llm_complex_position.yaml
         ├── llm_endgame_position.yaml
@@ -199,34 +227,29 @@ LICENSE
    - Environment variables loaded from `.env` file via `python-dotenv`
    - Future: Hydra for configuration composition to allow flexible experimentation
 
-5. **Separation of Concerns**:
-   - Core chess logic independent of player implementations
-   - Move parsing/templating separated from LLM communication
-   - Voting logic separated from retry logic (critical for context preservation)
+5. **Componentized LLM Player Architecture**:
+   - LLM player logic decomposed into dedicated collaborators (`PromptSession`, `VoteAggregator`, `MoveParser`, `RetryController`).
+   - Prompting utilities live under `player.llm.prompting`, while decision-making utilities reside in `player.llm.decision` for clearer navigation.
+   - Each component has focused responsibilities and targeted unit tests.
+   - Public API of `LLMPlayer` remains unchanged for backwards compatibility.
 
-6. **Synchronous Architecture**: Starting with synchronous, single-game execution for simplicity. This avoids the complexity of async/concurrent code while we validate the core functionality.
+6. **Standardized Error Handling Policies**:
+   - Decorator-based policies (`move_validation`, `network_operation`, `config_operation`, `metrics_operation`) capture consistent behavior.
+   - Move parsing always raises typed `MoveError` subclasses, network errors bubble to experiment orchestration, metrics degrade gracefully.
 
-7. **LLM Player Retry Strategy** (Critical Design Decision):
-   - **Problem**: When using majority voting (n_samples > 1), retry context could mismatch the actual error
-   - **Solution**: Separated voting from retry logic - `_try_get_move_with_voting()` is pure voting
-   - **Implementation**:
-     - Initial prompt generated ONCE outside retry loop (preserves context)
-     - Voting attempts are separate from retry attempts
-     - On voting failure, capture single sample for accurate error context
-     - Network errors propagate immediately (not recoverable via chess retries)
-   - **Rationale**: Following Game Arena's Option 2 - clean separation prevents state confusion
+7. **Factory-Based Configuration Assembly**:
+   - Player, metrics, and game instantiation moved to `llm_chess_arena.factory` package.
+   - `config.py` now focuses on schema composition and Hydra wiring, improving readability and testability.
 
-8. **Majority Voting Implementation**:
-   - Use UCI notation for unambiguous move comparison
-   - Tie-breaking by first occurrence (deterministic)
-   - Invalid samples excluded from voting (not counted as votes)
-   - Network errors during voting fail immediately (affect all samples)
+8. **Separation of Concerns**:
+   - Core chess logic remains independent of player implementations.
+   - Prompt building, voting, parsing, and retry budgeting live in distinct modules.
+   - Configuration parsing separated from object construction.
 
-9. **Error Handling Philosophy**:
-   - Chess errors (invalid/illegal moves) trigger retries with context
-   - Network errors fail fast (no point retrying with chess prompts)
-   - Clear error messages with actionable information
-   - API key errors caught and displayed with setup instructions
+9. **Testing Guard Rails**:
+   - Integration snapshots plus golden-master tests protect current LLM player behaviour.
+   - Component-level unit tests exercise voting, prompt sessions, retry controller, and move parsing.
+   - Hydra smoke tests ensure key configurations compose successfully.
 
 10. **Metrics System Implementation**:
    - **Move-level metrics**: Stockfish-backed evaluation with centipawn loss, win probability delta, and best-move hits
@@ -270,6 +293,12 @@ LICENSE
 - Move quality annotations in game display
 - VCR-based HTTP recording for reliable LLM integration tests
 - Comprehensive test coverage with mocking and fixtures
+
+**Major Refactoring (Dec 2024):**
+- LLM player decomposed into prompt, voting, parsing, and retry collaborators with focused unit tests
+- Configuration factories extracted to `llm_chess_arena.factory` for cleaner Hydra integration
+- Standardized error-handling decorators applied across parsing, factories, connector, and metrics
+- Integration snapshots, golden-master baseline, and component tests protect behaviour during future changes
 
 ---
 

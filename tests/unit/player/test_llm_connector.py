@@ -6,7 +6,7 @@ from unittest.mock import Mock, patch
 import litellm
 import pytest
 
-from llm_chess_arena.player.llm.llm_connector import (
+from llm_chess_arena.player.llm.connector import (
     ARGO_DUMMY_API_KEY,
     LLMConnector,
 )
@@ -94,20 +94,38 @@ class TestLLMConnectorWithMockResponse:
             with pytest.raises(ConnectionError, match="Unexpected error"):
                 connector.query("Test prompt")
 
-    def test_query_raises_connection_error_on_empty_content(self):
-        """Empty content messages should raise ConnectionError for network retry."""
-        with patch("litellm.completion") as mock_completion:
-            # Mock LiteLLM returning empty content
-            mock_completion.return_value = Mock(
-                choices=[Mock(message=Mock(content="   "))]  # Empty/whitespace content
-            )
+    def test_query_retries_on_empty_content_then_succeeds(self):
+        """Connector should retry transient empty responses before succeeding."""
+        first_response = Mock(
+            choices=[Mock(message=Mock(content="   "))]  # Empty content
+        )
+        second_response = Mock(choices=[Mock(message=Mock(content="Best move: e4"))])
 
-            connector = LLMConnector(model="gpt-3.5-turbo")
+        with patch(
+            "litellm.completion", side_effect=[first_response, second_response]
+        ) as mock_completion:
+            connector = LLMConnector(model="gpt-3.5-turbo", max_retries=2)
+
+            result = connector.query("test prompt")
+
+            assert result == ["Best move: e4"]
+            assert mock_completion.call_count == 2
+
+    def test_query_raises_after_retries_exhausted_on_empty_content(self):
+        """Connector should surface a ConnectionError once retries are exhausted."""
+        empty_response = Mock(choices=[Mock(message=Mock(content=""))])
+
+        with patch(
+            "litellm.completion", side_effect=[empty_response, empty_response]
+        ) as mock_completion:
+            connector = LLMConnector(model="gpt-3.5-turbo", max_retries=1)
 
             with pytest.raises(
                 ConnectionError, match="LLM response contains empty content message"
             ):
                 connector.query("test")
+
+            assert mock_completion.call_count == 2
 
 
 class TestLLMConnectorRetryLogic:
@@ -379,6 +397,7 @@ class TestLLMConnectorRealAPI:
         assert isinstance(llm_response[0], str)
 
     def test_llm_generates_valid_chess_opening_move(self):
+        """Live LLM should return a plausible opening move when available."""
         if os.getenv("OPENAI_API_KEY"):
             selected_model = "gpt-3.5-turbo"
         elif os.getenv("ANTHROPIC_API_KEY"):
@@ -411,6 +430,7 @@ class TestLLMConnectorRealAPI:
         ), f"Response doesn't contain a chess move: {llm_response[0]}"
 
     def test_system_prompt_influences_llm_response(self):
+        """System prompts should steer live responses when credentials exist."""
         if os.getenv("OPENAI_API_KEY"):
             selected_model = "gpt-3.5-turbo"
         elif os.getenv("ANTHROPIC_API_KEY"):

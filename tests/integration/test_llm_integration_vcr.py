@@ -176,8 +176,11 @@ class TestLLMErrorHandlingVCR:
             # If it succeeds (from cassette), verify it's valid
             assert decision.action in ["move", "resign"]
         except Exception as e:
-            # If it fails, verify it's a timeout-related error
-            assert "timeout" in str(e).lower() or "time" in str(e).lower()
+            message = str(e).lower()
+            assert any(
+                keyword in message
+                for keyword in ("timeout", "timed", "temporarily", "connection")
+            )
 
     @vcr_config.use_cassette("llm_malformed_response.yaml")
     def test_llm_malformed_response__with_vcr__then_retries(self):

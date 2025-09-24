@@ -11,7 +11,7 @@ OUTPUT_FILE="${OUTPUT_ROOT}/$(date -u +"%Y%m%dT%H%M%SZ").pgn"
 
 python -m llm_chess_arena.cli.main \
   "game.history_output_path=${OUTPUT_FILE}" \
-  players@players.white=llm/chat \
+  players@players.white=llm/default \
   players.white.connector.model=gpt-4o-mini \
   players.white.name="GPT-4o Mini" \
   players@players.black=random

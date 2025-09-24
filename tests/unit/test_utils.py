@@ -19,6 +19,7 @@ class TestGetLegalMovesInUCI:
     """Unit tests for generating legal UCI move lists."""
 
     def test_starting_position__returns_exactly_20_legal_moves(self):
+        """Starting position should expose 20 legal first moves."""
         board = chess.Board()
         moves = get_legal_moves_in_uci(board)
         assert len(moves) == 20
@@ -26,6 +27,7 @@ class TestGetLegalMovesInUCI:
         assert "g1f3" in moves
 
     def test_checkmate_position__returns_empty_move_list(self):
+        """Checkmated positions should have no legal moves."""
         fools_mate_position = (
             "rnb1kbnr/pppp1ppp/8/4p3/6Pq/5P2/PPPPP2P/RNBQKBNR w KQkq - 1 3"
         )
@@ -34,6 +36,7 @@ class TestGetLegalMovesInUCI:
         assert moves == []
 
     def test_all_moves__formatted_as_valid_uci_notation(self):
+        """Generated moves must conform to UCI formatting."""
         board = chess.Board()
         moves = get_legal_moves_in_uci(board)
         for move in moves:
@@ -44,6 +47,7 @@ class TestGetLegalMovesInUCI:
             assert move[3] in "12345678"
 
     def test_en_passant_capture__included_when_available(self):
+        """En passant options should appear when the flag is set."""
         position_with_en_passant_opportunity = (
             "rnbqkbnr/ppp1p1pp/8/3pPp2/8/8/PPPP1PPP/RNBQKBNR w KQkq f6 0 3"
         )
@@ -52,6 +56,7 @@ class TestGetLegalMovesInUCI:
         assert "e5f6" in moves
 
     def test_castling_moves__included_when_both_sides_available(self):
+        """Castling availability should surface both king moves."""
         position_with_castling_rights = (
             "r3k2r/pppppppp/8/8/8/8/PPPPPPPP/R3K2R w KQkq - 0 1"
         )
@@ -65,17 +70,20 @@ class TestGetMoveHistoryInUCI:
     """Unit tests ensuring move history is captured accurately."""
 
     def test_new_board__returns_empty_move_history(self):
+        """Fresh boards should report no move history."""
         board = chess.Board()
         history = get_move_history_in_uci(board)
         assert history == []
 
     def test_single_move__returns_one_element_history(self):
+        """Single move histories should contain one UCI entry."""
         board = chess.Board()
         board.push_san("e4")
         history = get_move_history_in_uci(board)
         assert history == ["e2e4"]
 
     def test_multiple_moves__returns_complete_history_in_order(self):
+        """Multiple moves should appear in chronological order."""
         board = chess.Board()
         board.push_san("e4")
         board.push_san("e5")
@@ -84,6 +92,7 @@ class TestGetMoveHistoryInUCI:
         assert history == ["e2e4", "e7e5", "g1f3"]
 
     def test_sicilian_defense_opening__preserves_chronological_move_order(self):
+        """Sicilian sequences should record every ply in order."""
         board = chess.Board()
         sicilian_defense_moves = ["e4", "c5", "Nf3", "d6", "d4", "cxd4", "Nxd4"]
         for move in sicilian_defense_moves:
@@ -95,6 +104,7 @@ class TestGetMoveHistoryInUCI:
         assert history[-1] == "f3d4"
 
     def test_castling_move__recorded_as_king_movement_in_uci(self):
+        """Castling SAN should be stored as the king's UCI move."""
         position_allowing_castling = (
             "r3k2r/pppppppp/8/8/8/8/PPPPPPPP/R3K2R w KQkq - 0 1"
         )
@@ -108,6 +118,7 @@ class TestParseAttemptedMoveToUCI:
     """Unit tests for parsing attempted moves into UCI."""
 
     def test_valid_uci_move__returns_unchanged(self):
+        """UCI input should be returned untouched."""
         starting_position_fen = (
             "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
         )
@@ -115,6 +126,7 @@ class TestParseAttemptedMoveToUCI:
         assert result == "e2e4"
 
     def test_valid_san_moves__converted_to_uci_format(self):
+        """SAN moves should translate to canonical UCI strings."""
         starting_position_fen = (
             "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
         )
@@ -126,6 +138,7 @@ class TestParseAttemptedMoveToUCI:
         assert knight_move_result == "g1f3"
 
     def test_castling_notation__converts_to_king_move_in_uci(self):
+        """Castling SAN must convert to king's UCI move."""
         position_with_castling = "r3k2r/pppppppp/8/8/8/8/PPPPPPPP/R3K2R w KQkq - 0 1"
 
         kingside_castling = parse_attempted_move_to_uci("O-O", position_with_castling)
@@ -137,6 +150,7 @@ class TestParseAttemptedMoveToUCI:
         assert queenside_castling == "e1c1"
 
     def test_en_passant_capture__parsed_correctly_from_san(self):
+        """En passant SAN should convert to capture UCI string."""
         position_with_en_passant = (
             "rnbqkbnr/ppp1p1pp/8/3pPp2/8/8/PPPP1PPP/RNBQKBNR w KQkq f6 0 3"
         )
@@ -144,6 +158,7 @@ class TestParseAttemptedMoveToUCI:
         assert result == "e5f6"
 
     def test_pawn_promotion__converts_san_to_lowercase_uci(self):
+        """Promotion SAN and UCI should normalize to lowercase piece codes."""
         promotion_position = "8/P7/8/8/8/8/8/8 w - - 0 1"
 
         san_promotion_result = parse_attempted_move_to_uci("a8=Q", promotion_position)
@@ -153,6 +168,7 @@ class TestParseAttemptedMoveToUCI:
         assert uci_promotion_result == "a7a8q"
 
     def test_invalid_notation__raises_invalid_move_error_with_descriptive_message(self):
+        """Invalid notation should raise InvalidMoveError with context."""
         starting_position = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
 
         with pytest.raises(InvalidMoveError) as exc_info:
@@ -164,6 +180,7 @@ class TestParseAttemptedMoveToUCI:
         assert "Invalid move notation" in str(exc_info.value)
 
     def test_illegal_uci_move__raises_illegal_move_error(self):
+        """Illegal UCI inputs must raise IllegalMoveError."""
         starting_position = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
 
         with pytest.raises(IllegalMoveError) as exc_info:
@@ -173,6 +190,7 @@ class TestParseAttemptedMoveToUCI:
         assert "Illegal move" in str(exc_info.value)
 
     def test_illegal_san_move__raises_illegal_move_error(self):
+        """Illegal SAN inputs must raise IllegalMoveError."""
         starting_position = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
 
         with pytest.raises(IllegalMoveError) as exc_info:
@@ -182,6 +200,7 @@ class TestParseAttemptedMoveToUCI:
         assert "Illegal move" in str(exc_info.value)
 
     def test_ambiguous_san__raises_ambiguous_move_error(self):
+        """Ambiguous SAN should raise AmbiguousMoveError."""
         two_knights_same_target_position = "8/8/8/3N1N2/8/8/8/8 w - - 0 1"
 
         with pytest.raises(AmbiguousMoveError) as exc_info:
@@ -189,6 +208,7 @@ class TestParseAttemptedMoveToUCI:
         assert "Ambiguous" in str(exc_info.value)
 
     def test_disambiguated_san__resolves_correctly_by_file(self):
+        """Disambiguated SAN should choose the specified piece."""
         two_knights_position = "8/8/8/3N1N2/8/8/8/8 w - - 0 1"
 
         d_file_knight_move = parse_attempted_move_to_uci("Nde3", two_knights_position)

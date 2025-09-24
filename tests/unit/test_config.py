@@ -1,6 +1,7 @@
 """Unit tests for configuration module."""
 
 import os
+from pathlib import Path
 
 from unittest.mock import patch
 
@@ -222,7 +223,7 @@ class TestHydraConfig:
         overrides = [
             "players@players.white=stockfish",
             "+players.white.engine_limits.depth=16",
-            "players@players.black=llm/chat",
+            "players@players.black=llm/default",
             "players.black.connector.model=gpt-4",
             "players.black.name=GPT-4",
             "metrics.stockfish_depth=18",
@@ -242,7 +243,7 @@ class TestHydraConfig:
         self,
     ):
         overrides = [
-            "players@players.white=llm/chat",
+            "players@players.white=llm/default",
             "players.white.connector.model=gpt-4o-mini",
             "players.white.name=GPT-4o Mini",
             "players@players.black=random",
@@ -250,15 +251,30 @@ class TestHydraConfig:
 
         cfg = config.load_app_config(overrides=overrides)
 
+        default_player_cfg = OmegaConf.load(
+            Path(__file__).resolve().parents[2]
+            / "configs"
+            / "players"
+            / "llm"
+            / "default.yaml"
+        )
+        default_connector_cfg = default_player_cfg.connector
+
         assert cfg.players.white.kind == "llm"
         assert cfg.players.white.name == "GPT-4o Mini"
         assert cfg.players.white.max_move_retries == 3
         assert cfg.players.white.num_votes == 1
         assert cfg.players.white.connector.model == "gpt-4o-mini"
-        assert cfg.players.white.connector.temperature == 0.2
-        assert cfg.players.white.connector.max_tokens == 2000
-        assert cfg.players.white.connector.timeout == 600.0
-        assert cfg.players.white.connector.max_retries == 3
+        assert (
+            cfg.players.white.connector.temperature == default_connector_cfg.temperature
+        )
+        assert (
+            cfg.players.white.connector.max_tokens == default_connector_cfg.max_tokens
+        )
+        assert cfg.players.white.connector.timeout == default_connector_cfg.timeout
+        assert (
+            cfg.players.white.connector.max_retries == default_connector_cfg.max_retries
+        )
 
     def test_load_app_config__when_using_stockfish_elo_profile__then_sets_engine_options(
         self,

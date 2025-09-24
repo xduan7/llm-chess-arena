@@ -1,0 +1,69 @@
+"""Tests for shared error handling decorators."""
+
+from __future__ import annotations
+
+from unittest.mock import Mock, patch
+
+import pytest
+
+from llm_chess_arena.core.policies import ErrorPolicy
+from llm_chess_arena.exceptions import InvalidMoveError, MoveError
+
+
+def test_move_validation_policy_preserves_move_errors() -> None:
+    """MoveError subclasses should propagate unchanged."""
+
+    @ErrorPolicy.handle_move_validation_error
+    def validator() -> None:
+        raise InvalidMoveError("bad move")
+
+    with pytest.raises(InvalidMoveError, match="bad move"):
+        validator()
+
+
+def test_move_validation_policy_converts_unexpected_errors() -> None:
+    """Unexpected exceptions should convert into MoveError."""
+
+    @ErrorPolicy.handle_move_validation_error
+    def validator() -> None:
+        raise RuntimeError("boom")
+
+    with pytest.raises(MoveError, match="Move validation failed"):
+        validator()
+
+
+def test_network_policy_bubbles_errors() -> None:
+    """Network policy must allow errors to bubble up."""
+
+    @ErrorPolicy.handle_network_error
+    def flaky() -> None:
+        raise ConnectionError("no network")
+
+    with pytest.raises(ConnectionError, match="no network"):
+        flaky()
+
+
+def test_config_policy_wraps_errors() -> None:
+    """Configuration policy should wrap errors as ValueError."""
+
+    @ErrorPolicy.handle_config_error
+    def builder() -> None:
+        raise RuntimeError("bad config")
+
+    with pytest.raises(ValueError, match="Configuration failed"):
+        builder()
+
+
+def test_metrics_policy_logs_and_returns_none() -> None:
+    """Metrics policy should log and return None on failure."""
+
+    @ErrorPolicy.handle_metrics_error
+    def metrics() -> None:
+        raise RuntimeError("stockfish unavailable")
+
+    mock_logger = Mock()
+    with patch("llm_chess_arena.core.policies.logger", mock_logger):
+        result = metrics()
+
+    assert result is None
+    mock_logger.warning.assert_called_once()
