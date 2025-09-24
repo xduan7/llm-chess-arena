@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import re
 from dataclasses import dataclass
 from typing import Any
 
@@ -10,6 +11,8 @@ from loguru import logger
 
 import litellm
 from litellm import exceptions as litellm_exceptions
+
+from llm_chess_arena.exceptions import LLMPermanentError
 
 litellm.suppress_debug_info = True
 
@@ -69,6 +72,33 @@ class LLMConnector:
 
         if self.model.lower().startswith(ARGO_MODEL_PREFIX):
             self._setup_argo()
+
+    @staticmethod
+    def _sanitize_for_logging(message: str) -> str:
+        """Sanitize exception messages to prevent API key exposure in logs.
+
+        Args:
+            message: Raw exception message that might contain sensitive data.
+
+        Returns:
+            str: Sanitized message with API keys redacted.
+        """
+        # Common API key patterns to redact
+        patterns = [
+            r"sk-[a-zA-Z0-9]{48}",  # OpenAI standard format
+            r"sk-[a-zA-Z0-9-_]{10,}",  # Generic sk- prefix (min 10 chars)
+            r"Bearer [a-zA-Z0-9-_.]{10,}",  # Bearer tokens
+            r'api_key["\']?\s*[:=]\s*["\']?[a-zA-Z0-9-_]{6,}["\']?',  # api_key assignments
+            r'authorization["\']?\s*[:=]\s*["\']?[a-zA-Z0-9-_.]{10,}["\']?',  # Authorization fields
+        ]
+
+        sanitized = message
+        for pattern in patterns:
+            sanitized = re.sub(
+                pattern, "***REDACTED***", sanitized, flags=re.IGNORECASE
+            )
+
+        return sanitized
 
     def _setup_argo(self) -> None:
         parts = self.model.split(":", maxsplit=1)
@@ -146,8 +176,17 @@ class LLMConnector:
             for choice in response.choices:
                 content = getattr(choice.message, "content", None)
                 if content is None:
+                    logger.warning(
+                        "LLM response missing content field: choice={}", choice
+                    )
                     raise ConnectionError("LLM response missing content message")
-                contents.append(str(content))
+                content_str = str(content).strip()
+                if not content_str:
+                    logger.warning(
+                        "LLM response contains empty content: raw_content={!r}", content
+                    )
+                    raise ConnectionError("LLM response contains empty content message")
+                contents.append(content_str)
             logger.debug("{} response choices: {}", self.model, contents)
             return contents
 
@@ -169,18 +208,24 @@ class LLMConnector:
             litellm_exceptions.BadRequestError,
             litellm_exceptions.ContentPolicyViolationError,
         ) as e:
-            logger.error("Permanent API error (will not retry): {}", e)
-            raise ConnectionError(f"LLM API request invalid: {e}") from e
+            logger.error(
+                "Permanent API error (will not retry): {}",
+                self._sanitize_for_logging(str(e)),
+            )
+            raise LLMPermanentError(f"LLM API request invalid: {e}") from e
 
         except (
             litellm_exceptions.APIError,
             litellm_exceptions.APIConnectionError,
         ) as e:
-            logger.error("API error occurred: {}", e)
+            logger.error("API error occurred: {}", self._sanitize_for_logging(str(e)))
             raise ConnectionError(f"LLM API call failed: {e}") from e
 
         except Exception as e:  # pragma: no cover - defensive guard
-            logger.error("Unexpected error during LLM API call: {}", e)
+            logger.error(
+                "Unexpected error during LLM API call: {}",
+                self._sanitize_for_logging(str(e)),
+            )
             raise ConnectionError(f"Unexpected error: {e}") from e
 
     # --- Usage tracking ---------------------------------------------------------------

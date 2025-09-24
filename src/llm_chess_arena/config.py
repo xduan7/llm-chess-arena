@@ -5,7 +5,7 @@ from __future__ import annotations
 import os
 import sys
 from contextlib import suppress
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from pathlib import Path
 from typing import Any, Mapping, Sequence
 
@@ -32,7 +32,7 @@ from llm_chess_arena.utils import build_game_outcome_summary
 _ENV_LOADED = False
 
 
-@dataclass(slots=True)
+@dataclass(slots=True, frozen=True)
 class EnvConfig:
     """Settings controlling environment preparation and logging."""
 
@@ -41,7 +41,7 @@ class EnvConfig:
     log_level: str = "INFO"
 
 
-@dataclass(slots=True)
+@dataclass(slots=True, frozen=True)
 class GameConfig:
     """Configuration values for coordinating a chess game."""
 
@@ -51,7 +51,7 @@ class GameConfig:
     history_output_path: str | None = None
 
 
-@dataclass(slots=True)
+@dataclass(slots=True, frozen=True)
 class MoveQualityThresholdsConfig:
     """Centipawn thresholds controlling move quality categorisation."""
 
@@ -61,7 +61,7 @@ class MoveQualityThresholdsConfig:
     mistake: float = 300.0
 
 
-@dataclass(slots=True)
+@dataclass(slots=True, frozen=True)
 class MetricsConfig:
     """Configuration for Stockfish-based metrics collection."""
 
@@ -73,7 +73,7 @@ class MetricsConfig:
     )
 
 
-@dataclass(slots=True)
+@dataclass(slots=True, frozen=True)
 class PlayerConfigBase:
     """Base configuration shared by all player implementations."""
 
@@ -82,7 +82,7 @@ class PlayerConfigBase:
     name: str | None = None
 
 
-@dataclass(slots=True)
+@dataclass(slots=True, frozen=True)
 class RandomPlayerConfig(PlayerConfigBase):
     """Random player configuration."""
 
@@ -90,7 +90,7 @@ class RandomPlayerConfig(PlayerConfigBase):
     seed: int | None = None
 
 
-@dataclass(slots=True)
+@dataclass(slots=True, frozen=True)
 class StockfishPlayerConfig(PlayerConfigBase):
     """Stockfish-backed player configuration."""
 
@@ -100,7 +100,7 @@ class StockfishPlayerConfig(PlayerConfigBase):
     engine_options: Mapping[str, Any] | None = None
 
 
-@dataclass(slots=True)
+@dataclass(slots=True, frozen=True)
 class LLMConnectorConfig:
     """Connector parameters for LiteLLM-backed players."""
 
@@ -113,14 +113,14 @@ class LLMConnectorConfig:
     api_base: str | None = None
 
 
-@dataclass(slots=True)
+@dataclass(slots=True, frozen=True)
 class LLMHandlerConfig:
     """Move handler configuration for LLM players."""
 
     kind: str = "game_arena"
 
 
-@dataclass(slots=True)
+@dataclass(slots=True, frozen=True)
 class LLMPlayerConfig(PlayerConfigBase):
     """Language-model-backed player configuration."""
 
@@ -134,7 +134,7 @@ class LLMPlayerConfig(PlayerConfigBase):
 PlayerConfig = RandomPlayerConfig | StockfishPlayerConfig | LLMPlayerConfig
 
 
-@dataclass(slots=True)
+@dataclass(slots=True, frozen=True)
 class PlayersConfig:
     """Configuration for both sides of the board."""
 
@@ -142,7 +142,7 @@ class PlayersConfig:
     black: PlayerConfig
 
 
-@dataclass(slots=True)
+@dataclass(slots=True, frozen=True)
 class AppConfig:
     """Top-level application configuration composed by Hydra."""
 
@@ -202,8 +202,7 @@ def _ensure_color(config: PlayerConfig, fallback: Color) -> PlayerConfig:
     """
 
     # Always set the color to the fallback to ensure correct assignment
-    object.__setattr__(config, "color", fallback)
-    return config
+    return replace(config, color=fallback)
 
 
 def _parse_player_config(raw: Mapping[str, Any], fallback_color: Color) -> PlayerConfig:
@@ -541,3 +540,28 @@ def _configure_logging(level: str) -> None:
     normalized_level = level.upper()
     logger.remove()
     logger.add(sys.stderr, level=normalized_level)
+
+
+def register_structured_configs() -> bool:
+    """Register existing config classes with Hydra's ConfigStore for structured config support.
+
+    This is optional and provides a foundation for future structured config usage.
+    Returns True if registration succeeded, False if Hydra ConfigStore is unavailable.
+    """
+    try:
+        from hydra.core.config_store import ConfigStore
+
+        cs = ConfigStore.instance()
+        cs.store(name="base_game_config", node=GameConfig)
+        cs.store(group="players", name="random_config", node=RandomPlayerConfig)
+        cs.store(group="players", name="stockfish_config", node=StockfishPlayerConfig)
+        cs.store(group="players", name="llm_config", node=LLMPlayerConfig)
+
+        logger.debug("Registered config dataclasses with Hydra ConfigStore")
+        return True
+    except ImportError:
+        # Hydra not available or ConfigStore not accessible
+        logger.debug(
+            "Hydra ConfigStore unavailable - skipping structured config registration"
+        )
+        return False

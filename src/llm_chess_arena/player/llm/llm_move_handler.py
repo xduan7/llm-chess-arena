@@ -200,8 +200,11 @@ class GameArenaLLMMoveHandler(BaseLLMMoveHandler):
         raw_move_text = self._extract_raw_move_text(response)
         move_text = self._sanitize_move_text(raw_move_text)
         if move_text is None:
+            # Create a concise error message without the full response content
+            preview = response[:100] + "..." if len(response) > 100 else response
             raise ParseMoveError(
-                f"Failed to sanitize move extracted from response: {response}"
+                f"Failed to extract valid move from response (length: {len(response)}). "
+                f"Raw text found: '{raw_move_text}'. Response preview: '{preview}'"
             )
         return move_text
 

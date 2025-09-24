@@ -4,6 +4,7 @@ import chess
 import pytest
 
 from llm_chess_arena.player.llm.llm_move_handler import GameArenaLLMMoveHandler
+from llm_chess_arena.exceptions import ParseMoveError
 
 
 @pytest.fixture
@@ -315,3 +316,23 @@ class TestSpecialMoveHandling:
 
         decision = move_handler.parse_decision_from_response(response_with_reasoning)
         assert decision.attempted_move == "e4"
+
+    def test_parse_error_message_is_concise_for_long_responses(self):
+        """Parse error messages should be concise even for very long responses."""
+        move_handler = GameArenaLLMMoveHandler()
+
+        # Create a very long response without a valid move
+        long_response = (
+            "This is a very long response that doesn't contain a valid move. " * 20
+        )
+
+        with pytest.raises(ParseMoveError) as exc_info:
+            move_handler.parse_decision_from_response(long_response)
+
+        error_msg = str(exc_info.value)
+        # Error message should mention the length and include a preview, not the full content
+        assert f"length: {len(long_response)}" in error_msg
+        assert "Response preview:" in error_msg
+        # Error message should not contain the full response content
+        assert len(error_msg) < len(long_response)
+        assert "..." in error_msg  # Should be truncated

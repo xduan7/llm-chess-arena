@@ -201,8 +201,10 @@ class TestLLMPlayerMoveGeneration:
         assert llm_player.last_move_attempts == 0
         assert llm_player.last_move_decision is None
 
-    def test_get_most_voted_handles_empty_response_list(self, handler):
-        """Ensure empty response batches trigger retry without crashing."""
+    def test_get_most_voted_raises_connection_error_on_empty_response_list(
+        self, handler
+    ):
+        """Ensure empty response batches raise ConnectionError for network retry."""
         connector = MockLLMConnector(responses=[])
         connector.query = Mock(return_value=[])
 
@@ -213,9 +215,45 @@ class TestLLMPlayerMoveGeneration:
             name="EmptyResponseTester",
         )
 
-        decision = llm_player._get_most_voted_player_decision_from_llm("prompt")
-        assert decision.attempted_move == "???"
-        assert decision.response is None
+        # Empty responses should now raise ConnectionError (network issue, not move issue)
+        with pytest.raises(
+            ConnectionError, match="No responses received from LLM provider"
+        ):
+            llm_player._get_most_voted_player_decision_from_llm("prompt")
+
+    def test_variable_scoping_when_response_value_is_none(self, handler):
+        """Test fix for variable scoping bug when response_value is None.
+
+        This test verifies that all_responses is properly initialized outside
+        the conditional block to prevent NameError when response_value is None.
+        """
+        from llm_chess_arena.types import PlayerDecision
+
+        # Create a mock decision with no response attribute
+        mock_decision = PlayerDecision(action="move", attempted_move="e4")
+        # Ensure response attribute is None or missing
+        if hasattr(mock_decision, "response"):
+            delattr(mock_decision, "response")
+
+        connector = MockLLMConnector(responses=["Final Answer: e4"])
+        llm_player = LLMPlayer(
+            connector=connector,
+            handler=handler,
+            color="white",
+            name="ScopingTester",
+        )
+
+        # Mock the handler to return our decision without response
+        llm_player.handler.parse_decision_from_response = Mock(
+            return_value=mock_decision
+        )
+
+        # This should not raise NameError despite response_value being None
+        decision = llm_player._get_most_voted_player_decision_from_llm("test prompt")
+
+        # Verify the method completes successfully
+        assert decision.action == "move"
+        assert decision.attempted_move == "e4"
 
 
 class TestLLMPlayerRetryLogic:

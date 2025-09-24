@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
+import shutil
 from pathlib import Path
 from typing import Iterable
 
 from hydra import main
 from omegaconf import DictConfig
+from loguru import logger
 
 from llm_chess_arena.config import (
     app_config_from_dictconfig,
@@ -35,6 +37,10 @@ def run_cli_game(cfg: DictConfig) -> None:
 
     app_config = app_config_from_dictconfig(cfg)
     apply_env_config(app_config.env)
+
+    # Add optional Stockfish warning
+    if cfg.get("metrics") and not shutil.which("stockfish"):
+        logger.warning("Stockfish not found - move quality metrics will be unavailable")
 
     game = run_game_from_config(app_config)
     _render_summary(format_game_summary(game))

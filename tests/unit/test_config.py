@@ -7,6 +7,7 @@ from unittest.mock import patch
 from omegaconf import OmegaConf
 
 from llm_chess_arena import config
+from llm_chess_arena.config import _ensure_color, RandomPlayerConfig
 
 
 class TestLoadEnv:
@@ -354,3 +355,60 @@ class TestHydraConfig:
         mock_logger.debug.assert_called_with(
             "No .env file found: {}", "nonexistent.env"
         )
+
+
+class TestEnsureColor:
+    """Tests for _ensure_color function immutability behavior."""
+
+    def test_ensure_color__when_called__then_returns_new_instance_with_color_set(self):
+        """Test that _ensure_color returns a new config instance with the color set."""
+        # Create original config with existing default color
+        original_config = RandomPlayerConfig(
+            kind="random",
+            name="Test Player",
+            seed=42,
+        )
+
+        # Original config has default color "white"
+        assert original_config.color == "white"
+
+        # Apply different color using _ensure_color
+        new_config = _ensure_color(original_config, "black")
+
+        # Verify original config remains unchanged (immutability)
+        assert original_config.color == "white"
+
+        # Verify new config has the new color set
+        assert new_config.color == "black"
+
+        # Verify other attributes are preserved
+        assert new_config.kind == "random"
+        assert new_config.name == "Test Player"
+        assert new_config.seed == 42
+
+        # Verify they are different objects
+        assert new_config is not original_config
+
+    def test_ensure_color__when_config_already_has_color__then_overrides_with_fallback(
+        self,
+    ):
+        """Test that _ensure_color overrides existing color with fallback."""
+        # Create config with existing color
+        original_config = RandomPlayerConfig(
+            kind="random",
+            name="Test Player",
+            color="black",
+            seed=42,
+        )
+
+        # Apply different color using _ensure_color
+        new_config = _ensure_color(original_config, "white")
+
+        # Verify original config remains unchanged
+        assert original_config.color == "black"
+
+        # Verify new config has the fallback color
+        assert new_config.color == "white"
+
+        # Verify they are different objects
+        assert new_config is not original_config

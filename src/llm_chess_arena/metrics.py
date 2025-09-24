@@ -343,6 +343,9 @@ class MetricsTracker:
                 "Stockfish unavailable - metrics evaluation disabled. "
                 "Set STOCKFISH_BINARY_PATH or install Stockfish to enable metrics."
             )
+            logger.info(
+                "Install Stockfish: brew install stockfish (macOS) or apt install stockfish (Ubuntu)"
+            )
             logger.debug("Stockfish initialization failure details: {}", exc)
             evaluator = None
         return cls(evaluator)

@@ -94,6 +94,21 @@ class TestLLMConnectorWithMockResponse:
             with pytest.raises(ConnectionError, match="Unexpected error"):
                 connector.query("Test prompt")
 
+    def test_query_raises_connection_error_on_empty_content(self):
+        """Empty content messages should raise ConnectionError for network retry."""
+        with patch("litellm.completion") as mock_completion:
+            # Mock LiteLLM returning empty content
+            mock_completion.return_value = Mock(
+                choices=[Mock(message=Mock(content="   "))]  # Empty/whitespace content
+            )
+
+            connector = LLMConnector(model="gpt-3.5-turbo")
+
+            with pytest.raises(
+                ConnectionError, match="LLM response contains empty content message"
+            ):
+                connector.query("test")
+
 
 class TestLLMConnectorRetryLogic:
     """Retry configuration propagation and exhaustion handling."""
@@ -425,3 +440,52 @@ class TestLLMConnectorRealAPI:
         assert (
             response_mentions_chess
         ), f"Response doesn't mention chess: {llm_response_with_system_context[0]}"
+
+
+class TestLLMConnectorSanitization:
+    """Unit tests for API key sanitization functionality."""
+
+    def test_sanitize_for_logging_redacts_openai_api_keys(self):
+        """The sanitization function should redact OpenAI API keys."""
+        test_message = "Authentication failed with API key sk-123456789012345678901234567890123456789012345678"
+        sanitized = LLMConnector._sanitize_for_logging(test_message)
+
+        assert "sk-123456789012345678901234567890123456789012345678" not in sanitized
+        assert "***REDACTED***" in sanitized
+        assert "Authentication failed with API key" in sanitized
+
+    def test_sanitize_for_logging_redacts_bearer_tokens(self):
+        """The sanitization function should redact Bearer tokens."""
+        test_message = "Request failed: Bearer abcd1234567890efghijk"
+        sanitized = LLMConnector._sanitize_for_logging(test_message)
+
+        assert "Bearer abcd1234567890efghijk" not in sanitized
+        assert "***REDACTED***" in sanitized
+        assert "Request failed:" in sanitized
+
+    def test_sanitize_for_logging_redacts_json_api_keys(self):
+        """The sanitization function should redact API keys in JSON format."""
+        test_message = (
+            'Error with payload: {"api_key": "sk-super-secret-key-123456789"}'
+        )
+        sanitized = LLMConnector._sanitize_for_logging(test_message)
+
+        assert "sk-super-secret-key-123456789" not in sanitized
+        assert "***REDACTED***" in sanitized
+        assert "Error with payload:" in sanitized
+
+    def test_sanitize_for_logging_preserves_safe_content(self):
+        """The sanitization function should preserve non-sensitive content."""
+        test_message = "Connection timeout after 30 seconds with model gpt-3.5-turbo"
+        sanitized = LLMConnector._sanitize_for_logging(test_message)
+
+        assert sanitized == test_message
+
+    def test_sanitize_for_logging_handles_multiple_keys(self):
+        """The sanitization function should redact multiple keys in one message."""
+        test_message = "Failed: api_key=sk-key1 and Bearer token2345678901234567890"
+        sanitized = LLMConnector._sanitize_for_logging(test_message)
+
+        assert "sk-key1" not in sanitized
+        assert "token2345678901234567890" not in sanitized
+        assert sanitized.count("***REDACTED***") == 2

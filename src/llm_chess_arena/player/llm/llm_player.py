@@ -16,6 +16,7 @@ from llm_chess_arena.exceptions import (
     IllegalMoveError,
     AmbiguousMoveError,
     ParseMoveError,
+    LLMPermanentError,
 )
 
 
@@ -89,6 +90,10 @@ class LLMPlayer(BasePlayer):
                 self.last_move_attempts = attempt + 1
                 self.last_move_decision = decision
 
+            except LLMPermanentError:
+                # Don't retry permanent errors - they won't succeed
+                logger.error("Permanent LLM error - terminating move attempt")
+                raise
             except (TimeoutError, ConnectionError) as e:
                 # Network errors should propagate up - the game/tournament
                 # manager should decide how to handle network failures
@@ -205,6 +210,19 @@ class LLMPlayer(BasePlayer):
     ) -> PlayerDecision:
         """Query the LLM and derive a decision using majority voting."""
         responses = self.connector.query(prompt, n=self.num_votes)
+
+        # Handle empty responses as network errors (should trigger network retry, not move retry)
+        if not responses:
+            request_metadata = self._sanitize_request_metadata_for_logging()
+            logger.error(
+                "LLM provider returned zero completions. Provider: {}, Model: {}, Votes requested: {}. {}",
+                getattr(self.connector, "provider", "unknown"),
+                self.connector.model,
+                self.num_votes,
+                request_metadata,
+            )
+            raise ConnectionError("No responses received from LLM provider")
+
         self._log_last_call_usage()
         logger.debug(
             "Requested {} response(s) from LLM for majority voting", self.num_votes
@@ -224,17 +242,11 @@ class LLMPlayer(BasePlayer):
                         decision.attempted_move,
                     )
             except ParseMoveError as e:
-                raw_message = response
-                message_length = (
-                    len(raw_message) if isinstance(raw_message, str) else "unknown"
-                )
                 logger.warning(
-                    "Vote {}/{}: Failed to parse LLM response. Error: {}. Message length: {}. Message: {}",
+                    "Vote {}/{}: {}",
                     idx + 1,
                     len(responses),
-                    e,
-                    message_length,
-                    raw_message,
+                    str(e),
                 )
                 # Continue with other responses instead of crashing
 
@@ -245,21 +257,30 @@ class LLMPlayer(BasePlayer):
         )
 
         if not decisions:
-            # All responses failed to parse, in which case we create a
-            # fake decision to trigger a retry
-            if responses:
-                last_message = responses[0]
-            else:
-                last_message = None
+            # All responses failed to parse - create a fake decision to trigger retry
             logger.error(
-                'All LLM responses failed to parse. Last message:\n"""{}"""\n',
-                last_message,
+                "All {} LLM response(s) failed to parse - logging all responses for debugging",
+                len(responses),
             )
-            first_response = responses[0] if responses else None
+
+            # Log each failed response with its index
+            for i, response in enumerate(responses):
+                logger.error(
+                    "Failed response {}/{}: {!r}", i + 1, len(responses), response
+                )
+
+            # Create decision with all responses concatenated for context
+            all_responses = "\n".join(
+                [
+                    f"--- Response {i+1}/{len(responses)} ---\n{resp}"
+                    for i, resp in enumerate(responses)
+                ]
+            )
+
             return PlayerDecision(
                 action="move",
                 attempted_move="???",  # Invalid move to trigger retry
-                response=first_response,  # Use first response for context for retry
+                response=all_responses,  # All responses for debugging
             )
 
         # Majority voting implementation:
@@ -298,20 +319,41 @@ class LLMPlayer(BasePlayer):
         most_voted_decision = winning_decisions[0]
 
         # Log response texts from all winning votes for debugging
+        winning_responses: list[str] = []
         response_value = getattr(most_voted_decision, "response", None)
         if response_value is not None:
-            all_responses: list[str] = []
             for decision_candidate in winning_decisions:
                 candidate_response = getattr(decision_candidate, "response", None)
                 if candidate_response:
-                    all_responses.append(str(candidate_response))
-        if all_responses:
+                    winning_responses.append(str(candidate_response))
+        if winning_responses:
             logger.debug(
                 "Winning decision had {} supporting responses",
-                len(all_responses),
+                len(winning_responses),
             )
 
         return most_voted_decision
+
+    def _sanitize_request_metadata_for_logging(self) -> str:
+        """Generate sanitized metadata string for logging LLM requests.
+
+        Returns:
+            str: Sanitized metadata suitable for logging (no sensitive data).
+        """
+        metadata_parts = []
+
+        if hasattr(self.connector, "temperature"):
+            metadata_parts.append(f"temperature={self.connector.temperature}")
+        if hasattr(self.connector, "max_tokens") and self.connector.max_tokens:
+            metadata_parts.append(f"max_tokens={self.connector.max_tokens}")
+        if hasattr(self.connector, "timeout"):
+            metadata_parts.append(f"timeout={self.connector.timeout}s")
+
+        return (
+            f"Request params: {', '.join(metadata_parts)}"
+            if metadata_parts
+            else "Request params: none"
+        )
 
     def close(self) -> None:
         """Release connector resources when the player is torn down."""

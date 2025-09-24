@@ -1,5 +1,6 @@
 """Smoke tests covering the demo entry points."""
 
+import os
 import subprocess
 from pathlib import Path
 
@@ -51,3 +52,32 @@ def test_demo__should_complete_successfully__when_running_stockfish_game():
     )
 
     assert "Outcome:" in result.stdout
+
+
+@pytest.mark.smoke
+@pytest.mark.requires_llm
+def test_demo__should_complete_successfully__when_running_llm_game():
+    """Smoke test for the LLM demo script."""
+    if not os.environ.get("OPENAI_API_KEY"):
+        pytest.skip("OPENAI_API_KEY not configured")
+
+    script_path = DEMO_DIR / "run_llm_game.sh"
+
+    try:
+        result = subprocess.run(
+            ["bash", str(script_path)],
+            capture_output=True,
+            text=True,
+            timeout=300,  # LLM calls with retries can take longer
+            cwd=script_path.parent.parent,
+        )
+    except subprocess.TimeoutExpired:
+        pytest.skip("LLM demo timed out - API may be slow or unavailable")
+
+    assert result.returncode == 0, (
+        f"LLM game demo failed with exit code {result.returncode}.\n"
+        f"STDERR:\n{result.stderr}"
+    )
+
+    assert "Outcome:" in result.stdout
+    assert "GPT-4o Mini" in result.stdout  # Player name from demo script

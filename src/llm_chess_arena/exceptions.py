@@ -19,3 +19,7 @@ class IllegalMoveError(MoveError):
 
 class AmbiguousMoveError(MoveError):
     """Move notation could refer to multiple pieces (SAN without disambiguation)."""
+
+
+class LLMPermanentError(Exception):
+    """Non-recoverable LLM API errors (auth, invalid request, content policy)."""
