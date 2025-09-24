@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections import Counter
+
 from loguru import logger
 
 from llm_chess_arena.player.base_player import BasePlayer
@@ -223,11 +224,17 @@ class LLMPlayer(BasePlayer):
                         decision.attempted_move,
                     )
             except ParseMoveError as e:
+                raw_message = response
+                message_length = (
+                    len(raw_message) if isinstance(raw_message, str) else "unknown"
+                )
                 logger.warning(
-                    "Vote {}/{}: Failed to parse LLM response: {}",
+                    "Vote {}/{}: Failed to parse LLM response. Error: {}. Message length: {}. Message: {}",
                     idx + 1,
                     len(responses),
                     e,
+                    message_length,
+                    raw_message,
                 )
                 # Continue with other responses instead of crashing
 
@@ -240,7 +247,14 @@ class LLMPlayer(BasePlayer):
         if not decisions:
             # All responses failed to parse, in which case we create a
             # fake decision to trigger a retry
-            logger.error("All LLM responses failed to parse, triggering retry ...")
+            if responses:
+                last_message = responses[0]
+            else:
+                last_message = None
+            logger.error(
+                'All LLM responses failed to parse. Last message:\n"""{}"""\n',
+                last_message,
+            )
             first_response = responses[0] if responses else None
             return PlayerDecision(
                 action="move",
@@ -291,11 +305,11 @@ class LLMPlayer(BasePlayer):
                 candidate_response = getattr(decision_candidate, "response", None)
                 if candidate_response:
                     all_responses.append(str(candidate_response))
-            if all_responses:
-                logger.debug(
-                    "Winning decision had {} supporting responses",
-                    len(all_responses),
-                )
+        if all_responses:
+            logger.debug(
+                "Winning decision had {} supporting responses",
+                len(all_responses),
+            )
 
         return most_voted_decision
 

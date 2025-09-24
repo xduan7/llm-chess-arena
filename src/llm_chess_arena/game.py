@@ -288,7 +288,6 @@ class Game:
             self._save_history_if_configured()
             if self.metrics_tracker is not None:
                 self._log_metrics_summary()
-            # Clean up Stockfish subprocess and LLM connections
             self._cleanup_players()
 
     def _cleanup_players(self) -> None:

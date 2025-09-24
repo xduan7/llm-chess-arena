@@ -1,12 +1,12 @@
 kind: llm
-name: GPT-4o Mini
-max_move_retries: 1
+name: null
+max_move_retries: 3
 num_votes: 1
 connector:
-  model: gpt-4o-mini
+  model: null
   temperature: 0.2
   max_tokens: 2000
-  timeout: 300.0
+  timeout: 600.0
   max_retries: 3
   provider: null
 handler:

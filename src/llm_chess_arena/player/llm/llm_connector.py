@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 from dataclasses import dataclass
 from typing import Any
 
@@ -9,6 +10,12 @@ from loguru import logger
 
 import litellm
 from litellm import exceptions as litellm_exceptions
+
+litellm.suppress_debug_info = True
+
+
+ARGO_MODEL_PREFIX = "argo:"
+ARGO_DUMMY_API_KEY = "sk-argo-placeholder"
 
 
 # Cross-provider robustness: silently ignore unsupported params when switching between
@@ -53,11 +60,37 @@ class LLMConnector:
         self.timeout = timeout
         self.max_retries = max_retries
         self.provider = provider
-        self.api_base = api_base
+        self.api_base = api_base.rstrip("/") if api_base else None
+        self._default_request_parameters: dict[str, Any] = {}
 
         # Usage bookkeeping
         self._last_usage: UsageRecord | None = None
         self._total_usage = UsageRecord()
+
+        if self.model.lower().startswith(ARGO_MODEL_PREFIX):
+            self._setup_argo()
+
+    def _setup_argo(self) -> None:
+        parts = self.model.split(":", maxsplit=1)
+        alias = parts[1].strip() if len(parts) > 1 else ""
+        if not alias:
+            raise ValueError("Argo model alias missing after 'argo:'")
+
+        base = self.api_base or os.getenv("ARGO_API_BASE")
+        if not base or not base.strip():
+            raise ValueError("Argo models require connector.api_base or ARGO_API_BASE")
+        self.api_base = base.strip().rstrip("/")
+        self.model = f"{ARGO_MODEL_PREFIX}{alias}"
+        if self.provider and self.provider.lower() != "openai":
+            logger.warning(
+                "Ignoring provider %s for Argo model %s; using LiteLLM openai adapter",
+                self.provider,
+                self.model,
+            )
+        self.provider = None
+        self._default_request_parameters.setdefault("api_key", ARGO_DUMMY_API_KEY)
+        self._default_request_parameters.setdefault("custom_llm_provider", "openai")
+        logger.debug("Configured Argo model {} via {}", alias, self.api_base)
 
     def query(
         self,
@@ -100,6 +133,7 @@ class LLMConnector:
                 "provider": self.provider,
                 "api_base": self.api_base,
                 **kwargs,
+                **self._default_request_parameters,
             }
             completion_kwargs = {
                 key: value

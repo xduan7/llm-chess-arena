@@ -1,13 +1,13 @@
 kind: llm
-name: GPT-4
+name: null
 max_move_retries: 3
 num_votes: 1
 connector:
-  model: gpt-4
+  model: null
   temperature: 0.2
-  max_tokens: 2000
-  timeout: 300.0
-  max_retries: 3
+  max_tokens: 8000
+  timeout: 1200.0
+  max_retries: 10
   provider: null
 handler:
   kind: game_arena

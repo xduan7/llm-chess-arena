@@ -6,7 +6,10 @@ from unittest.mock import Mock, patch
 import litellm
 import pytest
 
-from llm_chess_arena.player.llm.llm_connector import LLMConnector
+from llm_chess_arena.player.llm.llm_connector import (
+    ARGO_DUMMY_API_KEY,
+    LLMConnector,
+)
 from llm_chess_arena.config import load_env
 
 load_env()
@@ -207,6 +210,56 @@ class TestLLMConnectorRetryLogic:
             assert totals.completion_tokens == 0
             assert totals.total_tokens == 0
             assert totals.cost == pytest.approx(0.0)
+
+
+class TestLLMConnectorArgo:
+    """Argo endpoint support relies on API base configuration."""
+
+    def test_requires_api_base(self, monkeypatch):
+        """Connector must raise when no Argo base is configured."""
+        monkeypatch.delenv("ARGO_API_BASE", raising=False)
+        with pytest.raises(ValueError):
+            LLMConnector(model="argo:claude-3-opus-20240229")
+
+    def test_requires_non_empty_alias(self, monkeypatch):
+        """Connector should reject Argo models without an alias."""
+        monkeypatch.setenv("ARGO_API_BASE", "https://argo.example.com/v1")
+        with pytest.raises(ValueError):
+            LLMConnector(model="argo:")
+
+    def test_normalizes_model_and_api_key(self, monkeypatch):
+        """Connector should retain Argo model id and inject placeholder API key."""
+        monkeypatch.setenv("ARGO_API_BASE", "https://argo.example.com/v1")
+        with patch("litellm.completion") as mock_completion:
+            mock_completion.return_value = Mock(
+                choices=[Mock(message=Mock(content="Move"))]
+            )
+            connector = LLMConnector(model="argo:gpt-5-low")
+            connector.query("Play a move")
+        call = mock_completion.call_args.kwargs
+        assert call["model"] == "argo:gpt-5-low"
+        assert call["api_base"] == "https://argo.example.com/v1"
+        assert call["api_key"] == ARGO_DUMMY_API_KEY
+        assert call["custom_llm_provider"] == "openai"
+
+    def test_argo_parameters_override_kwargs(self, monkeypatch):
+        """Argo-specific parameters should override conflicting kwargs."""
+        monkeypatch.setenv("ARGO_API_BASE", "https://argo.example.com/v1")
+        with patch("litellm.completion") as mock_completion:
+            mock_completion.return_value = Mock(
+                choices=[Mock(message=Mock(content="Move"))]
+            )
+            connector = LLMConnector(model="argo:gpt-4")
+            # Try to override critical Argo parameters via kwargs
+            connector.query(
+                "Play a move",
+                api_key="user-provided-key",
+                custom_llm_provider="anthropic",
+            )
+        call = mock_completion.call_args.kwargs
+        # Argo defaults should win over user kwargs
+        assert call["api_key"] == ARGO_DUMMY_API_KEY
+        assert call["custom_llm_provider"] == "openai"
 
 
 class TestLLMConnectorConfiguration:

@@ -1,12 +1,12 @@
 kind: llm
-name: GPT-5
+name: null
 max_move_retries: 3
 num_votes: 1
 connector:
-  model: gpt5
+  model: null
   temperature: 0.2
-  max_tokens: 2000
-  timeout: 900.0
+  max_tokens: 4000
+  timeout: 1200.0
   max_retries: 3
   provider: null
 handler:

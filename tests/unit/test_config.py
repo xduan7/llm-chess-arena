@@ -221,7 +221,9 @@ class TestHydraConfig:
         overrides = [
             "players@players.white=stockfish",
             "+players.white.engine_limits.depth=16",
-            "players@players.black=llm/gpt4",
+            "players@players.black=llm/chat",
+            "players.black.connector.model=gpt-4",
+            "players.black.name=GPT-4",
             "metrics.stockfish_depth=18",
             "metrics.quality_thresholds.mistake=250",
         ]
@@ -231,6 +233,7 @@ class TestHydraConfig:
         assert cfg.players.white.engine_limits["depth"] == 16
         assert cfg.players.black.kind == "llm"
         assert cfg.players.black.connector.model == "gpt-4"
+        assert cfg.players.black.name == "GPT-4"
         assert cfg.metrics.stockfish_depth == 18
         assert cfg.metrics.quality_thresholds.mistake == 250
 
@@ -238,7 +241,9 @@ class TestHydraConfig:
         self,
     ):
         overrides = [
-            "players@players.white=llm/gpt4o_mini",
+            "players@players.white=llm/chat",
+            "players.white.connector.model=gpt-4o-mini",
+            "players.white.name=GPT-4o Mini",
             "players@players.black=random",
         ]
 
@@ -246,12 +251,12 @@ class TestHydraConfig:
 
         assert cfg.players.white.kind == "llm"
         assert cfg.players.white.name == "GPT-4o Mini"
-        assert cfg.players.white.max_move_retries == 1
+        assert cfg.players.white.max_move_retries == 3
         assert cfg.players.white.num_votes == 1
         assert cfg.players.white.connector.model == "gpt-4o-mini"
         assert cfg.players.white.connector.temperature == 0.2
         assert cfg.players.white.connector.max_tokens == 2000
-        assert cfg.players.white.connector.timeout == 300.0
+        assert cfg.players.white.connector.timeout == 600.0
         assert cfg.players.white.connector.max_retries == 3
 
     def test_load_app_config__when_using_stockfish_elo_profile__then_sets_engine_options(
