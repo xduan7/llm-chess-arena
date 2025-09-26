@@ -47,6 +47,7 @@ def test_llm_player_generates_legal_opening_move_from_starting_position(
         temperature=0.0,
         max_tokens=1000,
         timeout=10.0,
+        max_retries=3,
     )
     game_arena_handler = GameArenaLLMMoveHandler()
     white_llm_player = LLMPlayer(
@@ -72,6 +73,7 @@ def test_llm_retry_mechanism_recovers_from_illegal_move_attempts():
         temperature=0.0,
         max_tokens=1000,
         timeout=10.0,
+        max_retries=3,
     )
 
     game_arena_handler = GameArenaLLMMoveHandler()
@@ -103,6 +105,7 @@ def test_llm_plays_coherent_opening_sequence_over_five_moves():
         temperature=0.3,
         max_tokens=1000,
         timeout=10.0,
+        max_retries=3,
     )
     game_arena_handler = GameArenaLLMMoveHandler()
     white_llm_player = LLMPlayer(

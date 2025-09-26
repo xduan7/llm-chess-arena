@@ -346,8 +346,8 @@ class TestSpecialMoveHandling:
         decision = move_handler.parse_decision_from_response(response_with_reasoning)
         assert decision.attempted_move == "e4"
 
-    def test_parse_error_message_is_concise_for_long_responses(self):
-        """Parse error messages should be concise even for very long responses."""
+    def test_parse_error_message_includes_full_response_for_debugging(self):
+        """Parse error messages should include full response for debugging."""
         move_handler = GameArenaLLMMoveHandler()
 
         # Create a very long response without a valid move
@@ -359,9 +359,25 @@ class TestSpecialMoveHandling:
             move_handler.parse_decision_from_response(long_response)
 
         error_msg = str(exc_info.value)
-        # Error message should mention the length and include a preview, not the full content
+        # Error message should mention the length and include the full response
         assert f"length: {len(long_response)}" in error_msg
-        assert "Response preview:" in error_msg
-        # Error message should not contain the full response content
-        assert len(error_msg) < len(long_response)
-        assert "..." in error_msg  # Should be truncated
+        assert "Full response:" in error_msg
+        assert "No move-like text patterns found in response" in error_msg
+        # Error message should contain the full response content for debugging
+        assert long_response in error_msg
+
+    def test_parse_error_message_shows_failed_text_parsing(self):
+        """Parse error messages should show when text is found but fails parsing."""
+        move_handler = GameArenaLLMMoveHandler()
+
+        # Create a response with text that gets extracted but becomes empty after sanitization
+        response_with_invalid_move = "I think about this position. Final Answer: !!??"
+
+        with pytest.raises(ParseMoveError) as exc_info:
+            move_handler.parse_decision_from_response(response_with_invalid_move)
+
+        error_msg = str(exc_info.value)
+        # Should show that text was found but parsing failed
+        assert "Found potential move text" in error_msg
+        assert "but failed to parse as valid move" in error_msg
+        assert "!!??" in error_msg

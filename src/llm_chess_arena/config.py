@@ -216,11 +216,11 @@ class StockfishPlayerConfig(PlayerConfigBase):
 class LLMConnectorConfig:
     """Connector parameters for LiteLLM-backed players."""
 
-    model: str
-    temperature: float = 0.7
+    model: str | None
+    temperature: float = -1
+    timeout: float = -1
+    max_retries: int = -1
     max_tokens: int | float | None = None
-    timeout: float = 30.0
-    max_retries: int = 3
     provider: str | None = None
     api_base: str | None = None
 
@@ -239,8 +239,8 @@ class LLMPlayerConfig(PlayerConfigBase):
     kind: str = "llm"
     connector: LLMConnectorConfig | None = None
     handler: LLMHandlerConfig = field(default_factory=LLMHandlerConfig)
-    max_move_retries: int = 3
-    num_votes: int = 1
+    max_move_retries: int = -1
+    num_votes: int = -1
 
 
 PlayerConfig = RandomPlayerConfig | StockfishPlayerConfig | LLMPlayerConfig
@@ -329,8 +329,11 @@ def _get_model_info_cached(model: str) -> Mapping[str, Any]:
     return _MODEL_INFO_CACHE[model]
 
 
-def _resolve_model_limit(model: str) -> tuple[bool, Optional[int]]:
+def _resolve_model_limit(model: str | None) -> tuple[bool, Optional[int]]:
     """Identify whether ``model`` is recognised and report its output token limit."""
+
+    if model is None:
+        return False, None
 
     recognized = False
     candidates = [model]
@@ -462,6 +465,9 @@ def _parse_player_config(raw: Mapping[str, Any], fallback_color: Color) -> Playe
     Raises:
         ValueError: If player kind is unsupported or LLM config lacks connector.
     """
+
+    if not isinstance(raw, Mapping):
+        raise ValueError(f"Expected mapping for player config, got {type(raw)}: {raw}")
 
     kind = raw.get("kind")
     config: PlayerConfig

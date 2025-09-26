@@ -98,6 +98,9 @@ class PlayerFactory:
     @staticmethod
     def _create_llm_connector(config: "LLMConnectorConfig") -> LLMConnector:
         """Create LLM connector from configuration."""
+        if config.model is None:
+            raise ValueError("LLM connector requires a model to be specified")
+
         return LLMConnector(
             model=config.model,
             temperature=config.temperature,

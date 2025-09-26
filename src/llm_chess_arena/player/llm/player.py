@@ -101,7 +101,7 @@ class LLMPlayer(BasePlayer):
                 logger.debug(
                     "LLM player {} initial move attempt for position {}",
                     self.name,
-                    context.board_in_fen[:30] + "...",
+                    context.board_in_fen,
                 )
 
             prompt = (
