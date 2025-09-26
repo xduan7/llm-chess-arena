@@ -148,9 +148,7 @@ class LLMPlayer(BasePlayer):
                 # Network failures mean the connector already exhausted its network retry budget.
                 # Resign immediately - no move retries needed for network issues.
                 logger.warning("{} resigned due to network failure: {}", self, str(exc))
-                resignation = self._retry_controller.create_resignation(
-                    f"Network failure: {exc}"
-                )
+                resignation = self._retry_controller.create_resignation()
                 self.last_move_decision = resignation
                 return resignation
             except (
@@ -218,9 +216,7 @@ class LLMPlayer(BasePlayer):
                 self.last_move_decision = resignation
                 return resignation
 
-        resignation = self._retry_controller.create_resignation(
-            f"Failed to produce valid move after {self._retry_controller.attempts_used} attempts"
-        )
+        resignation = self._retry_controller.create_resignation()
         self.last_move_decision = resignation
         return resignation
 

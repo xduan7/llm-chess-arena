@@ -101,7 +101,9 @@ class PlayerFactory:
         return LLMConnector(
             model=config.model,
             temperature=config.temperature,
-            max_tokens=config.max_tokens,
+            max_tokens=(
+                int(config.max_tokens) if config.max_tokens is not None else None
+            ),
             timeout=config.timeout,
             max_retries=config.max_retries,
             provider=config.provider,
@@ -113,7 +115,6 @@ class PlayerFactory:
         config: "LLMHandlerConfig" | None,
     ) -> GameArenaLLMMoveHandler:
         """Create LLM move handler from configuration."""
-        # Handler configs currently only support Game Arena; allow graceful defaulting.
         kind = getattr(config, "kind", "game_arena")
         if kind == "game_arena":
             return GameArenaLLMMoveHandler()

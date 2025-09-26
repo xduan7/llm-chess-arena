@@ -60,6 +60,7 @@ def test_parse_failures_skipped(aggregator: VoteAggregator, handler: Mock) -> No
     responses = ["garbage", "move e4", "more garbage"]
 
     def side_effect(response: str) -> PlayerDecision:
+        """Raise ParseMoveError for garbage inputs while allowing valid moves."""
         if "garbage" in response:
             raise ParseMoveError("Could not parse")
         return PlayerDecision(action="move", attempted_move="e4")

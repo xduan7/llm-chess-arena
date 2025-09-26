@@ -209,13 +209,16 @@ class CloseCountingPlayer(BasePlayer):
     """Test helper that tracks how many times close() is invoked."""
 
     def __init__(self, name: str, color: str) -> None:
+        """Initialize the stub player and reset close() counters."""
         super().__init__(name=name, color=color)
         self.close_calls = 0
 
     def _make_decision(self, context) -> PlayerDecision:  # type: ignore[override]
+        """Always resign so the game loop terminates quickly in tests."""
         return PlayerDecision(action="resign")
 
     def close(self) -> None:  # noqa: D401
+        """Increment the counter to track cleanup calls."""
         self.close_calls += 1
 
 
@@ -229,6 +232,7 @@ def test_run_game_from_config_closes_players_once(monkeypatch):
     captured_config: dict[str, config.AppConfig] = {}
 
     def fake_create_game(app_config: config.AppConfig) -> Game:
+        """Capture the config used to build a game and return the stub instance."""
         captured_config["app_config"] = app_config
         return game
 
@@ -320,9 +324,12 @@ class TestHydraConfig:
         assert (
             cfg.players.white.connector.temperature == default_connector_cfg.temperature
         )
-        assert (
-            cfg.players.white.connector.max_tokens == default_connector_cfg.max_tokens
-        )
+        # max_tokens should be resolved from fractional (0.8) to actual tokens
+        from llm_chess_arena.config import BASE_MODEL_OUTPUT_TOKEN_LIMITS
+
+        gpt_4o_mini_limit = BASE_MODEL_OUTPUT_TOKEN_LIMITS["gpt-4o-mini"]
+        expected_max_tokens = int(gpt_4o_mini_limit * 0.8)
+        assert cfg.players.white.connector.max_tokens == expected_max_tokens
         assert cfg.players.white.connector.timeout == default_connector_cfg.timeout
         assert (
             cfg.players.white.connector.max_retries == default_connector_cfg.max_retries

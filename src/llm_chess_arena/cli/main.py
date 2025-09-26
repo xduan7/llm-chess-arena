@@ -18,17 +18,17 @@ from llm_chess_arena.config import (
 )
 
 
-def _render_summary(lines: Iterable[str]) -> None:
+def _print_game_summary(lines: Iterable[str]) -> None:
     """Print game completion summary lines to stdout."""
     for line in lines:
         print(line)
 
 
 # Hydra config directory relative to project root
-CONFIG_DIR = str(Path(__file__).resolve().parents[3] / "configs")
+HYDRA_CONFIG_DIR = str(Path(__file__).resolve().parents[3] / "configs")
 
 
-@main(version_base="1.3", config_path=CONFIG_DIR, config_name="config")  # type: ignore[misc, unused-ignore]
+@main(version_base="1.3", config_path=HYDRA_CONFIG_DIR, config_name="config")  # type: ignore[misc, unused-ignore]
 def run_cli_game(cfg: DictConfig) -> None:
     """Run a CLI-configured chess game via Hydra.
 
@@ -39,12 +39,13 @@ def run_cli_game(cfg: DictConfig) -> None:
     app_config = app_config_from_dictconfig(cfg)
     apply_env_config(app_config.env)
 
-    # Add optional Stockfish warning
     if cfg.get("metrics") and not shutil.which("stockfish"):
-        logger.warning("Stockfish not found - move quality metrics will be unavailable")
+        logger.warning(
+            "Stockfish not found in PATH - move quality metrics will be unavailable"
+        )
 
     game = run_game_from_config(app_config)
-    _render_summary(format_game_summary(game))
+    _print_game_summary(format_game_summary(game))
 
 
 if __name__ == "__main__":

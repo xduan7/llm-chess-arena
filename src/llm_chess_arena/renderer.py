@@ -560,7 +560,7 @@ def _build_metrics_panel(
         content.append(Text(f"Best Move Hit Rate: {hit_rate}"))
 
     # Quality breakdown - always show all categories for consistent panel height
-    content.append(Text(""))  # spacing
+    content.append(Text(""))
     content.append(Text("Move Quality Breakdown:", style="bold"))
 
     for quality in MOVE_QUALITY_ORDER:

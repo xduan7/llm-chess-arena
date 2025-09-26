@@ -30,7 +30,7 @@ def test_create_resignation_logs() -> None:
     """Generating a resignation should produce a resign decision."""
     controller = RetryController(max_retries=0)
     controller.mark_attempt(1)
-    decision = controller.create_resignation("No moves")
+    decision = controller.create_resignation()
 
     assert decision.action == "resign"
     assert decision.attempted_move is None

@@ -55,7 +55,6 @@ class PlayerDecision(BaseModel):
 
     action: PlayerAction
     attempted_move: str | None = None
-    resignation_reason: str | None = None
 
     # Extensible for confidence scores, explanations, etc.
     model_config = ConfigDict(extra="allow")

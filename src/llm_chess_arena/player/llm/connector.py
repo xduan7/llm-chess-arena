@@ -25,12 +25,13 @@ ARGO_DUMMY_API_KEY = "sk-argo-placeholder"
 # Cross-provider robustness: silently ignore unsupported params when switching between
 # models (OpenAI, Anthropic, Gemini) rather than erroring. Research code needs flexibility.
 litellm.drop_params = True
-# Disable verbose logging across litellm versions (set_verbose availability varies)
+# LiteLLM's verbose attribute/method availability varies across installations
+# Use defensive access since mypy cannot detect the dynamic API
 set_verbose = getattr(litellm, "set_verbose", None)
 if callable(set_verbose):
     set_verbose(False)
-    setattr(litellm, "verbose", False)
 else:
+    # Fallback to direct attribute if method unavailable
     setattr(litellm, "verbose", False)
 
 
@@ -234,7 +235,6 @@ class LLMConnector:
                     raise ConnectionError(
                         f"{error_type.replace('_', ' ').title()} ({status}) after {max_attempts} network attempts"
                     ) from e
-                # Continue to next attempt
             except Exception as e:  # pragma: no cover - defensive guard
                 error_type = type(e).__name__.replace("Error", "").lower()
                 logger.error(
@@ -355,6 +355,8 @@ class LLMConnector:
     @staticmethod
     def _safe_cost(response: Any) -> float:
         """Safely coerce cost metadata to ``float`` with broad compatibility."""
+        # LiteLLM's completion_cost is not always available across installations
+        # Use defensive access since mypy cannot detect the dynamic API
         completion_cost_fn = getattr(litellm, "completion_cost", None)
         cost_value: Any = 0.0
 

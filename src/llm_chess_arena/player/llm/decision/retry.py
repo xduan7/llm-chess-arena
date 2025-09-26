@@ -53,13 +53,10 @@ class RetryController:
         """
         self.attempts_used = attempt_number
 
-    def create_resignation(self, reason: str) -> PlayerDecision:
+    def create_resignation(self) -> PlayerDecision:
         """Create a resignation decision after exhausting retry attempts.
 
-        Args:
-            reason: Description of why resignation was necessary.
-
         Returns:
-            PlayerDecision: Resignation decision with logging.
+            PlayerDecision: Resignation decision.
         """
-        return PlayerDecision(action="resign", resignation_reason=reason)
+        return PlayerDecision(action="resign")

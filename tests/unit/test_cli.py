@@ -7,16 +7,23 @@ from llm_chess_arena.cli.main import run_cli_game
 
 
 class _StubPlayer:
+    """Lightweight stand-in for a player used in CLI smoke tests."""
+
     def __init__(self, name: str, color: str) -> None:
+        """Store metadata describing the fake player."""
         self.name = name
         self.color = color
 
     def __str__(self) -> str:  # noqa: D401
+        """Return the display representation matching BasePlayer semantics."""
         return f"{self.name} ({self.color[0].upper()})"
 
 
 class _StubGame:
+    """Minimal game implementation for isolating the CLI entry point."""
+
     def __init__(self) -> None:
+        """Create deterministic players and a precomputed game outcome."""
         self.white_player = _StubPlayer("WhiteBot", "white")
         self.black_player = _StubPlayer("BlackBot", "black")
         self.metrics_tracker = None
@@ -31,14 +38,17 @@ class _StubGame:
         self._termination_note = None
 
     def play(self, max_num_moves: int | None = None) -> None:  # noqa: ARG002
+        """Advance a single move so PGN export has content."""
         self.board.push(chess.Move.from_uci("e2e4"))
 
     @property
     def outcome(self) -> chess.Outcome:
+        """Return the predetermined outcome for CLI assertions."""
         return self._outcome
 
     @property
     def finished(self) -> bool:
+        """Signal that the stubbed game is already complete."""
         return True
 
 
@@ -53,6 +63,7 @@ def test_run_cli_game_smoke(monkeypatch, capsys):
     )
 
     def fake_run_game(app_config):
+        """Capture the provided app config and return the stubbed game."""
         captured["app_config"] = app_config
         return stub_game
 

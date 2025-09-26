@@ -20,16 +20,17 @@ from tests.conftest import (
 
 
 class AlwaysResignPlayer(BasePlayer):
-    """Player that immediately resigns with an optional reason."""
+    """Player that immediately resigns."""
 
-    def __init__(self, name: str, color: str, reason: str | None = None) -> None:
+    def __init__(self, name: str, color: str) -> None:
+        """Store identifying metadata for the stub player."""
         super().__init__(name=name, color=color)
-        self._reason = reason
 
     def _make_decision(
         self, context: PlayerDecisionContext
     ) -> PlayerDecision:  # noqa: D401
-        return PlayerDecision(action="resign", resignation_reason=self._reason)
+        """Return a resignation decision regardless of the board state."""
+        return PlayerDecision(action="resign")
 
 
 class TestGameInitialization:
@@ -205,11 +206,10 @@ class TestGameResult:
 class TestGameResignation:
     """Resignation-specific behavior validation."""
 
-    def test_resignation_reason_in_summary(self):
-        """Termination line should reflect resignation and include the reason."""
+    def test_resignation_in_summary(self):
+        """Termination line should reflect resignation."""
 
-        reason = "Network failure: timeout"
-        white_player = AlwaysResignPlayer("LLM", "white", reason)
+        white_player = AlwaysResignPlayer("LLM", "white")
         black_player = ScriptedPlayer("Opponent", "black", ["e5"])
         game = Game(white_player, black_player, enable_metrics=False)
 
@@ -222,7 +222,6 @@ class TestGameResignation:
 
         assert termination_lines, "Expected a termination line in the summary"
         assert "Resignation" in termination_lines[0]
-        assert reason in termination_lines[0]
 
 
 class RecordingEvaluator:

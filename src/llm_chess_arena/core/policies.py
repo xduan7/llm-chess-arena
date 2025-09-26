@@ -120,7 +120,6 @@ class ErrorPolicy:
         return wrapper
 
 
-# Convenience aliases for direct decorator usage
 move_validation = ErrorPolicy.handle_move_validation_error
 network_operation = ErrorPolicy.handle_network_error
 config_operation = ErrorPolicy.handle_config_error

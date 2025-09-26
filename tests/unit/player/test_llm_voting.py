@@ -233,6 +233,7 @@ class TestLLMVotingEdgeCases:
         """Network errors during sampling should resign immediately."""
 
         def raise_timeout(*args, **kwargs):
+            """Simulate a connector timeout for retry testing."""
             raise TimeoutError("Network timeout")
 
         connector = Mock()

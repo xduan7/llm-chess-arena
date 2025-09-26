@@ -168,14 +168,10 @@ class Game:
                 chess.BLACK if self.current_player.color == "white" else chess.WHITE
             ),
         )
-        reason = decision.resignation_reason
-        if reason:
-            logger.info("{} resigns: {}", self.current_player, reason)
-        else:
-            logger.info("{} resigns", self.current_player)
+        logger.info("{} resigns", self.current_player)
 
         self._termination_label_override = "Resignation"
-        self._termination_note = reason
+        self._termination_note = None
 
     def _handle_move(self, decision: PlayerDecision) -> None:
         """Validate the player's move and apply it to the board.
@@ -253,7 +249,6 @@ class Game:
                     self.make_move()
                     num_moves += 1
 
-                    # Display board after move if requested
                     if self.display_board:
                         current_move = (
                             self.board.peek() if self.board.move_stack else None

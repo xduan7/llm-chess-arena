@@ -15,6 +15,7 @@ def test_move_validation_policy_preserves_move_errors() -> None:
 
     @ErrorPolicy.handle_move_validation_error
     def validator() -> None:
+        """Raise InvalidMoveError to ensure policy leaves it untouched."""
         raise InvalidMoveError("bad move")
 
     with pytest.raises(InvalidMoveError, match="bad move"):
@@ -26,6 +27,7 @@ def test_move_validation_policy_converts_unexpected_errors() -> None:
 
     @ErrorPolicy.handle_move_validation_error
     def validator() -> None:
+        """Raise RuntimeError to confirm conversion into MoveError."""
         raise RuntimeError("boom")
 
     with pytest.raises(MoveError, match="Move validation failed"):
@@ -37,6 +39,7 @@ def test_network_policy_bubbles_errors() -> None:
 
     @ErrorPolicy.handle_network_error
     def flaky() -> None:
+        """Simulate a network failure that should bubble up unchanged."""
         raise ConnectionError("no network")
 
     with pytest.raises(ConnectionError, match="no network"):
@@ -48,6 +51,7 @@ def test_config_policy_wraps_errors() -> None:
 
     @ErrorPolicy.handle_config_error
     def builder() -> None:
+        """Raise a generic runtime error to test config wrapping."""
         raise RuntimeError("bad config")
 
     with pytest.raises(ValueError, match="Configuration failed"):
@@ -59,6 +63,7 @@ def test_metrics_policy_logs_and_returns_none() -> None:
 
     @ErrorPolicy.handle_metrics_error
     def metrics() -> None:
+        """Trigger an error so the metrics policy can swallow it."""
         raise RuntimeError("stockfish unavailable")
 
     mock_logger = Mock()
