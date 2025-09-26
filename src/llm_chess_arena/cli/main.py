@@ -19,11 +19,12 @@ from llm_chess_arena.config import (
 
 
 def _render_summary(lines: Iterable[str]) -> None:
-    """Print game completion summary lines."""
+    """Print game completion summary lines to stdout."""
     for line in lines:
         print(line)
 
 
+# Hydra config directory relative to project root
 CONFIG_DIR = str(Path(__file__).resolve().parents[3] / "configs")
 
 

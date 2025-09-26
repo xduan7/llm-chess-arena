@@ -13,7 +13,7 @@ import litellm
 from litellm import exceptions as litellm_exceptions
 
 from llm_chess_arena.core.policies import network_operation
-from llm_chess_arena.exceptions import LLMPermanentError
+from llm_chess_arena.exceptions import LLMPermanentError, LLMEmptyResponseError
 
 litellm.suppress_debug_info = True
 
@@ -32,10 +32,6 @@ if callable(set_verbose):
     setattr(litellm, "verbose", False)
 else:
     setattr(litellm, "verbose", False)
-
-
-class _ResponseContentError(RuntimeError):
-    """Signal that the provider returned an unusable completion payload."""
 
 
 class LLMConnector:
@@ -105,6 +101,14 @@ class LLMConnector:
 
         return sanitized
 
+    def _get_endpoint_description(self) -> str:
+        """Get a human-readable description of the configured endpoint."""
+        if self.api_base:
+            return self.api_base
+        if self.provider:
+            return f"{self.provider} ({self.model})"
+        return self.model
+
     def _setup_argo(self) -> None:
         parts = self.model.split(":", maxsplit=1)
         alias = parts[1].strip() if len(parts) > 1 else ""
@@ -163,7 +167,7 @@ class LLMConnector:
             "temperature": self.temperature,
             "max_tokens": self.max_tokens,
             "timeout": self.timeout,
-            "max_retries": self.max_retries,
+            "max_retries": 0,  # Handle retries ourselves for better logging
             "n": n,
             "provider": self.provider,
             "api_base": self.api_base,
@@ -175,100 +179,87 @@ class LLMConnector:
         }
 
         max_attempts = self.max_retries + 1
-        last_content_error: _ResponseContentError | None = None
+        endpoint = self._get_endpoint_description()
 
-        try:
-            for attempt_number in range(1, max_attempts + 1):
-                try:
-                    response = litellm.completion(**completion_kwargs)
-                    contents = self._extract_response_contents(response)
-                except _ResponseContentError as exc:
-                    last_content_error = exc
-                    sanitized_message = self._sanitize_for_logging(str(exc))
-                    if attempt_number < max_attempts:
-                        logger.warning(
-                            "LLM response unusable on attempt {}/{}: {} - retrying",
-                            attempt_number,
-                            max_attempts,
-                            sanitized_message,
-                        )
-                        continue
+        for attempt in range(1, max_attempts + 1):
+            try:
+                response = litellm.completion(**completion_kwargs)
+                contents = self._extract_response_contents(response)
+                self._capture_usage(response)
+                logger.debug("{} response choices: {}", self.model, contents)
+                return contents
 
-                    logger.error(
-                        "LLM response unusable on attempt {}/{}: {} - retries exhausted",
-                        attempt_number,
-                        max_attempts,
-                        sanitized_message,
-                    )
-                    break
-                else:
-                    self._capture_usage(response)
-                    logger.debug("{} response choices: {}", self.model, contents)
-                    return contents
+            except LLMEmptyResponseError:
+                # Let empty response errors bubble up to player for move retries
+                raise
+            except litellm_exceptions.Timeout as e:
+                logger.warning("Request timed out after {}s", self.timeout)
+                raise TimeoutError(f"Request timed out after {self.timeout}s") from e
+            except (
+                litellm_exceptions.AuthenticationError,
+                litellm_exceptions.InvalidRequestError,
+                litellm_exceptions.BadRequestError,
+                litellm_exceptions.ContentPolicyViolationError,
+            ) as e:
+                logger.error(
+                    "Permanent API error (will not retry): {}",
+                    self._sanitize_for_logging(str(e)),
+                )
+                raise LLMPermanentError(f"LLM API request invalid: {e}") from e
+            except (
+                litellm_exceptions.RateLimitError,
+                litellm_exceptions.ServiceUnavailableError,
+                litellm_exceptions.InternalServerError,
+                litellm_exceptions.APIError,
+                litellm_exceptions.APIConnectionError,
+            ) as e:
+                status = getattr(e, "status_code", "unknown")
+                error_type = type(e).__name__.replace("Error", "").lower()
+                logger.warning(
+                    "Network attempt {}/{} to {} failed - {} ({})",
+                    attempt,
+                    max_attempts,
+                    endpoint,
+                    error_type,
+                    status,
+                )
 
-        except litellm_exceptions.Timeout as e:
-            logger.warning("Request timed out after {}s: {}", self.timeout, e)
-            raise TimeoutError(f"Request timed out after {self.timeout}s") from e
+                if attempt >= max_attempts:
+                    raise ConnectionError(
+                        f"{error_type.replace('_', ' ').title()} ({status}) after {max_attempts} network attempts"
+                    ) from e
+                # Continue to next attempt
+            except Exception as e:  # pragma: no cover - defensive guard
+                error_type = type(e).__name__.replace("Error", "").lower()
+                logger.error(
+                    "Unexpected error connecting to {} - {}", endpoint, error_type
+                )
+                raise ConnectionError(f"Unexpected {error_type}") from e
 
-        except (
-            litellm_exceptions.RateLimitError,
-            litellm_exceptions.ServiceUnavailableError,
-            litellm_exceptions.InternalServerError,
-        ) as e:
-            logger.warning("Transient API error (may retry at higher level): {}", e)
-            raise ConnectionError(f"LLM API temporarily unavailable: {e}") from e
-
-        except (
-            litellm_exceptions.AuthenticationError,
-            litellm_exceptions.InvalidRequestError,
-            litellm_exceptions.BadRequestError,
-            litellm_exceptions.ContentPolicyViolationError,
-        ) as e:
-            logger.error(
-                "Permanent API error (will not retry): {}",
-                self._sanitize_for_logging(str(e)),
-            )
-            raise LLMPermanentError(f"LLM API request invalid: {e}") from e
-
-        except (
-            litellm_exceptions.APIError,
-            litellm_exceptions.APIConnectionError,
-        ) as e:
-            logger.error("API error occurred: {}", self._sanitize_for_logging(str(e)))
-            raise ConnectionError(f"LLM API call failed: {e}") from e
-        except Exception as e:  # pragma: no cover - defensive guard
-            logger.error(
-                "Unexpected error during LLM API call: {}",
-                self._sanitize_for_logging(str(e)),
-            )
-            raise ConnectionError(f"Unexpected error: {e}") from e
-
-        if last_content_error is not None:
-            raise ConnectionError(str(last_content_error)) from last_content_error
-
-        raise ConnectionError("LLM API call failed with unusable responses")
+        # Should never reach here
+        raise ConnectionError("Network retries exhausted")
 
     def _extract_response_contents(self, response: Any) -> list[str]:
         try:
             choices: Iterable[Any] = response.choices
         except AttributeError as exc:  # pragma: no cover - defensive guard
-            raise _ResponseContentError("LLM response missing choices payload") from exc
+            raise LLMEmptyResponseError("LLM response missing choices payload") from exc
 
         contents: list[str] = []
         for choice in choices:
             message = getattr(choice, "message", None)
             content = getattr(message, "content", None) if message is not None else None
             if content is None:
-                raise _ResponseContentError("LLM response missing content message")
+                raise LLMEmptyResponseError("LLM response missing content message")
             content_str = str(content).strip()
             if not content_str:
-                raise _ResponseContentError(
-                    "LLM response contains empty content message"
+                raise LLMEmptyResponseError(
+                    "LLM response contains empty content (check max_tokens setting)"
                 )
             contents.append(content_str)
 
         if not contents:
-            raise _ResponseContentError("LLM response contained no choices")
+            raise LLMEmptyResponseError("LLM response contained no choices")
 
         return contents
 

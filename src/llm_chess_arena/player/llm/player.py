@@ -9,6 +9,7 @@ from llm_chess_arena.exceptions import (
     IllegalMoveError,
     InvalidMoveError,
     LLMPermanentError,
+    LLMEmptyResponseError,
 )
 from llm_chess_arena.player.base_player import BasePlayer
 from llm_chess_arena.player.llm.connector import LLMConnector, UsageRecord
@@ -123,50 +124,68 @@ class LLMPlayer(BasePlayer):
                 logger.error("Permanent LLM error - terminating move attempt")
                 raise
             except (TimeoutError, ConnectionError) as exc:
-                # Network failures mean the connector already exhausted its own retry budget.
-                # Treat them as fatal for the move rather than looping through prompt retries.
-                logger.warning(
-                    "LLM player {} network error on attempt {}/{}: {}: {}. Resigning immediately",
-                    self,
-                    attempt.attempt_number,
-                    attempt.max_attempts,
-                    exc.__class__.__name__,
-                    exc,
-                )
+                # Network failures mean the connector already exhausted its network retry budget.
+                # Resign immediately - no move retries needed for network issues.
+                logger.warning("{} resigned due to network failure: {}", self, str(exc))
                 resignation = self._retry_controller.create_resignation(
-                    f"Network error after connector retries: {exc}"
+                    f"Network failure: {exc}"
                 )
                 self.last_move_decision = resignation
                 return resignation
-            except (InvalidMoveError, IllegalMoveError, AmbiguousMoveError) as exc:
-                invalid_move = decision.attempted_move if decision else "unknown"
-                retry_status = (
-                    "Retrying with prior response and invalid move context"
-                    if not attempt.is_final_attempt
-                    else "No retries left"
-                )
-                logger.warning(
-                    "LLM player {} attempt {} failed with {}: {}. Invalid move: '{}'. {}",
-                    self,
-                    attempt.attempt_number,
-                    exc.__class__.__name__,
-                    exc,
-                    invalid_move,
-                    retry_status,
-                )
+            except (
+                InvalidMoveError,
+                IllegalMoveError,
+                AmbiguousMoveError,
+                LLMEmptyResponseError,
+            ) as exc:
+                # Handle empty response differently (no decision object exists)
+                if isinstance(exc, LLMEmptyResponseError):
+                    retry_status = (
+                        f"Retrying move attempt (empty response: {exc})"
+                        if not attempt.is_final_attempt
+                        else f"No retries left after empty response: {exc}"
+                    )
+                    logger.warning(
+                        "LLM player {} attempt {} failed with empty response: {}. {}",
+                        self,
+                        attempt.attempt_number,
+                        exc,
+                        retry_status,
+                    )
 
-                if not attempt.is_final_attempt and decision is not None:
-                    prompt_session.build_retry_prompt(
-                        exception_name=exc.__class__.__name__,
-                        last_response=getattr(decision, "response", None),
-                        last_attempted_move=decision.attempted_move,
+                    if not attempt.is_final_attempt:
+                        # No decision to add to retry prompt for empty responses
+                        continue
+                else:
+                    # Handle invalid move errors (decision object exists)
+                    invalid_move = decision.attempted_move if decision else "unknown"
+                    retry_status = (
+                        "Retrying with prior response and invalid move context"
+                        if not attempt.is_final_attempt
+                        else "No retries left"
                     )
-                    logger.debug(
-                        "Generated retry prompt with error context for {}",
+                    logger.warning(
+                        "LLM player {} attempt {} failed with {}: {}. Invalid move: '{}'. {}",
+                        self,
+                        attempt.attempt_number,
                         exc.__class__.__name__,
+                        exc,
+                        invalid_move,
+                        retry_status,
                     )
-                    self.last_move_decision = decision
-                    continue
+
+                    if not attempt.is_final_attempt and decision is not None:
+                        prompt_session.build_retry_prompt(
+                            exception_name=exc.__class__.__name__,
+                            last_response=getattr(decision, "response", None),
+                            last_attempted_move=decision.attempted_move,
+                        )
+                        logger.debug(
+                            "Generated retry prompt with error context for {}",
+                            exc.__class__.__name__,
+                        )
+                        self.last_move_decision = decision
+                        continue
                 break
             except NotImplementedError:
                 logger.error(

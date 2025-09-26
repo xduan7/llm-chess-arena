@@ -23,3 +23,7 @@ class AmbiguousMoveError(MoveError):
 
 class LLMPermanentError(Exception):
     """Non-recoverable LLM API errors (auth, invalid request, content policy)."""
+
+
+class LLMEmptyResponseError(Exception):
+    """LLM returned a response but content was empty (usually insufficient max_tokens)."""

@@ -57,11 +57,13 @@ class PlayerFactory:
 
     @staticmethod
     def _create_random_player(config: "RandomPlayerConfig") -> RandomPlayer:
+        """Create random player from configuration."""
         name = config.name or f"Random {config.color.capitalize()}"
         return RandomPlayer(name=name, color=config.color, seed=config.seed)
 
     @staticmethod
     def _create_stockfish_player(config: "StockfishPlayerConfig") -> StockfishPlayer:
+        """Create Stockfish player from configuration."""
         name = config.name or "Stockfish"
         limits = dict(config.engine_limits) if config.engine_limits else None
         options = dict(config.engine_options) if config.engine_options else None
@@ -75,6 +77,7 @@ class PlayerFactory:
 
     @staticmethod
     def _create_llm_player(config: "LLMPlayerConfig") -> LLMPlayer:
+        """Create LLM player from configuration."""
         connector_cfg = config.connector
         if connector_cfg is None:
             raise ValueError("LLM player configuration requires connector settings")
@@ -94,6 +97,7 @@ class PlayerFactory:
 
     @staticmethod
     def _create_llm_connector(config: "LLMConnectorConfig") -> LLMConnector:
+        """Create LLM connector from configuration."""
         return LLMConnector(
             model=config.model,
             temperature=config.temperature,
@@ -108,6 +112,7 @@ class PlayerFactory:
     def _create_llm_handler(
         config: "LLMHandlerConfig" | None,
     ) -> GameArenaLLMMoveHandler:
+        """Create LLM move handler from configuration."""
         # Handler configs currently only support Game Arena; allow graceful defaulting.
         kind = getattr(config, "kind", "game_arena")
         if kind == "game_arena":

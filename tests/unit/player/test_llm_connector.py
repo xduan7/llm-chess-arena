@@ -10,6 +10,7 @@ from llm_chess_arena.player.llm.connector import (
     ARGO_DUMMY_API_KEY,
     LLMConnector,
 )
+from llm_chess_arena.exceptions import LLMEmptyResponseError
 from llm_chess_arena.config import load_env
 
 load_env()
@@ -91,41 +92,38 @@ class TestLLMConnectorWithMockResponse:
                 max_retries=1,
             )
 
-            with pytest.raises(ConnectionError, match="Unexpected error"):
+            with pytest.raises(ConnectionError, match="Unexpected exception"):
                 connector.query("Test prompt")
 
-    def test_query_retries_on_empty_content_then_succeeds(self):
-        """Connector should retry transient empty responses before succeeding."""
-        first_response = Mock(
+    def test_query_raises_immediately_on_empty_content(self):
+        """Connector should raise LLMEmptyResponseError immediately (no internal retries)."""
+        empty_response = Mock(
             choices=[Mock(message=Mock(content="   "))]  # Empty content
         )
-        second_response = Mock(choices=[Mock(message=Mock(content="Best move: e4"))])
 
         with patch(
-            "litellm.completion", side_effect=[first_response, second_response]
+            "litellm.completion", return_value=empty_response
         ) as mock_completion:
             connector = LLMConnector(model="gpt-3.5-turbo", max_retries=2)
 
-            result = connector.query("test prompt")
+            with pytest.raises(LLMEmptyResponseError, match="check max_tokens setting"):
+                connector.query("test prompt")
 
-            assert result == ["Best move: e4"]
-            assert mock_completion.call_count == 2
+            assert mock_completion.call_count == 1  # No internal retries
 
-    def test_query_raises_after_retries_exhausted_on_empty_content(self):
-        """Connector should surface a ConnectionError once retries are exhausted."""
+    def test_query_raises_immediately_on_missing_content(self):
+        """Connector should raise LLMEmptyResponseError for missing content immediately."""
         empty_response = Mock(choices=[Mock(message=Mock(content=""))])
 
         with patch(
-            "litellm.completion", side_effect=[empty_response, empty_response]
+            "litellm.completion", return_value=empty_response
         ) as mock_completion:
             connector = LLMConnector(model="gpt-3.5-turbo", max_retries=1)
 
-            with pytest.raises(
-                ConnectionError, match="LLM response contains empty content message"
-            ):
+            with pytest.raises(LLMEmptyResponseError, match="check max_tokens setting"):
                 connector.query("test")
 
-            assert mock_completion.call_count == 2
+            assert mock_completion.call_count == 1  # No internal retries
 
 
 class TestLLMConnectorRetryLogic:
@@ -158,7 +156,7 @@ class TestLLMConnectorRetryLogic:
                 max_retries=2,
             )
 
-            with pytest.raises(ConnectionError, match="Unexpected error"):
+            with pytest.raises(ConnectionError, match="Unexpected exception"):
                 connector.query("Test")
 
             assert mock_completion.call_count >= 1

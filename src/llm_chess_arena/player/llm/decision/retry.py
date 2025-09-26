@@ -5,8 +5,6 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Iterator
 
-from loguru import logger
-
 from llm_chess_arena.types import PlayerDecision
 
 
@@ -64,9 +62,4 @@ class RetryController:
         Returns:
             PlayerDecision: Resignation decision with logging.
         """
-        logger.warning(
-            "Creating resignation after {} attempt(s): {}",
-            self.attempts_used,
-            reason,
-        )
         return PlayerDecision(action="resign")

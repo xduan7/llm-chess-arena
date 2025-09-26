@@ -198,7 +198,18 @@ def _ensure_color(config: PlayerConfig, fallback: Color) -> PlayerConfig:
 
 
 def _parse_player_config(raw: Mapping[str, Any], fallback_color: Color) -> PlayerConfig:
-    """Convert a raw mapping into a strongly typed player configuration."""
+    """Convert raw player configuration mapping into strongly typed player config.
+
+    Args:
+        raw: Raw configuration mapping from Hydra.
+        fallback_color: Color to assign if not specified in config.
+
+    Returns:
+        PlayerConfig: Typed player configuration instance.
+
+    Raises:
+        ValueError: If player kind is unsupported or LLM config lacks connector.
+    """
 
     kind = raw.get("kind")
     config: PlayerConfig
@@ -225,19 +236,17 @@ def _parse_player_config(raw: Mapping[str, Any], fallback_color: Color) -> Playe
 
 
 def _parse_env_config(raw: Mapping[str, Any]) -> EnvConfig:
-    """Parse environment configuration from raw mapping."""
-
+    """Parse environment configuration from raw Hydra mapping."""
     return EnvConfig(**raw)
 
 
 def _parse_game_config(raw: Mapping[str, Any]) -> GameConfig:
-    """Parse game configuration from raw mapping."""
-
+    """Parse game configuration from raw Hydra mapping."""
     return GameConfig(**raw)
 
 
 def _parse_metrics_config(raw: Mapping[str, Any]) -> MetricsConfig:
-    """Parse metrics configuration with quality thresholds."""
+    """Parse metrics configuration with quality thresholds from raw Hydra mapping."""
 
     thresholds_raw = raw.get("quality_thresholds", {})
     thresholds = MoveQualityThresholdsConfig(**thresholds_raw)
@@ -246,7 +255,7 @@ def _parse_metrics_config(raw: Mapping[str, Any]) -> MetricsConfig:
 
 
 def _parse_players_config(raw: Mapping[str, Any]) -> PlayersConfig:
-    """Parse both player configurations with enforced colors."""
+    """Parse both player configurations with enforced colors from raw Hydra mapping."""
 
     white_raw = raw.get("white")
     black_raw = raw.get("black")
