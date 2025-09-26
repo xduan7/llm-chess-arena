@@ -222,12 +222,14 @@ class TestUtilsEdgeCases:
     """Edge-case scenarios covering move generation utilities."""
 
     def test_stalemate_position__returns_empty_legal_moves_list(self):
+        """Stalemate positions should have zero legal moves."""
         stalemate_position = "7k/5Q2/6K1/8/8/8/8/8 b - - 0 1"
         board = chess.Board(stalemate_position)
         moves = get_legal_moves_in_uci(board)
         assert moves == []
 
     def test_pawn_promotion__generates_all_four_piece_options(self):
+        """Promotion possibilities must include each piece option."""
         pawn_on_seventh_rank = "8/P7/8/8/8/8/8/8 w - - 0 1"
         board = chess.Board(pawn_on_seventh_rank)
         moves = get_legal_moves_in_uci(board)
@@ -238,6 +240,7 @@ class TestUtilsEdgeCases:
         assert "a7a8n" in moves  # Knight
 
     def test_parse_attempted_move__does_not_mutate_original_board_state(self):
+        """Parsing should not alter the board derived from the FEN."""
         starting_position = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
 
         parse_attempted_move_to_uci("e4", starting_position)

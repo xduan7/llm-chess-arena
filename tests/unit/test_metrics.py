@@ -14,18 +14,19 @@ class DummyEvaluator:
     """Simple evaluator returning predefined metrics objects."""
 
     def __init__(self, outputs):
+        """Capture the sequence of metrics objects to return."""
         self.outputs = outputs
         self.index = 0
         self.closed = False
 
-    def evaluate_move(
-        self, board: chess.Board, move: chess.Move
-    ) -> MoveMetrics:  # noqa: D401
+    def evaluate_move(self, board: chess.Board, move: chess.Move) -> MoveMetrics:
+        """Return the next pre-baked metrics entry for the provided move."""
         metrics = self.outputs[self.index]
         self.index += 1
         return metrics
 
-    def close(self) -> None:  # noqa: D401
+    def close(self) -> None:
+        """Mark the evaluator as closed to simulate resource cleanup."""
         self.closed = True
 
 
@@ -114,14 +115,15 @@ class FailingEvaluator:
     """Evaluator that always raises to simulate engine failure."""
 
     def __init__(self) -> None:
+        """Initialize failure stub and closed flag."""
         self.closed = False
 
-    def evaluate_move(
-        self, board: chess.Board, move: chess.Move
-    ) -> MoveMetrics:  # noqa: D401
+    def evaluate_move(self, board: chess.Board, move: chess.Move) -> MoveMetrics:
+        """Raise a runtime error to emulate a failing evaluation."""
         raise RuntimeError("engine failure")
 
-    def close(self) -> None:  # noqa: D401
+    def close(self) -> None:
+        """Mark the failing evaluator as closed for verification."""
         self.closed = True
 
 

@@ -49,20 +49,29 @@ class VoteAggregator:
         most_voted_tuple, vote_count = vote_counts.most_common(1)[0]
 
         ties = [item for item, count in vote_counts.items() if count == vote_count]
-        if len(ties) > 1:
-            logger.debug(
-                "Tie in voting between {} options with {} votes each. Selecting first occurrence: {}",
-                len(ties),
-                vote_count,
-                most_voted_tuple,
-            )
-        else:
-            logger.debug(
-                "Majority voting: {}/{} votes for {}",
-                vote_count,
-                len(decisions),
-                most_voted_tuple,
-            )
+        if len(decisions) > 1:  # Only log voting details when there are multiple votes
+            if len(ties) > 1:
+                logger.info(
+                    "Vote tie between {} options with {} votes each. Selected: {}",
+                    len(ties),
+                    vote_count,
+                    (
+                        most_voted_tuple[1]
+                        if most_voted_tuple[0] == "move"
+                        else most_voted_tuple[0]
+                    ),
+                )
+            else:
+                logger.debug(
+                    "Majority voting: {}/{} votes for move '{}'",
+                    vote_count,
+                    len(decisions),
+                    (
+                        most_voted_tuple[1]
+                        if most_voted_tuple[0] == "move"
+                        else most_voted_tuple[0]
+                    ),
+                )
 
         for decision in decisions:
             if (decision.action, decision.attempted_move) == most_voted_tuple:
@@ -72,6 +81,7 @@ class VoteAggregator:
         return decisions[0]
 
     def _parse_responses(self, responses: list[str]) -> list[PlayerDecision]:
+        """Return parsed decisions while logging failures for context."""
         decisions: list[PlayerDecision] = []
         total = len(responses)
         for idx, response in enumerate(responses, start=1):
@@ -99,6 +109,7 @@ class VoteAggregator:
         return decisions
 
     def _build_debug_decision(self, responses: list[str]) -> PlayerDecision:
+        """Create a synthetic decision containing all raw responses."""
         logger.error(
             "All {} LLM response(s) failed to parse - logging all responses for debugging",
             len(responses),

@@ -406,7 +406,10 @@ class TestLLMPlayerNetworkErrors:
 
 
 class TestLLMPlayerMajorityVoting:
+    """Majority voting semantics across various response patterns."""
+
     def test_majority_voting_selects_most_frequent_move_from_multiple_samples(self):
+        """Voting should return the move with the highest frequency."""
         # 2 votes for e4, 1 for Nf3
         voting_responses = ["Final Answer: e4", "Final Answer: Nf3", "Final Answer: e4"]
 
@@ -428,6 +431,7 @@ class TestLLMPlayerMajorityVoting:
         assert voting_connector.query_count == 1
 
     def test_voting_tie_resolved_by_selecting_first_occurrence(self):
+        """Tie-breaking should fall back to the first winning move."""
         # Each move gets 1 vote - tie
         tied_voting_responses = [
             "Final Answer: e4",
@@ -452,6 +456,7 @@ class TestLLMPlayerMajorityVoting:
         assert tiebreaker_decision.attempted_move == "e2e4"  # First in list wins
 
     def test_invalid_samples_excluded_from_vote_counting(self):
+        """Unparseable samples should not affect the vote tally."""
         # 2 valid e4, 1 invalid
         samples_with_invalid = [
             "Final Answer: e4",
@@ -476,6 +481,7 @@ class TestLLMPlayerMajorityVoting:
         assert filtered_vote_decision.attempted_move == "e2e4"
 
     def test_all_samples_invalid_triggers_single_sample_retry(self):
+        """All-invalid batches should trigger the fallback retry query."""
         all_invalid_samples = ["invalid1", "invalid2", "invalid3"]
         valid_retry_response = "Final Answer: e4"
 
@@ -501,6 +507,7 @@ class TestLLMPlayerMajorityVoting:
         assert connector_needing_full_retry.query_count == 2
 
     def test_voting_converts_san_notation_to_uci_for_comparison(self):
+        """SAN and UCI variants should be treated as the same move."""
         # Same move in different notations
         different_notation_samples = [
             "Final Answer: e4",
@@ -527,6 +534,7 @@ class TestLLMPlayerMajorityVoting:
         assert normalized_notation_decision.attempted_move == "e2e4"
 
     def test_network_error_during_voting_resigns_immediately(self):
+        """Network errors during voting should cause an immediate resignation."""
         error_during_voting_connector = MockLLMConnector()
         error_during_voting_connector.query = Mock(
             side_effect=ConnectionError("API down")
@@ -550,7 +558,10 @@ class TestLLMPlayerMajorityVoting:
 
 
 class TestLLMPlayerIntegration:
+    """Higher-level scenarios spanning multiple consecutive moves."""
+
     def test_player_generates_moves_throughout_complete_game_sequence(self):
+        """Player should continue producing legal moves across multiple turns."""
         game_sequence_responses = [
             "Final Answer: e4",
             "Final Answer: Nf3",
@@ -599,6 +610,7 @@ class TestLLMPlayerIntegration:
         assert white_move_5.attempted_move == "d2d3"
 
     def test_player_name_defaults_to_model_name_when_not_specified(self):
+        """Players without explicit names should default to the connector model."""
         test_connector = MockLLMConnector(model="gpt-4-turbo")
         game_arena_handler = GameArenaLLMMoveHandler()
 
@@ -611,6 +623,7 @@ class TestLLMPlayerIntegration:
         assert player_without_custom_name.name == "gpt-4-turbo"
 
     def test_player_correctly_handles_black_perspective_moves(self):
+        """Verify black-side players mirror moves relative to their perspective."""
         black_move_responses = ["Final Answer: e5", "Final Answer: Nc6"]
 
         black_perspective_connector = MockLLMConnector(responses=black_move_responses)

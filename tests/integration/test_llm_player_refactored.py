@@ -9,6 +9,7 @@ from llm_chess_arena.types import PlayerDecisionContext
 
 
 def _build_context() -> PlayerDecisionContext:
+    """Construct a minimal decision context for test scenarios."""
     return PlayerDecisionContext(
         board_in_fen="rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
         player_color="white",

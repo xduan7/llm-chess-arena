@@ -9,6 +9,8 @@ from llm_chess_arena.utils import GameOutcomeSummary
 
 
 class TestRenderer:
+    """Test rendering helpers for board and summary output."""
+
     def test_display_board_with_context__should_render_board__when_given_initial_position(
         self,
     ):

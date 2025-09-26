@@ -16,6 +16,7 @@ from llm_chess_arena.types import PlayerDecision
 
 @pytest.fixture()
 def parser() -> MoveParser:
+    """Provide a fresh MoveParser instance for each test."""
     return MoveParser()
 
 

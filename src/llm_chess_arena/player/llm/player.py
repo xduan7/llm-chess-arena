@@ -75,6 +75,12 @@ class LLMPlayer(BasePlayer):
         Raises:
             LLMPermanentError: When the provider reports an unrecoverable API error.
         """
+        logger.info(
+            "LLM player {} starting move decision for position with {} legal moves",
+            self.name,
+            len(context.legal_moves_in_uci),
+        )
+
         prompt_session = PromptSession(self.handler, context)
         decision: PlayerDecision | None = None
 
@@ -84,14 +90,19 @@ class LLMPlayer(BasePlayer):
             self._retry_controller.mark_attempt(attempt.attempt_number)
             self.last_move_attempts = attempt.attempt_number
 
-            fen_preview = f"{context.board_in_fen[:30]}..."
-            logger.debug(
-                "LLM player {} move attempt {}/{} for position FEN: {}",
-                self,
-                attempt.attempt_number,
-                attempt.max_attempts,
-                fen_preview,
-            )
+            if attempt.attempt_number > 1:
+                logger.info(
+                    "LLM player {} retry attempt {}/{} after previous failure",
+                    self.name,
+                    attempt.attempt_number,
+                    attempt.max_attempts,
+                )
+            else:
+                logger.debug(
+                    "LLM player {} initial move attempt for position {}",
+                    self.name,
+                    context.board_in_fen[:30] + "...",
+                )
 
             prompt = (
                 prompt_session.current_prompt or prompt_session.ensure_initial_prompt()
@@ -99,6 +110,16 @@ class LLMPlayer(BasePlayer):
 
             try:
                 responses = self.connector.query(prompt, n=self.num_votes)
+                logger.debug(
+                    "LLM player {} received {} responses (avg length: {} chars)",
+                    self.name,
+                    len(responses),
+                    (
+                        sum(len(r) for r in responses) // len(responses)
+                        if responses
+                        else 0
+                    ),
+                )
                 decision = self._vote_aggregator.aggregate_responses(responses)
                 self._log_last_call_usage()
                 logger.debug(
@@ -229,6 +250,7 @@ class LLMPlayer(BasePlayer):
         self.last_move_decision = None
 
     def _log_last_call_usage(self) -> None:
+        """Emit debug information about the most recent connector usage."""
         usage = self.connector.get_last_usage()
         if usage is None:
             logger.debug(

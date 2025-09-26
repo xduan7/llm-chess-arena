@@ -110,6 +110,7 @@ class LLMConnector:
         return self.model
 
     def _setup_argo(self) -> None:
+        """Configure Argo-specific connector settings based on model alias."""
         parts = self.model.split(":", maxsplit=1)
         alias = parts[1].strip() if len(parts) > 1 else ""
         if not alias:
@@ -159,7 +160,12 @@ class LLMConnector:
             messages.append({"role": "system", "content": system_prompt})
         messages.append({"role": "user", "content": prompt})
 
-        logger.debug("Querying model {} with messages: {}", self.model, messages)
+        logger.debug(
+            "Querying model {} with {} message(s) requesting {} completion(s)",
+            self.model,
+            len(messages),
+            n,
+        )
 
         completion_kwargs: dict[str, Any] = {
             "messages": messages,
@@ -240,6 +246,7 @@ class LLMConnector:
         raise ConnectionError("Network retries exhausted")
 
     def _extract_response_contents(self, response: Any) -> list[str]:
+        """Return cleaned completion strings from the LiteLLM response payload."""
         try:
             choices: Iterable[Any] = response.choices
         except AttributeError as exc:  # pragma: no cover - defensive guard
@@ -287,6 +294,7 @@ class LLMConnector:
         self._total_usage = UsageRecord()
 
     def _capture_usage(self, response: Any) -> None:
+        """Persist per-call usage data into last and cumulative trackers."""
         try:
             usage_record = self._extract_usage(response)
         except Exception as exc:  # pragma: no cover - defensive guard
@@ -302,6 +310,7 @@ class LLMConnector:
 
     @staticmethod
     def _extract_usage(response: Any) -> UsageRecord | None:
+        """Extract a UsageRecord from the completion response when available."""
         usage_payload = getattr(response, "usage", None)
         if usage_payload is None and isinstance(response, dict):
             usage_payload = response.get("usage")
@@ -327,6 +336,7 @@ class LLMConnector:
 
     @staticmethod
     def _safe_int(payload: Any, key: str) -> int:
+        """Safely coerce a usage field to ``int`` without raising exceptions."""
         if isinstance(payload, dict):
             value = payload.get(key, 0)
         else:
@@ -344,6 +354,7 @@ class LLMConnector:
 
     @staticmethod
     def _safe_cost(response: Any) -> float:
+        """Safely coerce cost metadata to ``float`` with broad compatibility."""
         completion_cost_fn = getattr(litellm, "completion_cost", None)
         cost_value: Any = 0.0
 
@@ -370,6 +381,8 @@ class LLMConnector:
 
 @dataclass
 class UsageRecord:
+    """Track token usage and cost details for a single request."""
+
     prompt_tokens: int = 0
     completion_tokens: int = 0
     total_tokens: int = 0

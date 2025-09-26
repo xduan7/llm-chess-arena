@@ -77,6 +77,7 @@ class ScriptedPlayer(BasePlayer):
     """Player that plays a predetermined sequence of moves."""
 
     def __init__(self, name: str, color: Color, move_sequence: Sequence[str]):
+        """Store identifying information and the scripted SAN sequence."""
         super().__init__(name, color)
         self.move_sequence = list(move_sequence)
         self.current_move_index = 0
@@ -98,6 +99,7 @@ class RecordingPlayer(RandomPlayer):
     """RandomPlayer that records board states it observes."""
 
     def __init__(self, *args, **kwargs) -> None:
+        """Initialize base RandomPlayer and tracking collection."""
         super().__init__(*args, **kwargs)
         self.observed_board_fens = []
 
@@ -116,6 +118,7 @@ class FailingPlayer(RandomPlayer):
         *args,
         **kwargs,
     ) -> None:
+        """Configure the failure threshold and delegate to RandomPlayer."""
         super().__init__(*args, **kwargs)
         self.fail_after_moves = fail_after_moves
         self.moves_requested_count = 0
@@ -137,6 +140,7 @@ class IllegalMovePlayer(BasePlayer):
         color: Color,
         illegal_move_uci: str = "b1e4",
     ) -> None:
+        """Persist the illegal move that should always be attempted."""
         super().__init__(name, color)
         self.illegal_move_uci = illegal_move_uci
 

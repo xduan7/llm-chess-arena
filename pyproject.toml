@@ -4,7 +4,7 @@ description = "Chess Arena for Large Language Model Agents"
 readme = "README.md"
 requires-python = ">=3.12"
 license = {file = "LICENSE"}
-authors = [{name = "Xiaotian Duan"}]
+authors = [{name = "Xiaotian Duan"}, {name = "Shiyu Liu"}]
 keywords = [
   "chess",
   "artificial intelligence", "AI",

@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import os
 import sys
-from contextlib import suppress
 from dataclasses import dataclass, field, replace
 from pathlib import Path
 from typing import Any, Mapping, Sequence
@@ -17,7 +16,6 @@ from omegaconf import DictConfig, OmegaConf
 
 from llm_chess_arena.factory import GameFactory
 from llm_chess_arena.game import Game
-from llm_chess_arena.player.base_player import BasePlayer
 from llm_chess_arena.types import Color
 from llm_chess_arena.utils import build_game_outcome_summary
 
@@ -367,14 +365,8 @@ def run_game_from_config(app_config: AppConfig) -> Game:
 
     game = GameFactory.create_game(app_config)
 
-    try:
-        game.play(max_num_moves=app_config.game.max_num_moves)
-        return game
-    finally:
-        _close_player(game.white_player)
-        _close_player(game.black_player)
-        if game.metrics_tracker is not None:
-            game.metrics_tracker.close()
+    game.play(max_num_moves=app_config.game.max_num_moves)
+    return game
 
 
 def format_game_summary(game: Game) -> list[str]:
@@ -398,6 +390,8 @@ def format_game_summary(game: Game) -> list[str]:
         white_player_name=str(game.white_player),
         black_player_name=str(game.black_player),
         total_moves=len(game.board.move_stack),
+        termination_label_override=getattr(game, "_termination_label_override", None),
+        termination_note=getattr(game, "_termination_note", None),
     )
 
     lines = [
@@ -410,15 +404,6 @@ def format_game_summary(game: Game) -> list[str]:
         lines.insert(2, outcome_summary.winner_line)
 
     return lines
-
-
-def _close_player(player: BasePlayer) -> None:
-    """Silently close player resources when supported."""
-
-    with suppress(Exception):
-        close = getattr(player, "close", None)
-        if close is not None:
-            close()
 
 
 def _configure_logging(level: str) -> None:

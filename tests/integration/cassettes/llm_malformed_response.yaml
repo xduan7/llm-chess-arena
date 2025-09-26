@@ -18,9 +18,6 @@ interactions:
       - '528'
       content-type:
       - application/json
-      cookie:
-      - __cf_bm=vf.yJzozuSXlPB56qfM3arva1oD4GznN6vetaotNQsA-1758487096-1.0.1.1-a9gn78fLBdCZGlx7UbAmDXBeg2dI0QyXSCNhalrZQx9Uts14rMQ21OI_2i.bkpVaiaM3xmECbllMstxKNFW9jOQDVgPQEaVYOxc9331u9Ow;
-        _cfuvid=I9LDSBjH1QA.NmwJhz0O_.MURr7I6qHWGKTUpXL52aA-1758487096869-0.0.1.1-604800000
       host:
       - api.openai.com
       user-agent:
@@ -49,30 +46,25 @@ interactions:
     uri: https://api.openai.com/v1/chat/completions
   response:
     body:
-      string: "{\n  \"id\": \"chatcmpl-CIL7orIbA89KJDlfwI9ppYI0sPnha\",\n  \"object\":
-        \"chat.completion\",\n  \"created\": 1758487144,\n  \"model\": \"gpt-4o-mini-2024-07-18\",\n
+      string: "{\n  \"id\": \"chatcmpl-CK3E1qo03ZD6goo4n5yp4JzYftik4\",\n  \"object\":
+        \"chat.completion\",\n  \"created\": 1758894993,\n  \"model\": \"gpt-4o-mini-2024-07-18\",\n
         \ \"choices\": [\n    {\n      \"index\": 0,\n      \"message\": {\n        \"role\":
-        \"assistant\",\n        \"content\": \"The current game state is the initial
-        position in chess. As White, I am looking for a strong first move. In this
-        position, several common and strong opening moves are available. \\n\\n1.
-        **Pawns moves**: \\n   - **e4**: This is one of the strongest opening moves
-        as it controls the center squares (d5 and f5) and allows for quick development
-        of the bishop and queen.\\n   - **d4**: Another strong move that opens up
-        the center and also prepares to activate pieces.\\n   - **c4**: This is known
-        as the English Opening, which is solid and aims for control of the center
-        but does not immediately occupy as much space as e4 or d4.\\n\\n2. **Knight
-        moves**: \\n   - **Nf3**: This develops a knight toward the center, preparing
-        to control e5 and d4 squares. \\n   - **Nc3**: This develops the knight as
-        well but doesn\u2019t control the central squares as effectively as Nf3.\\n\\nConsidering
-        the above options, the move **e4** stands out because it immediately takes
-        control of the center, which is a fundamental principle in chess openings.
-        Controlling the center allows for better piece development and mobility.\\n\\nAfter
-        considering potential responses from Black and evaluating that e4 is an active
-        and aggressive first move, I will go ahead and play it.\\n\\nFinal Answer:
-        e4\",\n        \"refusal\": null,\n        \"annotations\": []\n      },\n
-        \     \"logprobs\": null,\n      \"finish_reason\": \"stop\"\n    }\n  ],\n
-        \ \"usage\": {\n    \"prompt_tokens\": 142,\n    \"completion_tokens\": 284,\n
-        \   \"total_tokens\": 426,\n    \"prompt_tokens_details\": {\n      \"cached_tokens\":
+        \"assistant\",\n        \"content\": \"The current position in FEN is \\\"rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR
+        w KQkq - 0 1\\\". This means it's the very beginning of the game, with all
+        pieces in their starting positions. I, as White, have the first move.\\n\\nStarting
+        positions allow a variety of strong initial moves. The two most common first
+        moves in chess are:\\n\\n1. **e4**: This move controls the center by occupying
+        the e4 square, allowing for immediate potential expansion with pawns and opening
+        lines for both the queen and bishop.\\n2. **d4**: This also controls the center
+        by occupying the d4 square but opens lines differently.\\n\\nAmong the two,
+        **e4** is traditionally considered the more aggressive and popular choice,
+        because it allows for quicker development of pieces and control of the center.\\n\\nConsidering
+        the objective of controlling the center and developing pieces, I will go ahead
+        and choose **e4** as my move. \\n\\nNow, to output my chosen move in the required
+        format:\\n\\nFinal Answer: e4\",\n        \"refusal\": null,\n        \"annotations\":
+        []\n      },\n      \"logprobs\": null,\n      \"finish_reason\": \"stop\"\n
+        \   }\n  ],\n  \"usage\": {\n    \"prompt_tokens\": 142,\n    \"completion_tokens\":
+        232,\n    \"total_tokens\": 374,\n    \"prompt_tokens_details\": {\n      \"cached_tokens\":
         0,\n      \"audio_tokens\": 0\n    },\n    \"completion_tokens_details\":
         {\n      \"reasoning_tokens\": 0,\n      \"audio_tokens\": 0,\n      \"accepted_prediction_tokens\":
         0,\n      \"rejected_prediction_tokens\": 0\n    }\n  },\n  \"service_tier\":
@@ -84,6 +76,12 @@ interactions:
       - application/json
       Server:
       - cloudflare
+      Set-Cookie:
+      - __cf_bm=zpQCyP6iNYBaqqzBIOOwzVnxrzD4fcQ0.WLdF.Dd9RM-1758894998-1.0.1.1-YMpWJGUXruY7qDJkrF6al6m_vOj4zpFqtjRlA5aPWYujqhjR1T.K3PGIzfbEi0nQQJRw.G5l3BhGnmGNCuCIY55F_U_GkCcktV2t3SpoZ38;
+        path=/; expires=Fri, 26-Sep-25 14:26:38 GMT; domain=.api.openai.com; HttpOnly;
+        Secure; SameSite=None
+      - _cfuvid=Wf4neDNvYx7e1ktRAdQEaLXAcCiGeiWWMz9V9.nPEJ4-1758894998300-0.0.1.1-604800000;
+        path=/; domain=.api.openai.com; HttpOnly; Secure; SameSite=None
       Strict-Transport-Security:
       - max-age=31536000; includeSubDomains; preload
       Transfer-Encoding:
@@ -97,17 +95,17 @@ interactions:
       cf-cache-status:
       - DYNAMIC
       content-length:
-      - '2069'
+      - '1785'
       openai-organization:
       - user-aot8rlpgpoltgmjq3rrcwvq3
       openai-processing-ms:
-      - '5491'
+      - '5257'
       openai-project:
       - proj_mPL62zuq4MRiWekadSO6KuLd
       openai-version:
       - '2020-10-01'
       x-envoy-upstream-service-time:
-      - '5504'
+      - '5289'
       x-openai-proxy-wasm:
       - v0.1
       x-ratelimit-limit-requests:

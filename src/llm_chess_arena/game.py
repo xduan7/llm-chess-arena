@@ -72,6 +72,8 @@ class Game:
             if history_output_path is not None
             else None
         )
+        self._termination_label_override: str | None = None
+        self._termination_note: str | None = None
 
         metrics_enabled = bool(
             self.metrics_tracker is not None and self.metrics_tracker.enabled
@@ -149,14 +151,14 @@ class Game:
         decision = self.current_player(board=self.board.copy())
 
         if decision.action == "resign":
-            self._handle_resignation()
+            self._handle_resignation(decision)
             return
         elif decision.action == "move":
             self._handle_move(decision)
         else:
             raise InvalidMoveError(f"Unsupported action: {decision.action}")
 
-    def _handle_resignation(self) -> None:
+    def _handle_resignation(self, decision: PlayerDecision) -> None:
         """Handle player resignation."""
         # Note: chess library doesn't have RESIGNATION termination
         # Using VARIANT_LOSS for termination when a player resigns
@@ -166,7 +168,14 @@ class Game:
                 chess.BLACK if self.current_player.color == "white" else chess.WHITE
             ),
         )
-        logger.info("{} resigns", self.current_player)
+        reason = decision.resignation_reason
+        if reason:
+            logger.info("{} resigns: {}", self.current_player, reason)
+        else:
+            logger.info("{} resigns", self.current_player)
+
+        self._termination_label_override = "Resignation"
+        self._termination_note = reason
 
     def _handle_move(self, decision: PlayerDecision) -> None:
         """Validate the player's move and apply it to the board.
@@ -190,7 +199,11 @@ class Game:
         )
 
         move = chess.Move.from_uci(uci_move)
-        logger.debug("{} plays: {}", player, uci_move)
+        move_number = (len(self.board.move_stack) // 2) + 1
+        turn_indicator = "." if player.color == "white" else "..."
+        logger.info(
+            "Move {}{} {} plays {}", move_number, turn_indicator, player.name, uci_move
+        )
         self.board.push(move)
 
         move_quality: MoveQuality | None = None
@@ -219,6 +232,11 @@ class Game:
             Illegal moves cause the offending player to forfeit.
             Other exceptions are logged and re-raised.
         """
+        logger.info(
+            "Starting game: {} (White) vs {} (Black)",
+            self.white_player.name,
+            self.black_player.name,
+        )
         self._reset_llm_usage_counters()
         try:
             num_moves = 0
@@ -324,6 +342,8 @@ class Game:
             white_player_name=str(self.white_player),
             black_player_name=str(self.black_player),
             total_moves=len(self.board.move_stack),
+            termination_label_override=self._termination_label_override,
+            termination_note=self._termination_note,
         )
 
         rendered = display_game_summary(

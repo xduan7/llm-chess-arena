@@ -62,4 +62,4 @@ class RetryController:
         Returns:
             PlayerDecision: Resignation decision with logging.
         """
-        return PlayerDecision(action="resign")
+        return PlayerDecision(action="resign", resignation_reason=reason)

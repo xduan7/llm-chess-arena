@@ -12,6 +12,7 @@ from llm_chess_arena.types import PlayerDecisionContext
 
 @pytest.fixture()
 def context() -> PlayerDecisionContext:
+    """Provide a canonical context for prompt session tests."""
     return PlayerDecisionContext(
         board_in_fen="rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
         player_color="white",

@@ -9,6 +9,9 @@ from omegaconf import OmegaConf
 
 from llm_chess_arena import config
 from llm_chess_arena.config import _ensure_color, RandomPlayerConfig
+from llm_chess_arena.game import Game
+from llm_chess_arena.player.base_player import BasePlayer
+from llm_chess_arena.types import PlayerDecision
 
 
 class TestLoadEnv:
@@ -197,11 +200,57 @@ GOOGLE_API_KEY=goog-test789
         config._ENV_LOADED = False
         # Use override=True to overwrite any existing values
         config.load_env(str(env_file), override=True)
-
-        # Verify all keys are loaded
         assert os.environ.get("OPENAI_API_KEY") == "sk-test123"
         assert os.environ.get("ANTHROPIC_API_KEY") == "ant-test456"
         assert os.environ.get("GOOGLE_API_KEY") == "goog-test789"
+
+
+class CloseCountingPlayer(BasePlayer):
+    """Test helper that tracks how many times close() is invoked."""
+
+    def __init__(self, name: str, color: str) -> None:
+        super().__init__(name=name, color=color)
+        self.close_calls = 0
+
+    def _make_decision(self, context) -> PlayerDecision:  # type: ignore[override]
+        return PlayerDecision(action="resign")
+
+    def close(self) -> None:  # noqa: D401
+        self.close_calls += 1
+
+
+def test_run_game_from_config_closes_players_once(monkeypatch):
+    """Ensure run_game_from_config relies on Game.play for cleanup."""
+
+    white_player = CloseCountingPlayer("White", "white")
+    black_player = CloseCountingPlayer("Black", "black")
+    game = Game(white_player, black_player, enable_metrics=False)
+
+    captured_config: dict[str, config.AppConfig] = {}
+
+    def fake_create_game(app_config: config.AppConfig) -> Game:
+        captured_config["app_config"] = app_config
+        return game
+
+    monkeypatch.setattr(
+        "llm_chess_arena.factory.GameFactory.create_game", fake_create_game
+    )
+
+    app_config = config.AppConfig(
+        env=config.EnvConfig(load_dotenv=False),
+        game=config.GameConfig(enable_metrics=False, max_num_moves=1),
+        metrics=config.MetricsConfig(),
+        players=config.PlayersConfig(
+            white=config.RandomPlayerConfig(color="white", name="Random White"),
+            black=config.RandomPlayerConfig(color="black", name="Random Black"),
+        ),
+    )
+
+    config.run_game_from_config(app_config)
+
+    assert white_player.close_calls == 1
+    assert black_player.close_calls == 1
+    assert captured_config["app_config"].game.max_num_moves == 1
 
 
 class TestHydraConfig:
@@ -210,6 +259,7 @@ class TestHydraConfig:
     def test_load_app_config__when_defaults_requested__then_returns_expected_players(
         self,
     ):
+        """Default composition should surface expected player/metric settings."""
         cfg = config.load_app_config()
 
         assert cfg.game.display_board is True
@@ -220,6 +270,7 @@ class TestHydraConfig:
         assert cfg.metrics.quality_thresholds.excellent == 50.0
 
     def test_load_app_config__when_overrides_supplied__then_applies_changes(self):
+        """Hydra overrides should mutate the resulting AppConfig dataclasses."""
         overrides = [
             "players@players.white=stockfish",
             "+players.white.engine_limits.depth=16",
@@ -242,6 +293,7 @@ class TestHydraConfig:
     def test_load_app_config__when_using_budget_llm_player__then_sets_budget_defaults(
         self,
     ):
+        """Budget LLM preset should hydrate connector defaults from YAML."""
         overrides = [
             "players@players.white=llm/default",
             "players.white.connector.model=gpt-4o-mini",
@@ -279,6 +331,7 @@ class TestHydraConfig:
     def test_load_app_config__when_using_stockfish_elo_profile__then_sets_engine_options(
         self,
     ):
+        """Stockfish profile overrides should inject strength-specific options."""
         overrides = [
             "players@players.white=stockfish/elo_1320",
             "players@players.black=stockfish/elo_2800",
@@ -297,6 +350,7 @@ class TestHydraConfig:
     def test_app_config_from_dictconfig__when_given_raw_dict__then_returns_dataclasses(
         self,
     ):
+        """Manual DictConfig conversion should yield fully typed AppConfig objects."""
         dict_cfg = OmegaConf.create(
             {
                 "env": {

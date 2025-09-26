@@ -4,9 +4,12 @@ import chess
 import pytest
 
 import llm_chess_arena.renderer as renderer
+from llm_chess_arena import config
 from llm_chess_arena.game import Game
 from llm_chess_arena.exceptions import IllegalMoveError
 from llm_chess_arena.metrics import MetricsTracker, MoveMetrics, MoveQuality
+from llm_chess_arena.player.base_player import BasePlayer
+from llm_chess_arena.types import PlayerDecision, PlayerDecisionContext
 from tests.conftest import (
     FailingPlayer,
     IllegalMovePlayer,
@@ -14,6 +17,19 @@ from tests.conftest import (
     assert_game_terminated,
     setup_game_from_fen,
 )
+
+
+class AlwaysResignPlayer(BasePlayer):
+    """Player that immediately resigns with an optional reason."""
+
+    def __init__(self, name: str, color: str, reason: str | None = None) -> None:
+        super().__init__(name=name, color=color)
+        self._reason = reason
+
+    def _make_decision(
+        self, context: PlayerDecisionContext
+    ) -> PlayerDecision:  # noqa: D401
+        return PlayerDecision(action="resign", resignation_reason=self._reason)
 
 
 class TestGameInitialization:
@@ -186,10 +202,34 @@ class TestGameResult:
         assert game.outcome.result() == "1/2-1/2"
 
 
+class TestGameResignation:
+    """Resignation-specific behavior validation."""
+
+    def test_resignation_reason_in_summary(self):
+        """Termination line should reflect resignation and include the reason."""
+
+        reason = "Network failure: timeout"
+        white_player = AlwaysResignPlayer("LLM", "white", reason)
+        black_player = ScriptedPlayer("Opponent", "black", ["e5"])
+        game = Game(white_player, black_player, enable_metrics=False)
+
+        game.play(max_num_moves=1)
+
+        summary_lines = config.format_game_summary(game)
+        termination_lines = [
+            line for line in summary_lines if line.startswith("Termination:")
+        ]
+
+        assert termination_lines, "Expected a termination line in the summary"
+        assert "Resignation" in termination_lines[0]
+        assert reason in termination_lines[0]
+
+
 class RecordingEvaluator:
     """Test helper that records evaluation inputs and returns fixed metrics."""
 
     def __init__(self) -> None:
+        """Initialize call tracking structures for assertions."""
         self.calls: list[tuple[str, str, str]] = []
         self.closed = False
 

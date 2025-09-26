@@ -17,6 +17,7 @@ class MockLLMConnector(LLMConnector):
         raise_on_query: Exception | None = None,
         **kwargs,
     ):
+        """Set up canned responses, optional failure triggers, and usage data."""
         temperature = kwargs.pop("temperature", 0.7)
         max_tokens = kwargs.pop("max_tokens", None)
         timeout = kwargs.pop("timeout", 30.0)

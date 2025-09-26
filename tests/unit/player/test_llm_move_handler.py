@@ -227,6 +227,8 @@ class TestMoveParsingFromSanitizedText:
 
 
 class TestRetryPromptGeneration:
+    """Retry prompt behavior under different failure conditions."""
+
     def test_generates_retry_prompt_explaining_parse_failure_with_original_response(
         self,
     ):
@@ -287,6 +289,8 @@ class TestRetryPromptGeneration:
 
 
 class TestSpecialMoveHandling:
+    """Special-case parsing rules that need stable behavior."""
+
     def test_correctly_parses_en_passant_capture_notation(self):
         """En passant notation should be preserved after parsing."""
         move_handler = GameArenaLLMMoveHandler()

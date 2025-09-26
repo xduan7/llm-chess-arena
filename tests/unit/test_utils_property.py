@@ -183,6 +183,7 @@ class ChessGameStateMachine(RuleBasedStateMachine):
     """State machine exploring random chess play sequences."""
 
     def __init__(self):
+        """Initialize state tracking containers for Hypothesis runs."""
         super().__init__()
         self.board = None
         self.move_history = []

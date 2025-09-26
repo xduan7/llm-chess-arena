@@ -13,12 +13,14 @@ from llm_chess_arena.types import PlayerDecision
 
 @pytest.fixture()
 def handler() -> Mock:
+    """Provide a mock move handler for vote aggregation tests."""
     handler = Mock()
     return handler
 
 
 @pytest.fixture()
 def aggregator(handler: Mock) -> VoteAggregator:
+    """Construct a VoteAggregator instance backed by the handler fixture."""
     return VoteAggregator(handler)
 
 

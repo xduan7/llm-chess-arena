@@ -217,6 +217,9 @@ def build_game_outcome_summary(
     white_player_name: str,
     black_player_name: str,
     total_moves: int,
+    *,
+    termination_label_override: str | None = None,
+    termination_note: str | None = None,
 ) -> GameOutcomeSummary:
     """Create human-friendly summary strings for a finished game.
 
@@ -241,8 +244,12 @@ def build_game_outcome_summary(
         )
 
     winner_color = outcome.winner
-    termination_label = humanize_termination(outcome.termination)
+    termination_label = termination_label_override or humanize_termination(
+        outcome.termination
+    )
     termination_line = f"Termination: {termination_label}"
+    if termination_note:
+        termination_line = f"{termination_line} ({termination_note})"
 
     is_draw = winner_color is None
     if is_draw:

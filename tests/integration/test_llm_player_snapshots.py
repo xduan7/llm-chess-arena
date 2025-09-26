@@ -20,6 +20,7 @@ class TestLLMPlayerBehaviorSnapshots:
 
     @pytest.fixture()
     def context(self) -> PlayerDecisionContext:
+        """Provide a baseline decision context for integration snapshots."""
         return PlayerDecisionContext(
             board_in_fen="rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
             player_color="white",
