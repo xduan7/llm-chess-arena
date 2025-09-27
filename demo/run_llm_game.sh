@@ -7,10 +7,9 @@ export PYTHONPATH="${PYTHONPATH:-}:${ROOT_DIR}/src"
 
 OUTPUT_ROOT="${ROOT_DIR}/output/demo/llm_game"
 mkdir -p "${OUTPUT_ROOT}"
-OUTPUT_FILE="${OUTPUT_ROOT}/$(date -u +"%Y%m%dT%H%M%SZ").pgn"
 
 python -m llm_chess_arena.cli.main \
-  "game.history_output_path=${OUTPUT_FILE}" \
+  "game.record_dir=${OUTPUT_ROOT}" \
   players@players.white=llm/default \
   players.white.connector.model=gpt-4o-mini \
   players.white.name="GPT-4o Mini" \

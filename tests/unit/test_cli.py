@@ -79,7 +79,8 @@ def test_run_cli_game_smoke(monkeypatch, capsys):
                 "display_board": False,
                 "enable_metrics": False,
                 "max_num_moves": 12,
-                "history_output_path": None,
+                "record_dir": None,
+                "record_name": None,
             },
             "metrics": {
                 "stockfish_depth": 12,

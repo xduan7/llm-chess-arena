@@ -160,7 +160,8 @@ class GameConfig:
     display_board: bool = False
     enable_metrics: bool = True
     max_num_moves: int | None = None
-    history_output_path: str | None = None
+    record_dir: str | None = None
+    record_name: str | None = None
 
 
 @dataclass(slots=True, frozen=True)

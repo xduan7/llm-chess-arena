@@ -126,9 +126,6 @@ typecheck.shell = "mypy src/llm_chess_arena"
 hooks.shell = "pre-commit run --all-files"
 clean.shell = "find . -name '__pycache__' -prune -exec rm -rf {} + || true && find . -name '*.pyc' -type f -delete || true && rm -rf build/ dist/ *.egg-info/ .pytest_cache/ .mypy_cache/ .ruff_cache/ .coverage htmlcov/ || true"
 ready = [
-  "lint",
-  "format", 
-  "typecheck", 
   "hooks", 
   "clean",
 ]

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from typing import Dict, Any
 from loguru import logger
 
 from llm_chess_arena.exceptions import (
@@ -84,6 +85,14 @@ class LLMPlayer(BasePlayer):
         prompt_session = PromptSession(self.handler, context)
         decision: PlayerDecision | None = None
 
+        # Track decision process for game records
+        decision_process: Dict[str, Any] = {
+            "api_calls": [],
+            "network_errors": [],
+            "move_errors": [],
+            "voting_process": None,
+        }
+
         # RetryController handles prompt-level retries when parsing fails.
         # Network failures are surfaced immediately so we do not stack retry loops.
         for attempt in self._retry_controller.iter_attempts():
@@ -109,7 +118,52 @@ class LLMPlayer(BasePlayer):
             )
 
             try:
+                # Record API call attempt
+                from llm_chess_arena.record import iso_timestamp
+                from datetime import datetime, UTC
+
+                call_start_time = datetime.now(UTC)
+                api_call_record: Dict[str, Any] = {
+                    "attempt": attempt.attempt_number,
+                    "timestamp": iso_timestamp(call_start_time),
+                    "request": {
+                        "model": getattr(self.connector, "model", "unknown"),
+                        "temperature": getattr(self.connector, "temperature", None),
+                        "max_tokens": getattr(self.connector, "max_tokens", None),
+                        "n": self.num_votes,
+                        "messages": [{"role": "user", "content": prompt}],
+                    },
+                }
+
                 responses = self.connector.query(prompt, n=self.num_votes)
+
+                # Record successful response
+                call_end_time = datetime.now(UTC)
+                latency_ms = int(
+                    (call_end_time - call_start_time).total_seconds() * 1000
+                )
+
+                api_call_record["response"] = {
+                    "timestamp": iso_timestamp(call_end_time),
+                    "latency_ms": latency_ms,
+                    "choices": [
+                        {"index": i, "content": response}
+                        for i, response in enumerate(responses)
+                    ],
+                }
+
+                # Add usage info if available
+                usage = self.connector.get_last_usage()
+                if usage:
+                    api_call_record["response"]["usage"] = {
+                        "prompt_tokens": usage.prompt_tokens,
+                        "completion_tokens": usage.completion_tokens,
+                        "total_tokens": usage.total_tokens,
+                        "cost": usage.cost,
+                    }
+
+                decision_process["api_calls"].append(api_call_record)
+
                 logger.debug(
                     "LLM player {} received {} responses (avg length: {} chars)",
                     self.name,
@@ -121,6 +175,15 @@ class LLMPlayer(BasePlayer):
                     ),
                 )
                 decision = self._vote_aggregator.aggregate_responses(responses)
+
+                # Record voting process
+                decision_process["voting_process"] = {
+                    "parsed_responses": [],
+                    "vote_tally": getattr(decision, "_vote_tally", {}),
+                    "winner": decision.attempted_move,
+                    "tie_broken": getattr(decision, "_tie_broken", False),
+                }
+
                 self._log_last_call_usage()
                 logger.debug(
                     "LLM returned decision: action={}, move={}",
@@ -131,6 +194,9 @@ class LLMPlayer(BasePlayer):
                 validated_decision = self._move_parser.validate_and_normalize(
                     decision, context.board_in_fen
                 )
+
+                # Attach decision process to the final decision
+                setattr(validated_decision, "llm_decision_process", decision_process)
                 self.last_move_decision = validated_decision
 
                 logger.info(
@@ -145,10 +211,22 @@ class LLMPlayer(BasePlayer):
                 logger.error("Permanent LLM error - terminating move attempt")
                 raise
             except (TimeoutError, ConnectionError) as exc:
+                # Record network error
+                decision_process["network_errors"].append(
+                    {
+                        "attempt": attempt.attempt_number,
+                        "error_code": exc.__class__.__name__.upper().replace(
+                            "ERROR", ""
+                        ),
+                        "error_message": str(exc),
+                    }
+                )
+
                 # Network failures mean the connector already exhausted its network retry budget.
                 # Resign immediately - no move retries needed for network issues.
                 logger.warning("{} resigned due to network failure: {}", self, str(exc))
                 resignation = self._retry_controller.create_resignation()
+                setattr(resignation, "llm_decision_process", decision_process)
                 self.last_move_decision = resignation
                 return resignation
             except (
@@ -178,6 +256,17 @@ class LLMPlayer(BasePlayer):
                 else:
                     # Handle invalid move errors (decision object exists)
                     invalid_move = decision.attempted_move if decision else "unknown"
+
+                    # Record move error
+                    decision_process["move_errors"].append(
+                        {
+                            "attempt": attempt.attempt_number,
+                            "attempted_move": invalid_move,
+                            "error_type": exc.__class__.__name__,
+                            "error_message": str(exc),
+                        }
+                    )
+
                     retry_status = (
                         "Retrying with prior response and invalid move context"
                         if not attempt.is_final_attempt
@@ -213,10 +302,12 @@ class LLMPlayer(BasePlayer):
                     decision.action if decision else "unknown",
                 )
                 resignation = PlayerDecision(action="resign")
+                setattr(resignation, "llm_decision_process", decision_process)
                 self.last_move_decision = resignation
                 return resignation
 
         resignation = self._retry_controller.create_resignation()
+        setattr(resignation, "llm_decision_process", decision_process)
         self.last_move_decision = resignation
         return resignation
 

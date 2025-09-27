@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import dataclasses
 from typing import TYPE_CHECKING
 
 from llm_chess_arena.core.policies import config_operation
@@ -34,11 +35,16 @@ class GameFactory:
         if app_config.game.enable_metrics:
             metrics_tracker = MetricsFactory.create_metrics_tracker(app_config.metrics)
 
+        # Convert app_config to dict for hydra_config
+        hydra_config = dataclasses.asdict(app_config)
+
         return Game(
             white_player=white_player,
             black_player=black_player,
             display_board=app_config.game.display_board,
             enable_metrics=app_config.game.enable_metrics,
             metrics_tracker=metrics_tracker,
-            history_output_path=app_config.game.history_output_path,
+            record_dir=app_config.game.record_dir,
+            record_name=app_config.game.record_name,
+            hydra_config=hydra_config,
         )

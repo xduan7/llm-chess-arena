@@ -7,10 +7,9 @@ export PYTHONPATH="${PYTHONPATH:-}:${ROOT_DIR}/src"
 
 OUTPUT_ROOT="${ROOT_DIR}/output/demo/random_game"
 mkdir -p "${OUTPUT_ROOT}"
-OUTPUT_FILE="${OUTPUT_ROOT}/$(date -u +"%Y%m%dT%H%M%SZ").pgn"
 
 python -m llm_chess_arena.cli.main \
-  "game.history_output_path=${OUTPUT_FILE}" \
+  "game.record_dir=${OUTPUT_ROOT}" \
   game.max_num_moves=100 \
   game.enable_metrics=false \
   players@players.white=random \

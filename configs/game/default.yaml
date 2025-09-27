@@ -1,4 +1,5 @@
 display_board: true
 enable_metrics: true
 max_num_moves: null
-history_output_path: null
+record_dir: null
+record_name: null

@@ -337,7 +337,7 @@ class TestGameHistory:
     """PGN export behavior."""
 
     def test_play_writes_pgn_to_history_output_path(self, tmp_path) -> None:
-        """Completed games should be persisted to the configured PGN path."""
+        """Completed games should be persisted to the configured record directory."""
         white_player = ScriptedPlayer(
             "White",
             "white",
@@ -348,19 +348,26 @@ class TestGameHistory:
             "black",
             ["e5", "Nc6", "Nf6"],
         )
-        output_path = tmp_path / "game_history.pgn"
+        record_dir = tmp_path / "records"
 
         game = Game(
             white_player,
             black_player,
             enable_metrics=False,
-            history_output_path=output_path,
+            record_dir=record_dir,
+            record_name="test_game",
         )
 
         game.play()
 
-        assert output_path.exists()
-        pgn_contents = output_path.read_text(encoding="utf-8")
+        # Check both PGN and JSON files are created
+        pgn_path = record_dir / "test_game.pgn"
+        json_path = record_dir / "test_game.json"
+
+        assert pgn_path.exists()
+        assert json_path.exists()
+
+        pgn_contents = pgn_path.read_text(encoding="utf-8")
         assert '[Event "LLM Chess Arena"]' in pgn_contents
         assert '[Date "' in pgn_contents
         assert '[White "White (W)"]' in pgn_contents
@@ -368,7 +375,7 @@ class TestGameHistory:
         assert "1. e4" in pgn_contents
 
     def test_no_history_written_when_game_aborts(self, tmp_path) -> None:
-        """Abortive games should not emit a PGN file."""
+        """Abortive games should not emit record files."""
         white_player = FailingPlayer(
             name="Failing",
             color="white",
@@ -380,16 +387,21 @@ class TestGameHistory:
             "black",
             ["e5"],
         )
-        output_path = tmp_path / "should_not_exist.pgn"
+        record_dir = tmp_path / "records"
 
         game = Game(
             white_player,
             black_player,
             enable_metrics=False,
-            history_output_path=output_path,
+            record_dir=record_dir,
+            record_name="failed_game",
         )
 
         with pytest.raises(RuntimeError):
             game.play()
 
-        assert not output_path.exists()
+        # Neither PGN nor JSON should exist
+        pgn_path = record_dir / "failed_game.pgn"
+        json_path = record_dir / "failed_game.json"
+        assert not pgn_path.exists()
+        assert not json_path.exists()
