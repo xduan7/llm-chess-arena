@@ -67,7 +67,10 @@ class StockfishPlayer(BasePlayer):
         try:
             self.engine = chess.engine.SimpleEngine.popen_uci(self.binary_path)
             self.engine.configure(self.engine_options)
-            logger.info("Stockfish engine started with limits={}", self.engine_limits)
+            logger.info(
+                "Stockfish engine started with time/depth limits: {}",
+                self.engine_limits,
+            )
         except Exception as e:
             if self.engine:
                 self.engine.quit()
@@ -113,6 +116,6 @@ class StockfishPlayer(BasePlayer):
                 self.engine.quit()
                 logger.debug("Stockfish engine closed successfully")
             except Exception as e:
-                logger.error("Error closing Stockfish engine: {}", e)
+                logger.error("Could not properly close Stockfish chess engine: {}", e)
             finally:
                 self.engine = None

@@ -193,7 +193,12 @@ class LLMConnector:
                 response = litellm.completion(**completion_kwargs)
                 contents = self._extract_response_contents(response)
                 self._capture_usage(response)
-                logger.debug("{} response choices: {}", self.model, contents)
+                logger.debug(
+                    "{} returned {} response(s): {}",
+                    self.model,
+                    len(contents),
+                    contents,
+                )
                 return contents
 
             except LLMEmptyResponseError:
@@ -298,7 +303,7 @@ class LLMConnector:
         try:
             usage_record = self._extract_usage(response)
         except Exception as exc:  # pragma: no cover - defensive guard
-            logger.debug("Failed to extract usage data: {}", exc)
+            logger.debug("Could not read token usage from API response: {}", exc)
             usage_record = None
 
         if usage_record is None:

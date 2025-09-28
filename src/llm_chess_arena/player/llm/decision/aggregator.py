@@ -88,20 +88,22 @@ class VoteAggregator:
             try:
                 decision = self._handler.parse_decision_from_response(response)
             except ParseMoveError as exc:
-                logger.warning("Vote {}/{}: {}", idx, total, exc)
+                logger.warning(
+                    "Response {} of {}: Failed to parse move - {}", idx, total, exc
+                )
                 continue
 
             if decision is not None:
                 decisions.append(decision)
                 logger.debug(
-                    "Vote {}/{}: Parsed move '{}' from response",
+                    "Response {} of {}: Successfully parsed move '{}'",
                     idx,
                     total,
                     decision.attempted_move,
                 )
 
         logger.debug(
-            "Successfully parsed {}/{} responses for voting",
+            "Voting results: {} valid moves from {} total responses",
             len(decisions),
             total,
         )
@@ -111,11 +113,13 @@ class VoteAggregator:
     def _build_debug_decision(self, responses: list[str]) -> PlayerDecision:
         """Create a synthetic decision containing all raw responses."""
         logger.error(
-            "All {} LLM response(s) failed to parse - logging all responses for debugging",
+            "All {} LLM responses failed to parse - logging all responses for debugging",
             len(responses),
         )
         for index, response in enumerate(responses, start=1):
-            logger.error("Failed response {}/{}: {!r}", index, len(responses), response)
+            logger.error(
+                "Response {} of {} failed: {!r}", index, len(responses), response
+            )
 
         combined = "\n".join(
             [

@@ -70,6 +70,7 @@ def test_demo__should_complete_successfully__when_running_llm_game():
             text=True,
             timeout=300,  # LLM calls with retries can take longer
             cwd=script_path.parent.parent,
+            env=os.environ.copy(),  # Pass current environment to subprocess
         )
     except subprocess.TimeoutExpired:
         pytest.skip("LLM demo timed out - API may be slow or unavailable")

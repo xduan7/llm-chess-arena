@@ -393,13 +393,18 @@ class MetricsTracker:
         self._metrics_by_color[metrics.player_color].append(metrics)
 
         player_label = player_name or metrics.player_color
+        best_move_text = (
+            "matched engine's best move"
+            if metrics.best_move_hit
+            else "did not match best move"
+        )
         logger.debug(
-            "Metrics for {} ({}): centipawn_loss={:.1f}, win_prob_delta={:.3f}, best_move_hit={}, quality={}",
+            "Move evaluation for {} playing {}: {:.1f} centipawn loss, {:.1%} win probability change, {}, quality: {}",
             player_label,
             metrics.move_uci,
             metrics.centipawn_loss,
             metrics.win_probability_delta,
-            metrics.best_move_hit,
+            best_move_text,
             metrics.quality.value,
         )
         return metrics

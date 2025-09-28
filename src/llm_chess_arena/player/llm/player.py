@@ -64,6 +64,9 @@ class LLMPlayer(BasePlayer):
         self.last_move_attempts: int = 0
         self.last_move_decision: PlayerDecision | None = None
 
+        # Store decision processes for metrics calculation
+        self._decision_processes: list[dict[str, Any]] = []
+
     def _make_decision(self, context: PlayerDecisionContext) -> PlayerDecision:
         """Produce a move decision after coordinating prompts, voting, and retries.
 
@@ -198,6 +201,7 @@ class LLMPlayer(BasePlayer):
                 # Attach decision process to the final decision
                 setattr(validated_decision, "llm_decision_process", decision_process)
                 self.last_move_decision = validated_decision
+                self._decision_processes.append(decision_process)
 
                 logger.info(
                     "LLM player {} successfully generated valid move {} after {} attempt(s)",
@@ -228,6 +232,7 @@ class LLMPlayer(BasePlayer):
                 resignation = self._retry_controller.create_resignation()
                 setattr(resignation, "llm_decision_process", decision_process)
                 self.last_move_decision = resignation
+                self._decision_processes.append(decision_process)
                 return resignation
             except (
                 InvalidMoveError,
@@ -304,11 +309,13 @@ class LLMPlayer(BasePlayer):
                 resignation = PlayerDecision(action="resign")
                 setattr(resignation, "llm_decision_process", decision_process)
                 self.last_move_decision = resignation
+                self._decision_processes.append(decision_process)
                 return resignation
 
         resignation = self._retry_controller.create_resignation()
         setattr(resignation, "llm_decision_process", decision_process)
         self.last_move_decision = resignation
+        self._decision_processes.append(decision_process)
         return resignation
 
     def close(self) -> None:
@@ -335,6 +342,7 @@ class LLMPlayer(BasePlayer):
             reset_hook()
         self.last_move_attempts = 0
         self.last_move_decision = None
+        self._decision_processes.clear()
 
     def _log_last_call_usage(self) -> None:
         """Emit debug information about the most recent connector usage."""
@@ -355,3 +363,107 @@ class LLMPlayer(BasePlayer):
             usage.total_tokens,
             usage.cost,
         )
+
+    def get_llm_performance_metrics(self) -> dict[str, Any]:
+        """Calculate LLM-specific performance metrics from stored decision processes.
+
+        Returns:
+            dict: Performance metrics including latencies, response lengths, error counts, etc.
+        """
+        if not self._decision_processes:
+            return {}
+
+        # Collect all metrics from decision processes
+        total_prompts = 0
+        total_retries = 0
+        latencies_ms = []
+        response_lengths = []
+        parsing_errors = 0
+        voting_ties = 0
+        network_errors = 0
+
+        for process in self._decision_processes:
+            api_calls = process.get("api_calls", [])
+            total_prompts += len(api_calls)
+            total_retries += len(
+                [call for call in api_calls if call.get("attempt", 1) > 1]
+            )
+
+            # Collect latencies and response lengths
+            for call in api_calls:
+                response = call.get("response", {})
+                if "latency_ms" in response:
+                    latencies_ms.append(response["latency_ms"])
+
+                choices = response.get("choices", [])
+                for choice in choices:
+                    content = choice.get("content", "")
+                    response_lengths.append(len(content))
+
+            # Count errors
+            parsing_errors += len(process.get("move_errors", []))
+            network_errors += len(process.get("network_errors", []))
+
+            voting_process = process.get("voting_process", {})
+            if voting_process.get("tie_broken", False):
+                voting_ties += 1
+
+        return {
+            "total_decisions": len(self._decision_processes),
+            "total_prompts": total_prompts,
+            "total_retries": total_retries,
+            "average_latency_ms": (
+                sum(latencies_ms) / len(latencies_ms) if latencies_ms else None
+            ),
+            "average_response_length": (
+                sum(response_lengths) / len(response_lengths)
+                if response_lengths
+                else None
+            ),
+            "parsing_errors": parsing_errors,
+            "voting_ties": voting_ties,
+            "network_errors": network_errors,
+        }
+
+    def get_performance_summary_text(self) -> str | None:
+        """Get a formatted performance summary text for logging.
+
+        Returns:
+            str | None: Formatted summary or None if no metrics available.
+        """
+        metrics = self.get_llm_performance_metrics()
+        if not metrics:
+            return None
+
+        # Build readable performance summary
+        parts = []
+
+        # Basic counts
+        parts.append(f"{metrics['total_decisions']} moves made")
+        parts.append(f"{metrics['total_prompts']} API calls")
+
+        if metrics["total_retries"] > 0:
+            parts.append(f"{metrics['total_retries']} retries needed")
+
+        # Performance metrics
+        if metrics["average_latency_ms"]:
+            parts.append(f"avg {metrics['average_latency_ms']:.0f}ms per call")
+
+        if metrics["average_response_length"]:
+            parts.append(
+                f"avg {metrics['average_response_length']:.0f} chars per response"
+            )
+
+        # Problems encountered
+        problems = []
+        if metrics["parsing_errors"] > 0:
+            problems.append(f"{metrics['parsing_errors']} bad move formats")
+        if metrics["voting_ties"] > 0:
+            problems.append(f"{metrics['voting_ties']} tied votes")
+        if metrics["network_errors"] > 0:
+            problems.append(f"{metrics['network_errors']} connection failures")
+
+        if problems:
+            parts.append("issues: " + ", ".join(problems))
+
+        return "; ".join(parts)

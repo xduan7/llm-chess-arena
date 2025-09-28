@@ -294,7 +294,7 @@ def load_env(filename: str | None = None, override: bool = False) -> Path | None
     dotenv_path = find_dotenv(env_file, usecwd=True)
 
     if not dotenv_path:
-        logger.debug("No .env file found: {}", env_file)
+        logger.debug("No environment configuration file found: {}", env_file)
         return None
 
     load_dotenv(dotenv_path, override=override)
@@ -426,7 +426,7 @@ def _normalize_llm_player_config(
             )
         resolved = _compute_fractional_tokens(output_limit, max_tokens)
         logger.info(
-            "Resolved fractional max_tokens=%.3f to %d for model '%s' (%s player) with limit %d",
+            "Resolved fractional max_tokens={:.3f} to {} for model '{}' ({} player) with limit {}",
             max_tokens,
             resolved,
             model_name,

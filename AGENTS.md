@@ -294,7 +294,7 @@ LICENSE
 - VCR-based HTTP recording for reliable LLM integration tests
 - Comprehensive test coverage with mocking and fixtures
 
-**Major Refactoring (Dec 2024):**
+**Major Refactoring:**
 - LLM player decomposed into prompt, voting, parsing, and retry collaborators with focused unit tests
 - Configuration factories extracted to `llm_chess_arena.factory` for cleaner Hydra integration
 - Standardized error-handling decorators applied across parsing, factories, connector, and metrics

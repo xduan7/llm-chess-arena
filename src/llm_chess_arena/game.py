@@ -240,9 +240,12 @@ class Game:
 
         move = chess.Move.from_uci(uci_move)
         move_number = (len(self.board.move_stack) // 2) + 1
-        turn_indicator = "." if player.color == "white" else "..."
         logger.info(
-            "Move {}{} {} plays {}", move_number, turn_indicator, player.name, uci_move
+            "Move {}: {} ({}) plays {}",
+            move_number,
+            player.name,
+            player.color,
+            uci_move,
         )
         self.board.push(move)
 
@@ -557,7 +560,7 @@ class Game:
             )
 
             logger.debug(
-                "Metrics for {}: avg_centipawn_loss={}, best_move_hit_rate={}, qualities={}",
+                "Move analysis for {}: average loss {} centipawns, found best move {}% of time, move qualities: {}",
                 str(player),
                 avg_loss,
                 hit_rate,
@@ -587,21 +590,69 @@ class Game:
             try:
                 usage = get_usage()
             except Exception as exc:  # pragma: no cover - guard optional hook
-                logger.debug("Failed to retrieve usage totals for {}: {}", player, exc)
+                logger.debug(
+                    "Could not get token usage statistics for {}: {}", player, exc
+                )
                 continue
 
             if usage is None:
                 continue
 
             logger.info(
-                "LLM player {} total usage: prompt_tokens={}, completion_tokens={}, "
-                "total_tokens={}, cost=${:.6f}",
+                "{} token usage: {} prompt tokens, {} completion tokens, {} total",
                 player,
                 usage.prompt_tokens,
                 usage.completion_tokens,
                 usage.total_tokens,
-                usage.cost,
             )
+
+            if usage.cost > 0:
+                logger.info("{} cost: ${:.6f}", player, usage.cost)
+
+            # Get and log performance metrics if available
+            get_metrics = getattr(player, "get_llm_performance_metrics", None)
+            if callable(get_metrics):
+                try:
+                    metrics = get_metrics()
+                    if metrics:
+                        logger.info(
+                            "{} made {} moves using {} API calls with {} retries",
+                            player,
+                            metrics["total_decisions"],
+                            metrics["total_prompts"],
+                            metrics["total_retries"],
+                        )
+
+                        if metrics["voting_ties"] > 0:
+                            logger.info(
+                                "{} had {} voting ties", player, metrics["voting_ties"]
+                            )
+
+                        if metrics["network_errors"] > 0:
+                            logger.info(
+                                "{} had {} network errors",
+                                player,
+                                metrics["network_errors"],
+                            )
+
+                        if metrics["average_latency_ms"]:
+                            logger.info(
+                                "{} average response time: {:.0f}ms",
+                                player,
+                                metrics["average_latency_ms"],
+                            )
+
+                        if metrics["average_response_length"]:
+                            logger.info(
+                                "{} average response length: {:.0f} characters",
+                                player,
+                                metrics["average_response_length"],
+                            )
+
+                except Exception as exc:  # pragma: no cover - guard optional hook
+                    logger.debug(
+                        "Failed to get performance metrics for {}: {}", player, exc
+                    )
 
     def _reset_llm_usage_counters(self) -> None:
         """Reset usage counters on players that support it before a game."""
@@ -616,7 +667,9 @@ class Game:
             try:
                 reset_usage()
             except Exception as exc:  # pragma: no cover - defensive hook
-                logger.debug("Failed to reset usage for {}: {}", player, exc)
+                logger.debug(
+                    "Could not reset token usage counters for {}: {}", player, exc
+                )
 
     def _save_history_if_configured(self) -> None:
         """Persist the PGN history and JSON record when configuration requests it."""
@@ -652,7 +705,7 @@ class Game:
             pgn_path.write_text(pgn_game.accept(exporter), encoding="utf-8")
             logger.info("Saved PGN history to {}", pgn_path)
         except Exception as exc:  # pragma: no cover - defensive logging
-            logger.warning("Failed to save PGN history to {}: {}", pgn_path, exc)
+            logger.warning("Could not save chess game history to {}: {}", pgn_path, exc)
 
         # Save JSON record if collector is active
         if self._record_collector is not None:

@@ -430,7 +430,7 @@ class TestHydraConfig:
         # Try loading non-existent file
         config.load_env("nonexistent.env")
         mock_logger.debug.assert_called_with(
-            "No .env file found: {}", "nonexistent.env"
+            "No environment configuration file found: {}", "nonexistent.env"
         )
 
 

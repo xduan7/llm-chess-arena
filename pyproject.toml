@@ -46,6 +46,7 @@ dev = [
   "mypy>=1.10.0",
   "pre-commit>=3.5.0",
   "poethepoet>=0.24.0",
+  "vulture>=2.11",
 ]
 
 test = [
@@ -123,10 +124,11 @@ install-all.shell = "pip install --upgrade -e .[dev,test]"
 format.shell = "black ."
 lint.shell = "ruff check ."
 typecheck.shell = "mypy src/llm_chess_arena"
+vulture.shell = "vulture src/ --min-confidence 80"
 hooks.shell = "pre-commit run --all-files"
 clean.shell = "find . -name '__pycache__' -prune -exec rm -rf {} + || true && find . -name '*.pyc' -type f -delete || true && rm -rf build/ dist/ *.egg-info/ .pytest_cache/ .mypy_cache/ .ruff_cache/ .coverage htmlcov/ || true"
 ready = [
-  "hooks", 
+  "hooks",
   "clean",
 ]
 demo = "python demo/chess_demo.py"

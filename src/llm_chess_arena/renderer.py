@@ -191,7 +191,11 @@ def _piece_symbol_solid(piece: chess.Piece | None) -> str:
         "n": "♞",  # Black Knight (already solid)
         "p": "♟",  # Black Pawn (already solid)
     }
-    return solid_map.get(piece.symbol(), piece.symbol())
+    symbol: str = piece.symbol()
+    result = solid_map.get(symbol)
+    if result is not None:
+        return result
+    return symbol
 
 
 def _piece_style(piece: chess.Piece | None, *, for_board: bool = False) -> str:
@@ -473,7 +477,7 @@ def _build_compact_player_stats_panel(
 
     # Row 1: Black time | top of bar (if metrics enabled)
     black_time = Text(
-        f"time {black_minutes:02d}:{black_seconds:02d}",
+        f"time: {black_minutes:02d}:{black_seconds:02d}",
         style=BLACK_PLAYER_STYLE.replace("bold ", ""),
     )
     if show_winrate_bar:
@@ -493,12 +497,12 @@ def _build_compact_player_stats_panel(
             piece_values[piece.piece_type] for piece in white_captured
         )
         lost_text = Text(
-            f"material lost {white_material_captured}",
+            f"material lost: {white_material_captured}",
             style=BLACK_PLAYER_STYLE.replace("bold ", ""),
         )
     else:
         lost_text = Text(
-            "material lost 0", style=BLACK_PLAYER_STYLE.replace("bold ", "")
+            "material lost: 0", style=BLACK_PLAYER_STYLE.replace("bold ", "")
         )
     if show_winrate_bar:
         bar_char = (
@@ -526,7 +530,7 @@ def _build_compact_player_stats_panel(
             pieces_text = _format_player_label(white_player, is_white=True)
         elif i == 2:  # White time
             pieces_text = Text(
-                f"time {white_minutes:02d}:{white_seconds:02d}",
+                f"time: {white_minutes:02d}:{white_seconds:02d}",
                 style=WHITE_PLAYER_STYLE.replace("bold ", ""),
             )
         elif i == 3:  # White lost score
@@ -535,12 +539,12 @@ def _build_compact_player_stats_panel(
                     piece_values[piece.piece_type] for piece in black_captured
                 )
                 pieces_text = Text(
-                    f"material lost {black_material_captured}",
+                    f"material lost: {black_material_captured}",
                     style=WHITE_PLAYER_STYLE.replace("bold ", ""),
                 )
             else:
                 pieces_text = Text(
-                    "material lost 0", style=WHITE_PLAYER_STYLE.replace("bold ", "")
+                    "material lost: 0", style=WHITE_PLAYER_STYLE.replace("bold ", "")
                 )
         else:
             pieces_text = Text("")

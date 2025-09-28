@@ -205,9 +205,12 @@ def humanize_termination(termination: chess.Termination | None) -> str:
     if termination is None:
         return "Game in progress"
 
-    return TERMINATION_LABELS.get(
-        termination, termination.name.replace("_", " ").title()
-    )
+    result = TERMINATION_LABELS.get(termination)
+    if result is not None:
+        return result
+    # Explicit type annotation to help mypy
+    name: str = termination.name
+    return name.replace("_", " ").title()
 
 
 def build_game_outcome_summary(
