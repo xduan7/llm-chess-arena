@@ -323,12 +323,12 @@ def test_format_move_history_includes_glyphs_and_quality_annotations() -> None:
     move_number, white_entry, black_entry = rows[0]
     assert move_number == 1
     assert white_entry is not None
-    assert white_entry.style == renderer.WHITE_MOVE_ENTRY_STYLE
+    assert white_entry.style == renderer.WHITE_PLAYER_STYLE
     assert white_entry.plain.startswith("♟ e2e4")
     assert white_entry.plain.endswith("!!")
 
     assert black_entry is not None
-    assert black_entry.style == renderer.BLACK_MOVE_ENTRY_STYLE
+    assert black_entry.style == renderer.BLACK_PLAYER_STYLE
     assert black_entry.plain.startswith("♟ e7e5")
     assert black_entry.plain.endswith("?")
 

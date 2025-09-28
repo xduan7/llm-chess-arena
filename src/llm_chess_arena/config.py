@@ -670,6 +670,5 @@ def format_game_summary(game: Game) -> list[str]:
 def _configure_logging(level: str) -> None:
     """Apply Loguru logging configuration for the application."""
 
-    normalized_level = level.upper()
     logger.remove()
-    logger.add(sys.stderr, level=normalized_level)
+    logger.add(sys.stderr, level=level.upper())

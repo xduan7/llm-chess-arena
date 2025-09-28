@@ -115,7 +115,6 @@ class RecordWriter:
         Returns:
             Dict containing summary statistics.
         """
-        # Basic game result
         result = "1/2-1/2"  # Default to draw
         termination = "unknown"
 
@@ -152,11 +151,9 @@ class RecordWriter:
             "players": {},
         }
 
-        # Aggregate per-player statistics
         for color in ["white", "black"]:
             player_moves = [m for m in moves if m.get("player") == color]
 
-            # Calculate thinking time
             thinking_times = [
                 m.get("thinking_time_seconds", 0)
                 for m in player_moves
@@ -169,10 +166,8 @@ class RecordWriter:
             if total_thinking_time > 0:
                 player_summary["thinking_time_seconds"] = round(total_thinking_time, 1)
 
-            # LLM-specific aggregations
             llm_moves = [m for m in player_moves if m.get("llm_decision_process")]
             if llm_moves:
-                # Count API calls across all moves
                 total_api_calls = 0
                 total_retry_attempts = 0
                 total_prompt_tokens = 0
@@ -188,7 +183,6 @@ class RecordWriter:
                     if len(api_calls) > 1:
                         total_retry_attempts += len(api_calls) - 1
 
-                    # Sum tokens from successful API calls
                     for call in api_calls:
                         response = call.get("response")
                         if response and "usage" in response:
@@ -223,7 +217,6 @@ class RecordWriter:
             "platform": platform.platform(),
         }
 
-        # Try to get Stockfish version if available
         try:
             import shutil
 
@@ -256,7 +249,6 @@ class RecordWriter:
         Returns:
             Dict containing game outcome details.
         """
-        # Get basic info from summary calculation
         summary = RecordWriter._calculate_summary(
             moves, outcome, termination_label_override
         )
@@ -268,7 +260,6 @@ class RecordWriter:
             "end_timestamp": end_timestamp,
         }
 
-        # Determine winner
         if outcome and outcome.winner is not None:
             outcome_section["winner"] = (
                 "white" if outcome.winner == chess.WHITE else "black"
@@ -276,7 +267,6 @@ class RecordWriter:
         else:
             outcome_section["winner"] = None
 
-        # Add final position if we have moves
         if moves:
             last_move = moves[-1]
             if "position_after" in last_move:
@@ -306,7 +296,6 @@ class RecordWriter:
         end_timestamp = data["end_timestamp"]
         termination_label_override = data.get("termination_label_override")
 
-        # Build complete record
         record = {
             "summary": RecordWriter._calculate_summary(
                 moves, outcome, termination_label_override
@@ -320,17 +309,14 @@ class RecordWriter:
             ),
         }
 
-        # Add timestamps to environment if available
         if start_timestamp:
             record["environment"]["timestamp_start"] = start_timestamp
         if end_timestamp:
             record["environment"]["timestamp_end"] = end_timestamp
 
         try:
-            # Ensure output directory exists
             output_path.parent.mkdir(parents=True, exist_ok=True)
 
-            # Write JSON with pretty formatting
             with output_path.open("w", encoding="utf-8") as f:
                 json.dump(record, f, indent=2, ensure_ascii=False)
 

@@ -75,13 +75,11 @@ def parse_attempted_move_to_uci(attempted_move: str, board_in_fen: str) -> str:
             raise IllegalMoveError(
                 f"Illegal move in current position: '{attempted_move}'"
             )
-        move_uci = str(move.uci())
-        return move_uci
+        return str(move.uci())
     except ValueError:
         try:
             move = board.parse_san(move_normalized)
-            move_uci = str(move.uci())
-            return move_uci
+            return str(move.uci())
         except chess.AmbiguousMoveError as e:
             raise AmbiguousMoveError(f"Ambiguous SAN move: '{attempted_move}'") from e
         except chess.InvalidMoveError as e:

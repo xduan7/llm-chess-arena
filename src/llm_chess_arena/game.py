@@ -5,6 +5,7 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, Dict, Mapping
+import time
 
 import chess
 import chess.pgn
@@ -87,6 +88,13 @@ class Game:
 
         self._record_collector = RecordCollector() if record_dir is not None else None
 
+        # Track thinking time for each player
+        self._white_thinking_time = 0.0
+        self._black_thinking_time = 0.0
+
+        # Track current win probability for display
+        self._current_win_probability: float | None = None
+
         metrics_enabled = bool(
             self.metrics_tracker is not None and self.metrics_tracker.enabled
         )
@@ -142,7 +150,7 @@ class Game:
         if not self.finished or self.outcome is None:
             return None
 
-        winner_color = self.outcome.winner  # outcome is never None if game is over
+        winner_color = self.outcome.winner
         if winner_color is None:
             return None
 
@@ -159,8 +167,28 @@ class Game:
             InvalidMoveError: If decision has invalid action or missing move.
             Exception: Any exception from player() or from_uci() is propagated.
         """
+        # Track thinking time
+        start_time = time.time()
+
         # Copy prevents players from mutating game state
         decision = self.current_player(board=self.board.copy())
+
+        # Calculate and accumulate thinking time
+        thinking_time = time.time() - start_time
+        if self.current_player.color == "white":
+            self._white_thinking_time += thinking_time
+        else:
+            self._black_thinking_time += thinking_time
+
+        # Also use thinking time from decision if available
+        if (
+            hasattr(decision, "thinking_time_seconds")
+            and decision.thinking_time_seconds is not None
+        ):
+            if self.current_player.color == "white":
+                self._white_thinking_time += decision.thinking_time_seconds
+            else:
+                self._black_thinking_time += decision.thinking_time_seconds
 
         if decision.action == "resign":
             # Record resignation before handling it (and before early return)
@@ -227,6 +255,23 @@ class Game:
                 )
                 if metrics is not None:
                     move_quality = metrics.quality
+
+                    # Update win probability from metrics (from white's perspective)
+                    if (
+                        hasattr(metrics, "actual_centipawns")
+                        and metrics.actual_centipawns is not None
+                    ):
+                        # Convert centipawns to approximate win probability
+                        cp = metrics.actual_centipawns
+                        # Use tanh function to convert centipawns to win probability
+                        # This is a rough approximation - Stockfish WDL would be more accurate
+                        self._current_win_probability = 0.5 + 0.5 * (cp / 100.0) / (
+                            1.0 + abs(cp / 100.0)
+                        )
+                        # Clamp to [0, 1]
+                        self._current_win_probability = max(
+                            0.0, min(1.0, self._current_win_probability)
+                        )
 
                     # Add stockfish evaluation to the last recorded move if collector is active
                     if self._record_collector is not None:
@@ -314,6 +359,9 @@ class Game:
                             white_player=str(self.white_player),
                             black_player=str(self.black_player),
                             move_qualities=self._move_qualities,
+                            white_thinking_time=self._white_thinking_time,
+                            black_thinking_time=self._black_thinking_time,
+                            white_win_probability=self._current_win_probability,
                         )
                 except (
                     IllegalMoveError,
