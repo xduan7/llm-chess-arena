@@ -1,4 +1,14 @@
-"""Core game loop coordinating chess players and board state."""
+"""Core game loop coordinating chess players and board state.
+
+Module Organization:
+- Game Class: Central orchestrator for chess matches
+  * Initialization: Player setup, metrics configuration, recording setup
+  * Game Loop: Move execution, validation, board updates
+  * Move Handling: Player decision processing, error management
+  * Recording: PGN and JSON output, move data collection
+  * Metrics: Stockfish evaluation, win probability tracking
+  * Cleanup: Resource management and summary reporting
+"""
 
 from __future__ import annotations
 
@@ -21,7 +31,8 @@ from llm_chess_arena.renderer import display_board_with_context, display_game_su
 from llm_chess_arena.types import PlayerDecision
 from llm_chess_arena.metrics import MOVE_QUALITY_ORDER, MetricsTracker, MoveQuality
 from llm_chess_arena.utils import (
-    build_game_outcome_summary,
+    GameSummary,
+    build_game_summary,
     parse_attempted_move_to_uci,
 )
 from llm_chess_arena.record import RecordCollector, RecordWriter, iso_timestamp
@@ -39,7 +50,7 @@ class Game:
         metrics_tracker: MetricsTracker | None = None,
         record_dir: str | Path | None = None,
         record_name: str | None = None,
-        hydra_config: Dict[str, Any] | None = None,
+        hydra_config: dict[str, Any] | None = None,
     ) -> None:
         """Initialize a chess game.
 
@@ -72,7 +83,7 @@ class Game:
             if metrics_tracker is not None
             else (MetricsTracker.from_stockfish() if enable_metrics else None)
         )
-        self._move_qualities: list[MoveQuality | None] = []
+        # Note: Move qualities are now derived from MetricsTracker to avoid duplication
         self._rendered_metrics_summary = False
         self._record_dir = (
             Path(record_dir).expanduser() if record_dir is not None else None
@@ -83,17 +94,15 @@ class Game:
         self._termination_note: str | None = None
         self._hydra_config = hydra_config or {}
 
-        # Capture the initial FEN for game records
         self._initial_fen = self.board.fen()
 
         self._record_collector = RecordCollector() if record_dir is not None else None
 
-        # Track thinking time for each player
         self._white_thinking_time = 0.0
         self._black_thinking_time = 0.0
 
-        # Track current win probability for display
-        self._current_win_probability: float | None = None
+        # Win probability from White's perspective (0.0 = Black wins, 1.0 = White wins)
+        self._current_white_win_probability: float | None = None
 
         metrics_enabled = bool(
             self.metrics_tracker is not None and self.metrics_tracker.enabled
@@ -108,6 +117,10 @@ class Game:
         else:
             logger.info("Game initialized: {} vs {}", white_player, black_player)
         self._outcome: chess.Outcome | None = None
+
+    # ============================================================================
+    # Game State Properties
+    # ============================================================================
 
     @property
     def current_player(self) -> BasePlayer:
@@ -160,6 +173,10 @@ class Game:
         }
         return color_to_player[winner_color]
 
+    # ============================================================================
+    # Move Execution and Handling
+    # ============================================================================
+
     def make_move(self) -> None:
         """Execute a single move in the game.
 
@@ -167,38 +184,42 @@ class Game:
             InvalidMoveError: If decision has invalid action or missing move.
             Exception: Any exception from player() or from_uci() is propagated.
         """
-        # Track thinking time
         start_time = time.time()
 
         # Copy prevents players from mutating game state
-        decision = self.current_player(board=self.board.copy())
+        current_player = self.current_player
+        decision = current_player(board=self.board.copy())
+        decision_artifacts = None
+        get_decision_artifacts = getattr(
+            current_player, "get_last_decision_artifacts", None
+        )
+        if callable(get_decision_artifacts):
+            decision_artifacts = get_decision_artifacts()
 
-        # Calculate and accumulate thinking time
-        thinking_time = time.time() - start_time
-        if self.current_player.color == "white":
-            self._white_thinking_time += thinking_time
+        # Prefer player's self-reported thinking time over wall-clock measurement to avoid double-counting
+        wall_clock_move_time_in_seconds = time.time() - start_time
+        player_reported_time_in_seconds = getattr(
+            decision, "thinking_time_in_seconds", None
+        )
+
+        recorded_move_time_in_seconds = (
+            player_reported_time_in_seconds
+            if player_reported_time_in_seconds is not None
+            else wall_clock_move_time_in_seconds
+        )
+
+        if current_player.color == "white":
+            self._white_thinking_time += recorded_move_time_in_seconds
         else:
-            self._black_thinking_time += thinking_time
-
-        # Also use thinking time from decision if available
-        if (
-            hasattr(decision, "thinking_time_seconds")
-            and decision.thinking_time_seconds is not None
-        ):
-            if self.current_player.color == "white":
-                self._white_thinking_time += decision.thinking_time_seconds
-            else:
-                self._black_thinking_time += decision.thinking_time_seconds
+            self._black_thinking_time += recorded_move_time_in_seconds
 
         if decision.action == "resign":
-            # Record resignation before handling it (and before early return)
-            self._record_move_if_configured(decision)
+            self._record_move_if_configured(decision, decision_artifacts)
             self._handle_resignation(decision)
             return
         elif decision.action == "move":
-            # Record move data before applying it (to capture correct player and move number)
-            self._record_move_if_configured(decision)
-            self._handle_move(decision)
+            move_in_uci = self._record_move_if_configured(decision, decision_artifacts)
+            self._handle_move(decision, move_in_uci, decision_artifacts)
         else:
             raise InvalidMoveError(f"Unsupported action: {decision.action}")
 
@@ -217,7 +238,12 @@ class Game:
         self._termination_label_override = "Resignation"
         self._termination_note = None
 
-    def _handle_move(self, decision: PlayerDecision) -> None:
+    def _handle_move(
+        self,
+        decision: PlayerDecision,
+        cached_move_in_uci: str | None,
+        decision_artifacts: Any | None,
+    ) -> None:
         """Validate the player's move and apply it to the board.
 
         Args:
@@ -231,88 +257,106 @@ class Game:
         if decision.attempted_move is None:
             raise InvalidMoveError("Move action requires attempted_move")
 
-        player = self.current_player
+        active_player = self.current_player
         board_before_move = self.board.copy()
 
-        uci_move = parse_attempted_move_to_uci(
-            decision.attempted_move, self.board.fen()
+        move_in_uci = (
+            cached_move_in_uci
+            if cached_move_in_uci is not None
+            else parse_attempted_move_to_uci(decision.attempted_move, self.board.fen())
         )
 
-        move = chess.Move.from_uci(uci_move)
+        move = chess.Move.from_uci(move_in_uci)
         move_number = (len(self.board.move_stack) // 2) + 1
-        logger.info(
-            "Move {}: {} ({}) plays {}",
-            move_number,
-            player.name,
-            player.color,
-            uci_move,
-        )
+        logger.info("Move {}: {} plays {}", move_number, active_player, move_in_uci)
         self.board.push(move)
 
         move_quality: MoveQuality | None = None
         if self.metrics_tracker is not None:
             try:
-                metrics = self.metrics_tracker.record_move(
+                move_metrics = self.metrics_tracker.record_move(
                     board_before_move,
                     move,
+                    player_name=active_player.name,
                 )
-                if metrics is not None:
-                    move_quality = metrics.quality
+                if move_metrics is not None:
+                    move_quality = move_metrics.quality
 
-                    # Update win probability from metrics (from white's perspective)
+                    # Track win probability for display purposes
                     if (
-                        hasattr(metrics, "actual_centipawns")
-                        and metrics.actual_centipawns is not None
+                        hasattr(move_metrics, "actual_centipawns")
+                        and move_metrics.actual_centipawns is not None
                     ):
-                        # Convert centipawns to approximate win probability
-                        cp = metrics.actual_centipawns
-                        # Use tanh function to convert centipawns to win probability
+                        # Normalize centipawn evaluation to White's perspective for consistency
+                        centipawn_evaluation = move_metrics.actual_centipawns
+                        # If White is about to move next, Black just moved (so negate to get White's POV)
+                        if self.board.turn == chess.WHITE:
+                            centipawn_evaluation = -centipawn_evaluation
+                        # If Black is about to move next, White just moved (centipawn_evaluation is already White's POV)
+
                         # This is a rough approximation - Stockfish WDL would be more accurate
-                        self._current_win_probability = 0.5 + 0.5 * (cp / 100.0) / (
-                            1.0 + abs(cp / 100.0)
-                        )
+                        self._current_white_win_probability = 0.5 + 0.5 * (
+                            centipawn_evaluation / 100.0
+                        ) / (1.0 + abs(centipawn_evaluation / 100.0))
                         # Clamp to [0, 1]
-                        self._current_win_probability = max(
-                            0.0, min(1.0, self._current_win_probability)
+                        self._current_white_win_probability = max(
+                            0.0, min(1.0, self._current_white_win_probability)
                         )
 
-                    # Add stockfish evaluation to the last recorded move if collector is active
                     if self._record_collector is not None:
-                        stockfish_eval: Dict[str, Any] = {
+                        stockfish_evaluation: Dict[str, Any] = {
                             "stockfish_evaluation": {
                                 "quality": move_quality.value,
                             }
                         }
-                        # Add additional metrics if available
                         if (
-                            hasattr(metrics, "centipawn_loss")
-                            and metrics.centipawn_loss is not None
+                            hasattr(move_metrics, "centipawn_loss")
+                            and move_metrics.centipawn_loss is not None
                         ):
-                            stockfish_eval["stockfish_evaluation"][
+                            stockfish_evaluation["stockfish_evaluation"][
                                 "centipawn_loss"
-                            ] = metrics.centipawn_loss
+                            ] = move_metrics.centipawn_loss
                         if (
-                            hasattr(metrics, "best_move_uci")
-                            and metrics.best_move_uci is not None
+                            hasattr(move_metrics, "best_move_in_uci")
+                            and move_metrics.best_move_in_uci is not None
                         ):
-                            stockfish_eval["stockfish_evaluation"][
-                                "best_move_uci"
-                            ] = metrics.best_move_uci
+                            stockfish_evaluation["stockfish_evaluation"][
+                                "best_move_in_uci"
+                            ] = move_metrics.best_move_in_uci
                         if (
-                            hasattr(metrics, "best_move_hit")
-                            and metrics.best_move_hit is not None
+                            hasattr(move_metrics, "best_move_hit")
+                            and move_metrics.best_move_hit is not None
                         ):
-                            stockfish_eval["stockfish_evaluation"][
+                            stockfish_evaluation["stockfish_evaluation"][
                                 "best_move_hit"
-                            ] = metrics.best_move_hit
+                            ] = move_metrics.best_move_hit
 
-                        self._record_collector.update_last_move(stockfish_eval)
+                        self._record_collector.update_last_move(stockfish_evaluation)
 
-            except Exception as exc:  # pragma: no cover - safeguards metrics path
+            except (
+                Exception
+            ) as metrics_error:  # pragma: no cover - safeguards metrics path
                 logger.warning(
-                    "Failed to record metrics for move {}: {}", uci_move, exc
+                    "Failed to record metrics for move {}: {}",
+                    move_in_uci,
+                    metrics_error,
                 )
-        self._move_qualities.append(move_quality)
+        # Note: Move quality is now tracked by MetricsTracker, no separate storage needed
+
+    def _get_move_qualities_for_display(self) -> list[MoveQuality | None] | None:
+        """Derive move qualities from MetricsTracker for display purposes.
+
+        Returns:
+            list[MoveQuality | None] | None: List of move qualities or None if metrics disabled.
+        """
+        if self.metrics_tracker is None:
+            return None
+
+        return self.metrics_tracker.get_ordered_move_qualities(self.board.move_stack)
+
+    # ============================================================================
+    # Main Game Loop
+    # ============================================================================
 
     def play(self, max_num_moves: int | None = None) -> None:
         """Run the game until completion, illegal move, or max moves reached.
@@ -337,9 +381,9 @@ class Game:
 
         self._reset_llm_usage_counters()
         try:
-            num_moves = 0
+            half_move_count = 0
             while not self.finished:
-                if max_num_moves is not None and num_moves >= max_num_moves:
+                if max_num_moves is not None and half_move_count >= max_num_moves:
                     logger.info("Stopping: Maximum moves ({}) reached", max_num_moves)
                     self._outcome = chess.Outcome(
                         termination=chess.Termination.VARIANT_DRAW,  # Draw by max moves
@@ -349,7 +393,7 @@ class Game:
 
                 try:
                     self.make_move()
-                    num_moves += 1
+                    half_move_count += 1
 
                     if self.display_board:
                         current_move = (
@@ -361,21 +405,21 @@ class Game:
                             last_move=current_move,
                             white_player=str(self.white_player),
                             black_player=str(self.black_player),
-                            move_qualities=self._move_qualities,
+                            move_qualities=self._get_move_qualities_for_display(),
                             white_thinking_time=self._white_thinking_time,
                             black_thinking_time=self._black_thinking_time,
-                            white_win_probability=self._current_win_probability,
+                            white_win_probability=self._current_white_win_probability,
                         )
                 except (
                     IllegalMoveError,
                     InvalidMoveError,
                     AmbiguousMoveError,
-                ) as e:
+                ) as move_error:
                     logger.warning(
                         "Game over due to {} by {}: {}",
-                        e.__class__.__name__,
+                        move_error.__class__.__name__,
                         self.current_player,
-                        e,
+                        move_error,
                     )
                     self._outcome = chess.Outcome(
                         termination=chess.Termination.VARIANT_LOSS,  # Loss due to illegal/invalid move
@@ -385,12 +429,15 @@ class Game:
                             else chess.WHITE
                         ),
                     )
+                    self._termination_label_override = (
+                        f"{move_error.__class__.__name__.replace('Error', ' error')}"
+                    )
                     break
-                except Exception as e:
+                except Exception as unexpected_error:
                     logger.exception(
                         "Unexpected error during player move by {}: {}",
                         self.current_player,
-                        e,
+                        unexpected_error,
                     )
                     raise
 
@@ -401,7 +448,6 @@ class Game:
                 else:
                     logger.info("Game ended in a draw")
         finally:
-            # Set end timestamp and save record if configured
             if self._record_collector is not None:
                 self._record_collector.set_end_timestamp(
                     iso_timestamp(datetime.now(UTC))
@@ -411,48 +457,70 @@ class Game:
                     self._termination_label_override
                 )
 
-            self._log_llm_usage_summary()
-            self._save_history_if_configured()
+            game_summary = build_game_summary(self)
+            self._log_llm_usage_summary(game_summary)
+            self._save_history_if_configured(game_summary)
             if self.metrics_tracker is not None:
-                self._log_metrics_summary()
+                self._log_metrics_summary(game_summary)
             self._cleanup_players()
 
-    def _record_move_if_configured(self, decision: PlayerDecision) -> None:
+    # ============================================================================
+    # Move Recording and Data Collection
+    # ============================================================================
+
+    def _record_move_if_configured(
+        self, decision: PlayerDecision, decision_artifacts: Any | None
+    ) -> str | None:
         """Record move data to the record collector if active.
 
         Args:
             decision: The player decision about to be executed.
         """
         if self._record_collector is None:
-            return
+            return None
 
-        # Calculate move number as ply count (half-moves: 1, 2, 3, ...)
         # Since we're recording BEFORE the move is applied, use move stack length + 1
         move_number = len(self.board.move_stack) + 1
 
         # Current player is the one making the move (since we record before applying)
-        player = self.current_player
+        active_player = self.current_player
 
         # Current board state (before the move)
         position_before_fen = self.board.fen()
 
         # For resignations, we won't have position_after since move isn't applied
         position_after_fen = None
+        normalized_uci: str | None = None
         if decision.action == "move" and decision.attempted_move:
             # Apply the move temporarily to get the position after
             try:
-                move = chess.Move.from_uci(decision.attempted_move)
+                normalized_uci = getattr(decision_artifacts, "normalized_uci", None)
+                move_in_uci = (
+                    normalized_uci
+                    if normalized_uci is not None
+                    else parse_attempted_move_to_uci(
+                        decision.attempted_move, self.board.fen()
+                    )
+                )
+
+                move = chess.Move.from_uci(move_in_uci)
                 if move in self.board.legal_moves:
                     board_copy = self.board.copy()
                     board_copy.push(move)
                     position_after_fen = board_copy.fen()
-            except (ValueError, chess.InvalidMoveError):
+            except (
+                ValueError,
+                chess.InvalidMoveError,
+                InvalidMoveError,
+                IllegalMoveError,
+                AmbiguousMoveError,
+            ):
                 # Invalid move, position_after will remain None
                 pass
 
         move_data: Dict[str, Any] = {
             "move_number": move_number,
-            "player": player.color,
+            "player": active_player.color,
             "timestamp": iso_timestamp(datetime.now(UTC)),
             "position_before": {
                 "fen": position_before_fen,
@@ -462,36 +530,36 @@ class Game:
             },
         }
 
-        # Add position_after only for valid moves
         if position_after_fen is not None:
             move_data["position_after"] = {
                 "fen": position_after_fen,
             }
 
-        # Add move-specific data
         if decision.action == "move" and decision.attempted_move:
-            move_data["final_decision"]["move_uci"] = decision.attempted_move
+            move_data["final_decision"][
+                "attempted_move_in_uci"
+            ] = decision.attempted_move
         elif decision.action == "resign":
             move_data["final_decision"]["resignation_reason"] = getattr(
                 decision, "reason", "Player resigned"
             )
 
-        # Add LLM decision process if available
-        if hasattr(decision, "llm_decision_process"):
-            move_data["llm_decision_process"] = decision.llm_decision_process
+        decision_process = getattr(decision_artifacts, "decision_process", None)
+        if decision_process is not None:
+            move_data["llm_decision_process"] = decision_process
 
-        # Add thinking time if available
         if (
-            hasattr(decision, "thinking_time_seconds")
-            and decision.thinking_time_seconds is not None
+            hasattr(decision, "thinking_time_in_seconds")
+            and decision.thinking_time_in_seconds is not None
         ):
-            move_data["thinking_time_seconds"] = decision.thinking_time_seconds
-
-        # Add stockfish evaluation if available and this was a move
-        # Note: Since we're recording before the move is applied, we can't access
-        # the stockfish evaluation yet. This would need to be added after move evaluation.
+            move_data["thinking_time_in_seconds"] = decision.thinking_time_in_seconds
 
         self._record_collector.add_move(move_data)
+        return normalized_uci
+
+    # ============================================================================
+    # Resource Cleanup and Summary Reporting
+    # ============================================================================
 
     def _cleanup_players(self) -> None:
         """Clean up player resources."""
@@ -499,38 +567,34 @@ class Game:
         if hasattr(self.white_player, "close"):
             try:
                 self.white_player.close()
-            except Exception as e:
-                logger.warning("Error closing white player: {}", e)
+            except Exception as close_error:
+                logger.warning("Error closing white player: {}", close_error)
 
         if hasattr(self.black_player, "close"):
             try:
                 self.black_player.close()
-            except Exception as e:
-                logger.warning("Error closing black player: {}", e)
+            except Exception as close_error:
+                logger.warning("Error closing black player: {}", close_error)
 
         if self.metrics_tracker is not None:
             try:
                 self.metrics_tracker.close()
-            except Exception as e:  # pragma: no cover - defensive cleanup
-                logger.warning("Error closing metrics tracker: {}", e)
+            except Exception as close_error:  # pragma: no cover - defensive cleanup
+                logger.warning("Error closing metrics tracker: {}", close_error)
 
-    def _log_metrics_summary(self) -> None:
+    def _log_metrics_summary(self, game_summary: GameSummary | None = None) -> None:
         """Display aggregated metrics for each player after the game."""
         if self.metrics_tracker is None:
             return
 
-        summaries = self.metrics_tracker.summarize()
-        white_summary = summaries.get("white")
-        black_summary = summaries.get("black")
+        summary_by_color = self.metrics_tracker.summarize()
+        white_summary = summary_by_color.get("white")
+        black_summary = summary_by_color.get("black")
 
-        outcome_summary = build_game_outcome_summary(
-            outcome=self.outcome,
-            white_player_name=str(self.white_player),
-            black_player_name=str(self.black_player),
-            total_moves=len(self.board.move_stack),
-            termination_label_override=self._termination_label_override,
-            termination_note=self._termination_note,
+        resolved_game_summary = (
+            game_summary if game_summary is not None else build_game_summary(self)
         )
+        outcome_summary = resolved_game_summary.to_game_outcome_summary()
 
         rendered = display_game_summary(
             white_player=str(self.white_player),
@@ -542,20 +606,20 @@ class Game:
         self._rendered_metrics_summary = rendered
 
         # Still log for debugging/records
-        for color, summary in summaries.items():
-            if summary.moves_evaluated == 0:
+        for color, player_metrics_summary in summary_by_color.items():
+            if player_metrics_summary.moves_evaluated == 0:
                 continue
 
             player = self.white_player if color == "white" else self.black_player
 
             avg_loss = (
-                f"{summary.average_centipawn_loss:.1f}"
-                if summary.average_centipawn_loss is not None
+                f"{player_metrics_summary.average_centipawn_loss:.1f}"
+                if player_metrics_summary.average_centipawn_loss is not None
                 else "N/A"
             )
             hit_rate = (
-                f"{summary.best_move_hit_rate:.3f}"
-                if summary.best_move_hit_rate is not None
+                f"{player_metrics_summary.best_move_hit_rate:.3f}"
+                if player_metrics_summary.best_move_hit_rate is not None
                 else "N/A"
             )
 
@@ -564,7 +628,7 @@ class Game:
                 str(player),
                 avg_loss,
                 hit_rate,
-                self._format_quality_summary(summary.quality_counts),
+                self._format_quality_summary(player_metrics_summary.quality_counts),
             )
 
     @staticmethod
@@ -577,82 +641,12 @@ class Game:
                 parts.append(f"{quality.value}:{count}")
         return ", ".join(parts) if parts else "none"
 
-    def _log_llm_usage_summary(self) -> None:
-        """Log cumulative LiteLLM usage for each player if available."""
-
-        players = (self.white_player, self.black_player)
-
-        for player in players:
-            get_usage = getattr(player, "get_usage_totals", None)
-            if not callable(get_usage):
-                continue
-
-            try:
-                usage = get_usage()
-            except Exception as exc:  # pragma: no cover - guard optional hook
-                logger.debug(
-                    "Could not get token usage statistics for {}: {}", player, exc
-                )
-                continue
-
-            if usage is None:
-                continue
-
-            logger.info(
-                "{} token usage: {} prompt tokens, {} completion tokens, {} total",
-                player,
-                usage.prompt_tokens,
-                usage.completion_tokens,
-                usage.total_tokens,
-            )
-
-            if usage.cost > 0:
-                logger.info("{} cost: ${:.6f}", player, usage.cost)
-
-            # Get and log performance metrics if available
-            get_metrics = getattr(player, "get_llm_performance_metrics", None)
-            if callable(get_metrics):
-                try:
-                    metrics = get_metrics()
-                    if metrics:
-                        logger.info(
-                            "{} made {} moves using {} API calls with {} retries",
-                            player,
-                            metrics["total_decisions"],
-                            metrics["total_prompts"],
-                            metrics["total_retries"],
-                        )
-
-                        if metrics["voting_ties"] > 0:
-                            logger.info(
-                                "{} had {} voting ties", player, metrics["voting_ties"]
-                            )
-
-                        if metrics["network_errors"] > 0:
-                            logger.info(
-                                "{} had {} network errors",
-                                player,
-                                metrics["network_errors"],
-                            )
-
-                        if metrics["average_latency_ms"]:
-                            logger.info(
-                                "{} average response time: {:.0f}ms",
-                                player,
-                                metrics["average_latency_ms"],
-                            )
-
-                        if metrics["average_response_length"]:
-                            logger.info(
-                                "{} average response length: {:.0f} characters",
-                                player,
-                                metrics["average_response_length"],
-                            )
-
-                except Exception as exc:  # pragma: no cover - guard optional hook
-                    logger.debug(
-                        "Failed to get performance metrics for {}: {}", player, exc
-                    )
+    def _log_llm_usage_summary(self, game_summary: GameSummary | None = None) -> None:
+        """Log cumulative LiteLLM usage for each player using central summary builder."""
+        resolved_game_summary = (
+            game_summary if game_summary is not None else build_game_summary(self)
+        )
+        resolved_game_summary.log_usage_summary()
 
     def _reset_llm_usage_counters(self) -> None:
         """Reset usage counters on players that support it before a game."""
@@ -666,12 +660,16 @@ class Game:
 
             try:
                 reset_usage()
-            except Exception as exc:  # pragma: no cover - defensive hook
+            except Exception as reset_error:  # pragma: no cover - defensive hook
                 logger.debug(
-                    "Could not reset token usage counters for {}: {}", player, exc
+                    "Could not reset token usage counters for {}: {}",
+                    player,
+                    reset_error,
                 )
 
-    def _save_history_if_configured(self) -> None:
+    def _save_history_if_configured(
+        self, game_summary: GameSummary | None = None
+    ) -> None:
         """Persist the PGN history and JSON record when configuration requests it."""
 
         if self._record_dir is None:
@@ -679,7 +677,6 @@ class Game:
         if not self.finished:
             return
 
-        # Generate filename
         filename = self._record_name if self._record_name else self._start_timestamp
         pgn_path = self._record_dir / f"{filename}.pgn"
         json_path = self._record_dir / f"{filename}.json"
@@ -704,8 +701,10 @@ class Game:
             )
             pgn_path.write_text(pgn_game.accept(exporter), encoding="utf-8")
             logger.info("Saved PGN history to {}", pgn_path)
-        except Exception as exc:  # pragma: no cover - defensive logging
-            logger.warning("Could not save chess game history to {}: {}", pgn_path, exc)
+        except Exception as pgn_save_error:  # pragma: no cover - defensive logging
+            logger.warning(
+                "Could not save chess game history to {}: {}", pgn_path, pgn_save_error
+            )
 
         # Save JSON record if collector is active
         if self._record_collector is not None:
@@ -715,6 +714,11 @@ class Game:
                     self._hydra_config,
                     json_path,
                     self._initial_fen,
+                    self.white_player,
+                    self.black_player,
+                    game_summary,
                 )
-            except Exception as exc:  # pragma: no cover - defensive logging
-                logger.warning("Failed to save game record to {}: {}", json_path, exc)
+            except Exception as json_save_error:  # pragma: no cover - defensive logging
+                logger.warning(
+                    "Failed to save game record to {}: {}", json_path, json_save_error
+                )

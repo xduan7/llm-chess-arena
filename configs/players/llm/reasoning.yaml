@@ -1,13 +1,49 @@
+# @package _global_
+
+# =============================================================================
+# LLM Player Configuration for Reasoning Models (o1, o3, etc.)
+# =============================================================================
+# Extends default LLM configuration with settings optimized for reasoning models
+# that require longer thinking time and different timeout settings.
+
 kind: llm
-name: null
-max_move_retries: 3
-num_votes: 1
+name: null  # Override with reasoning model name (e.g., "o1-preview", "o3-mini")
+
+# SAME AS DEFAULT - Reasoning models benefit from retry logic
+max_move_retries: 3  # Reasoning models still need retries for parsing errors
+                     # May consider reducing to 2 since reasoning models are more reliable
+
+# CONSERVATIVE VOTING - Reasoning models are typically more reliable
+num_votes: 1         # Single vote often sufficient for reasoning models
+                     # - These models have built-in "thinking" so less randomness
+                     # - Can increase to 3 for critical experiments
+                     # - Cost consideration: reasoning models are much more expensive
+
 connector:
-  model: null
-  temperature: 0.2
-  max_tokens: 0.8
-  timeout: 1200.0
-  max_retries: 3
-  provider: null
+  model: null                    # Required: Set to reasoning model (e.g., "o1-preview", "o3-mini")
+  temperature: 0.2               # Low temperature maintains deterministic behavior
+                                # - Some reasoning models ignore temperature
+                                # - Keep low for consistency with other model types
+
+  max_num_tokens: 0.8           # Reasoning models may need more tokens for "thinking"
+                                # - Consider 0.9-1.0 if responses are truncated
+                                # - Monitor for empty responses and adjust upward if needed
+
+  # CRITICAL: Extended timeout for reasoning models
+  request_timeout_in_seconds: 1200.0  # 20 minutes - ESSENTIAL for reasoning models
+                                      # - o1/o3 models can think for minutes per response
+                                      # - Standard models: 300-600 seconds sufficient
+                                      # - Reasoning models: 600-1800 seconds needed
+                                      # - Too short: Frequent timeout errors
+                                      # - Too long: Delayed error detection
+
+  max_api_request_retries: 3    # Same as default - reasoning models still have network issues
+                               # May need higher for very expensive models to avoid wasted costs
+
+  provider: null                # Usually "openai" for o1/o3 models
+                               # Set explicitly if using custom endpoints
+
 handler:
-  kind: game_arena
+  kind: game_arena             # Standard handler works well with reasoning models
+                              # - Reasoning models often produce cleaner move notation
+                              # - May consider custom prompts that leverage reasoning capabilities

@@ -19,16 +19,16 @@ class MockLLMConnector(LLMConnector):
     ):
         """Set up canned responses, optional failure triggers, and usage data."""
         temperature = kwargs.pop("temperature", 0.7)
-        max_tokens = kwargs.pop("max_tokens", None)
-        timeout = kwargs.pop("timeout", 30.0)
-        max_retries = kwargs.pop("max_retries", 3)
+        max_num_tokens = kwargs.pop("max_num_tokens", None)
+        request_timeout_in_seconds = kwargs.pop("request_timeout_in_seconds", 30.0)
+        max_api_request_retries = kwargs.pop("max_api_request_retries", 3)
         usage_records = kwargs.pop("usage_records", None)
         super().__init__(
             model=model,
             temperature=temperature,
-            max_tokens=max_tokens,
-            timeout=timeout,
-            max_retries=max_retries,
+            max_num_tokens=max_num_tokens,
+            request_timeout_in_seconds=request_timeout_in_seconds,
+            max_api_request_retries=max_api_request_retries,
         )
 
         self.responses = responses or []

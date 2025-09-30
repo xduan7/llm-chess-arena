@@ -9,7 +9,7 @@ import chess.engine
 from loguru import logger
 
 from llm_chess_arena.player.base_player import BasePlayer
-from llm_chess_arena.utils import find_stockfish_binary
+from llm_chess_arena.utils import find_stockfish_binary, initialize_stockfish_engine
 from llm_chess_arena.types import Color, PlayerDecisionContext, PlayerDecision
 
 # Default depth prevents infinite analysis when limits not specified
@@ -65,19 +65,17 @@ class StockfishPlayer(BasePlayer):
             return
 
         try:
-            self.engine = chess.engine.SimpleEngine.popen_uci(self.binary_path)
-            self.engine.configure(self.engine_options)
+            self.engine = initialize_stockfish_engine(
+                self.binary_path, self.engine_options
+            )
             logger.info(
                 "Stockfish engine started with time/depth limits: {}",
                 self.engine_limits,
             )
-        except Exception as e:
-            if self.engine:
-                self.engine.quit()
-                self.engine = None
+        except Exception as engine_start_error:
             raise RuntimeError(
-                "Failed to initialize Stockfish engine: {}".format(e)
-            ) from e
+                "Failed to initialize Stockfish engine: {}".format(engine_start_error)
+            ) from engine_start_error
 
     def _make_decision(self, context: PlayerDecisionContext) -> PlayerDecision:
         """Query Stockfish for the strongest move and wrap the response."""
@@ -89,21 +87,24 @@ class StockfishPlayer(BasePlayer):
             raise RuntimeError("Stockfish engine failed to start")
 
         try:
-            # Fresh board from FEN respects DTO pattern and avoids state mutation
-            board = chess.Board(context.board_in_fen)
+            board_for_evaluation = chess.Board(context.board_in_fen)
 
-            limit = chess.engine.Limit(**self.engine_limits)
-            result = engine.play(board, limit)
+            search_limit = chess.engine.Limit(**self.engine_limits)
+            engine_result = engine.play(board_for_evaluation, search_limit)
 
-            if result.move is None:
+            if engine_result.move is None:
                 raise chess.engine.EngineError(
                     "Stockfish returned None instead of a move"
                 )
 
-            return PlayerDecision(action="move", attempted_move=result.move.uci())
+            return PlayerDecision(
+                action="move", attempted_move=engine_result.move.uci()
+            )
 
-        except chess.engine.EngineError as e:
-            raise RuntimeError("Stockfish failed to generate move: {}".format(e)) from e
+        except chess.engine.EngineError as engine_move_error:
+            raise RuntimeError(
+                "Stockfish failed to generate move: {}".format(engine_move_error)
+            ) from engine_move_error
 
     def close(self) -> None:
         """Terminate the Stockfish subprocess if it was started.
@@ -115,7 +116,10 @@ class StockfishPlayer(BasePlayer):
             try:
                 self.engine.quit()
                 logger.debug("Stockfish engine closed successfully")
-            except Exception as e:
-                logger.error("Could not properly close Stockfish chess engine: {}", e)
+            except Exception as engine_close_error:
+                logger.error(
+                    "Could not properly close Stockfish chess engine: {}",
+                    engine_close_error,
+                )
             finally:
                 self.engine = None

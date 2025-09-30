@@ -1,10 +1,10 @@
 """Unit tests for the LLM-backed player behaviors."""
 
-from unittest.mock import Mock
-
 import chess
 import pytest
+from unittest.mock import Mock
 
+from llm_chess_arena.exceptions import LLMEmptyResponseError
 from llm_chess_arena.player.llm import (
     LLMPlayer,
     GameArenaLLMMoveHandler,
@@ -76,6 +76,7 @@ class TestLLMPlayerInitialization:
                 connector=test_connector,
                 handler=game_arena_handler,
                 color="white",
+                max_move_retries=3,
                 num_votes=0,
             )
 
@@ -84,6 +85,7 @@ class TestLLMPlayerInitialization:
                 connector=test_connector,
                 handler=game_arena_handler,
                 color="white",
+                max_move_retries=3,
                 num_votes=-1,
             )
 
@@ -143,6 +145,7 @@ class TestLLMPlayerMoveGeneration:
             handler=handler,
             color="white",
             name="UsageTester",
+            max_move_retries=3,
             num_votes=1,
         )
 
@@ -183,6 +186,8 @@ class TestLLMPlayerMoveGeneration:
             handler=handler,
             color="white",
             name="ResetTester",
+            max_move_retries=3,
+            num_votes=1,
         )
 
         board = chess.Board()
@@ -213,10 +218,12 @@ class TestLLMPlayerMoveGeneration:
             handler=handler,
             color="white",
             name="EmptyResponseTester",
+            max_move_retries=3,
+            num_votes=1,
         )
 
         with pytest.raises(
-            ConnectionError, match="No responses received from LLM provider"
+            LLMEmptyResponseError, match="No responses received from LLM provider"
         ):
             llm_player._vote_aggregator.aggregate_responses([])
 
@@ -236,6 +243,8 @@ class TestLLMPlayerMoveGeneration:
             handler=handler,
             color="white",
             name="ScopingTester",
+            max_move_retries=3,
+            num_votes=1,
         )
 
         # Mock the handler to return our decision without response
@@ -265,21 +274,23 @@ class TestLLMPlayerRetryLogic:
             handler=game_arena_handler,
             color="white",
             max_move_retries=2,
+            num_votes=1,
         )
 
         starting_board = chess.Board()
         resignation_decision = player_with_limited_retries(starting_board)
         assert resignation_decision.action == "resign"
 
-        # Verify retry attempts: initial + 2 retries = 3 queries
-        assert failing_connector.query_count == 3
+        # Verify retry attempts: initial + 1 retry = 2 queries
+        # (3rd response "also invalid" fails to parse and results in immediate resignation)
+        assert failing_connector.query_count == 2
 
     def test_player_successfully_recovers_on_second_attempt_after_initial_invalid_move(
         self,
     ):
         """Player should find a legal move after initial invalid output."""
         connector_with_retry_scenario = MockLLMConnector(
-            responses=["invalid move", "Final Answer: e4"]
+            responses=["invalid", "Final Answer: e4"]
         )
         game_arena_handler = GameArenaLLMMoveHandler()
 
@@ -288,6 +299,7 @@ class TestLLMPlayerRetryLogic:
             handler=game_arena_handler,
             color="white",
             max_move_retries=3,
+            num_votes=1,
         )
 
         starting_board = chess.Board()
@@ -298,7 +310,9 @@ class TestLLMPlayerRetryLogic:
 
     def test_retry_prompt_includes_previous_invalid_move_attempt_context(self):
         """Retry prompt should embed prior invalid move context."""
-        initial_invalid_response = "I'll play knight to e5"
+        initial_invalid_response = (
+            "Ne5"  # Invalid: knight can't reach e5 from starting position
+        )
 
         connector_with_invalid_first_response = MockLLMConnector(
             responses=[initial_invalid_response, "Final Answer: Nf3"]
@@ -310,6 +324,7 @@ class TestLLMPlayerRetryLogic:
             handler=game_arena_handler,
             color="white",
             max_move_retries=3,
+            num_votes=1,
         )
 
         starting_board = chess.Board()
@@ -342,6 +357,7 @@ class TestLLMPlayerRetryLogic:
             handler=game_arena_handler,
             color="white",
             max_move_retries=3,
+            num_votes=1,
         )
 
         starting_board = chess.Board()
@@ -371,6 +387,7 @@ class TestLLMPlayerNetworkErrors:
             handler=game_arena_handler,
             color="white",
             max_move_retries=3,
+            num_votes=1,
         )
 
         starting_board = chess.Board()
@@ -394,6 +411,7 @@ class TestLLMPlayerNetworkErrors:
             handler=game_arena_handler,
             color="black",
             max_move_retries=3,
+            num_votes=1,
         )
 
         mid_game_board = chess.Board()
@@ -420,6 +438,7 @@ class TestLLMPlayerMajorityVoting:
             connector=voting_connector,
             handler=game_arena_handler,
             color="white",
+            max_move_retries=3,
             num_votes=3,
         )
 
@@ -446,6 +465,7 @@ class TestLLMPlayerMajorityVoting:
             connector=tie_scenario_connector,
             handler=game_arena_handler,
             color="white",
+            max_move_retries=3,
             num_votes=3,
         )
 
@@ -471,6 +491,7 @@ class TestLLMPlayerMajorityVoting:
             connector=mixed_validity_connector,
             handler=game_arena_handler,
             color="white",
+            max_move_retries=3,
             num_votes=3,
         )
 
@@ -524,6 +545,7 @@ class TestLLMPlayerMajorityVoting:
             connector=notation_mixing_connector,
             handler=game_arena_handler,
             color="white",
+            max_move_retries=3,
             num_votes=3,
         )
 
@@ -577,6 +599,8 @@ class TestLLMPlayerIntegration:
             connector=full_game_connector,
             handler=game_arena_handler,
             color="white",
+            max_move_retries=3,
+            num_votes=1,
         )
 
         evolving_board = chess.Board()
@@ -618,6 +642,8 @@ class TestLLMPlayerIntegration:
             connector=test_connector,
             handler=game_arena_handler,
             color="white",
+            max_move_retries=3,
+            num_votes=1,
         )
 
         assert player_without_custom_name.name == "gpt-4-turbo"
@@ -633,6 +659,8 @@ class TestLLMPlayerIntegration:
             connector=black_perspective_connector,
             handler=game_arena_handler,
             color="black",
+            max_move_retries=3,
+            num_votes=1,
         )
 
         # Position after 1.e4

@@ -26,7 +26,6 @@ ARGO_DUMMY_API_KEY = "sk-argo-placeholder"
 # models (OpenAI, Anthropic, Gemini) rather than erroring. Research code needs flexibility.
 litellm.drop_params = True
 # LiteLLM's verbose attribute/method availability varies across installations
-# Use defensive access since mypy cannot detect the dynamic API
 set_verbose = getattr(litellm, "set_verbose", None)
 if callable(set_verbose):
     set_verbose(False)
@@ -42,9 +41,9 @@ class LLMConnector:
         self,
         model: str,
         temperature: float = 0.7,
-        max_tokens: int | None = None,
-        timeout: float = 30.0,
-        max_retries: int = 3,
+        max_num_tokens: int | None = None,
+        request_timeout_in_seconds: float = 30.0,
+        max_api_request_retries: int = 3,
         provider: str | None = None,
         api_base: str | None = None,
     ) -> None:
@@ -53,17 +52,17 @@ class LLMConnector:
         Args:
             model: Provider-specific model identifier.
             temperature: Sampling temperature for completions.
-            max_tokens: Maximum number of completion tokens to request.
-            timeout: Request timeout, in seconds.
-            max_retries: Maximum retries for transient failures.
+            max_num_tokens: Maximum number of completion tokens to request.
+            request_timeout_in_seconds: Request timeout, in seconds.
+            max_api_request_retries: Maximum retries for transient failures.
             provider: Optional LiteLLM provider override (e.g., "anthropic").
             api_base: Optional custom API base URL for self-hosted endpoints.
         """
         self.model = model
         self.temperature = temperature
-        self.max_tokens = max_tokens
-        self.timeout = timeout
-        self.max_retries = max_retries
+        self.max_num_tokens = max_num_tokens
+        self.request_timeout_in_seconds = request_timeout_in_seconds
+        self.max_api_request_retries = max_api_request_retries
         self.provider = provider
         self.api_base = api_base.rstrip("/") if api_base else None
         self._default_request_parameters: dict[str, Any] = {}
@@ -117,10 +116,10 @@ class LLMConnector:
         if not alias:
             raise ValueError("Argo model alias missing after 'argo:'")
 
-        base = self.api_base or os.getenv("ARGO_API_BASE")
-        if not base or not base.strip():
+        api_base_url = self.api_base or os.getenv("ARGO_API_BASE")
+        if not api_base_url or not api_base_url.strip():
             raise ValueError("Argo models require connector.api_base or ARGO_API_BASE")
-        self.api_base = base.strip().rstrip("/")
+        self.api_base = api_base_url.strip().rstrip("/")
         self.model = f"{ARGO_MODEL_PREFIX}{alias}"
         if self.provider and self.provider.lower() != "openai":
             logger.warning(
@@ -129,7 +128,8 @@ class LLMConnector:
                 self.model,
             )
         self.provider = None
-        self._default_request_parameters.setdefault("api_key", ARGO_DUMMY_API_KEY)
+        api_key = os.getenv("ARGO_API_KEY") or ARGO_DUMMY_API_KEY
+        self._default_request_parameters.setdefault("api_key", api_key)
         self._default_request_parameters.setdefault("custom_llm_provider", "openai")
         logger.debug("Configured Argo model {} via {}", alias, self.api_base)
 
@@ -172,8 +172,8 @@ class LLMConnector:
             "messages": messages,
             "model": self.model,
             "temperature": self.temperature,
-            "max_tokens": self.max_tokens,
-            "timeout": self.timeout,
+            "max_tokens": self.max_num_tokens,
+            "timeout": self.request_timeout_in_seconds,
             "max_retries": 0,  # Handle retries ourselves for better logging
             "n": n,
             "provider": self.provider,
@@ -185,7 +185,7 @@ class LLMConnector:
             key: value for key, value in completion_kwargs.items() if value is not None
         }
 
-        max_attempts = self.max_retries + 1
+        max_attempts = self.max_api_request_retries + 1
         endpoint = self._get_endpoint_description()
 
         for attempt in range(1, max_attempts + 1):
@@ -204,29 +204,37 @@ class LLMConnector:
             except LLMEmptyResponseError:
                 # Let empty response errors bubble up to player for move retries
                 raise
-            except litellm_exceptions.Timeout as e:
-                logger.warning("Request timed out after {}s", self.timeout)
-                raise TimeoutError(f"Request timed out after {self.timeout}s") from e
+            except litellm_exceptions.Timeout as timeout_error:
+                logger.warning(
+                    "Request timed out after {}s", self.request_timeout_in_seconds
+                )
+                raise TimeoutError(
+                    f"Request timed out after {self.request_timeout_in_seconds}s"
+                ) from timeout_error
             except (
                 litellm_exceptions.AuthenticationError,
                 litellm_exceptions.InvalidRequestError,
                 litellm_exceptions.BadRequestError,
                 litellm_exceptions.ContentPolicyViolationError,
-            ) as e:
+            ) as permanent_api_error:
                 logger.error(
                     "Permanent API error (will not retry): {}",
-                    self._sanitize_for_logging(str(e)),
+                    self._sanitize_for_logging(str(permanent_api_error)),
                 )
-                raise LLMPermanentError(f"LLM API request invalid: {e}") from e
+                raise LLMPermanentError(
+                    f"LLM API request invalid: {permanent_api_error}"
+                ) from permanent_api_error
             except (
                 litellm_exceptions.RateLimitError,
                 litellm_exceptions.ServiceUnavailableError,
                 litellm_exceptions.InternalServerError,
                 litellm_exceptions.APIError,
                 litellm_exceptions.APIConnectionError,
-            ) as e:
-                status = getattr(e, "status_code", "unknown")
-                error_type = type(e).__name__.replace("Error", "").lower()
+            ) as transient_api_error:
+                status = getattr(transient_api_error, "status_code", "unknown")
+                error_type = (
+                    type(transient_api_error).__name__.replace("Error", "").lower()
+                )
                 logger.warning(
                     "Network attempt {}/{} to {} failed - {} ({})",
                     attempt,
@@ -239,13 +247,15 @@ class LLMConnector:
                 if attempt >= max_attempts:
                     raise ConnectionError(
                         f"{error_type.replace('_', ' ').title()} ({status}) after {max_attempts} network attempts"
-                    ) from e
-            except Exception as e:  # pragma: no cover - defensive guard
-                error_type = type(e).__name__.replace("Error", "").lower()
+                    ) from transient_api_error
+            except Exception as unexpected_error:  # pragma: no cover - defensive guard
+                error_type = (
+                    type(unexpected_error).__name__.replace("Error", "").lower()
+                )
                 logger.error(
                     "Unexpected error connecting to {} - {}", endpoint, error_type
                 )
-                raise ConnectionError(f"Unexpected {error_type}") from e
+                raise ConnectionError(f"Unexpected {error_type}") from unexpected_error
 
         # Should never reach here
         raise ConnectionError("Network retries exhausted")
@@ -254,8 +264,12 @@ class LLMConnector:
         """Return cleaned completion strings from the LiteLLM response payload."""
         try:
             choices: Iterable[Any] = response.choices
-        except AttributeError as exc:  # pragma: no cover - defensive guard
-            raise LLMEmptyResponseError("LLM response missing choices payload") from exc
+        except (
+            AttributeError
+        ) as response_attribute_error:  # pragma: no cover - defensive guard
+            raise LLMEmptyResponseError(
+                "LLM response missing choices payload"
+            ) from response_attribute_error
 
         contents: list[str] = []
         for choice in choices:
@@ -266,7 +280,7 @@ class LLMConnector:
             content_str = str(content).strip()
             if not content_str:
                 raise LLMEmptyResponseError(
-                    "LLM response contains empty content (check max_tokens setting)"
+                    "LLM response contains empty content (check max_num_tokens setting)"
                 )
             contents.append(content_str)
 
@@ -302,8 +316,13 @@ class LLMConnector:
         """Persist per-call usage data into last and cumulative trackers."""
         try:
             usage_record = self._extract_usage(response)
-        except Exception as exc:  # pragma: no cover - defensive guard
-            logger.debug("Could not read token usage from API response: {}", exc)
+        except (
+            Exception
+        ) as usage_extraction_error:  # pragma: no cover - defensive guard
+            logger.debug(
+                "Could not read token usage from API response: {}",
+                usage_extraction_error,
+            )
             usage_record = None
 
         if usage_record is None:
@@ -361,7 +380,6 @@ class LLMConnector:
     def _safe_cost(response: Any) -> float:
         """Safely coerce cost metadata to ``float`` with broad compatibility."""
         # LiteLLM's completion_cost is not always available across installations
-        # Use defensive access since mypy cannot detect the dynamic API
         completion_cost_fn = getattr(litellm, "completion_cost", None)
         cost_value: Any = 0.0
 

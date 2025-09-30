@@ -6,7 +6,7 @@ from unittest.mock import Mock
 
 import pytest
 
-from llm_chess_arena.exceptions import ParseMoveError
+from llm_chess_arena.exceptions import ParseMoveError, LLMEmptyResponseError
 from llm_chess_arena.player.llm.decision import VoteAggregator
 from llm_chess_arena.types import PlayerDecision
 
@@ -34,9 +34,11 @@ def test_majority_vote_simple(aggregator: VoteAggregator, handler: Mock) -> None
         PlayerDecision(action="move", attempted_move="d4"),
     ]
 
-    decision = aggregator.aggregate_responses(responses)
+    result = aggregator.aggregate_responses(responses)
 
-    assert decision.attempted_move == "e4"
+    assert result.decision.attempted_move == "e4"
+    assert result.metadata is not None
+    assert result.metadata.winning_move == "e4"
 
 
 def test_tie_breaking_picks_first(aggregator: VoteAggregator, handler: Mock) -> None:
@@ -50,9 +52,9 @@ def test_tie_breaking_picks_first(aggregator: VoteAggregator, handler: Mock) -> 
         PlayerDecision(action="move", attempted_move="d4"),
     ]
 
-    decision = aggregator.aggregate_responses(responses)
+    result = aggregator.aggregate_responses(responses)
 
-    assert decision.attempted_move == "e4"
+    assert result.decision.attempted_move == "e4"
 
 
 def test_parse_failures_skipped(aggregator: VoteAggregator, handler: Mock) -> None:
@@ -67,24 +69,27 @@ def test_parse_failures_skipped(aggregator: VoteAggregator, handler: Mock) -> No
 
     handler.parse_decision_from_response.side_effect = side_effect
 
-    decision = aggregator.aggregate_responses(responses)
+    result = aggregator.aggregate_responses(responses)
 
-    assert decision.attempted_move == "e4"
+    assert result.decision.attempted_move == "e4"
 
 
 def test_all_responses_fail_returns_debug(
     aggregator: VoteAggregator, handler: Mock
 ) -> None:
-    """If every response fails, fall back to debug decision."""
+    """If every response fails, fall back to resignation decision."""
     handler.parse_decision_from_response.side_effect = ParseMoveError("bad")
 
-    decision = aggregator.aggregate_responses(["fail1", "fail2"])
+    result = aggregator.aggregate_responses(["fail1", "fail2"])
 
-    assert decision.attempted_move == "???"
-    assert "Response 1/2" in decision.response
+    assert result.decision.action == "resign"
+    assert result.decision.attempted_move is None
+    assert result.decision.reason == "All 2 LLM responses failed to parse"
+    assert "Response 1/2" in result.decision.response
+    assert result.metadata is None
 
 
 def test_empty_responses_raise_connection_error(aggregator: VoteAggregator) -> None:
-    """Empty response lists should raise a connection error."""
-    with pytest.raises(ConnectionError, match="No responses"):
+    """Empty response lists should raise an empty response error."""
+    with pytest.raises(LLMEmptyResponseError, match="No responses"):
         aggregator.aggregate_responses([])

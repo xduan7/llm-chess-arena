@@ -8,6 +8,7 @@ from typing import Any
 
 from llm_chess_arena.exceptions import ParseMoveError
 from llm_chess_arena.types import PlayerDecision
+from llm_chess_arena.utils import normalize_castling_notation
 
 FINAL_ANSWER_MARKERS: tuple[str, ...] = (
     "Final Answer:",
@@ -116,11 +117,11 @@ class BaseLLMMoveHandler(ABC):
         """
         try:
             return template.format(**kwargs)
-        except KeyError as e:
+        except KeyError as missing_key_error:
             raise KeyError(
-                f"Template requires field {e} which was not provided. "
+                f"Template requires field {missing_key_error} which was not provided. "
                 f"Available fields: {list(kwargs.keys())}"
-            ) from e
+            ) from missing_key_error
 
     @abstractmethod
     def _extract_decision_text(
@@ -234,7 +235,10 @@ class GameArenaLLMMoveHandler(BaseLLMMoveHandler):
                 len(response_stripped) <= 10
                 and response_stripped
                 and " " not in response_stripped
-                and any(c in response_stripped for c in "abcdefghNBRQKO12345678x=+-#")
+                and any(
+                    character in response_stripped
+                    for character in "abcdefghNBRQKO12345678x=+-#"
+                )
             ):
                 return response_stripped
             return None
@@ -244,7 +248,6 @@ class GameArenaLLMMoveHandler(BaseLLMMoveHandler):
         raw_move_text = _strip_model_formatting(sanitized_segment)
         raw_move_text = re.sub(r"<.*?>", "", raw_move_text)
 
-        # Handle castling notation with spaces first (e.g., "O - O" or "O - O - O")
         if raw_move_text.strip().upper().replace(" ", "").replace("-", "") in [
             "OO",
             "OOO",
@@ -254,9 +257,9 @@ class GameArenaLLMMoveHandler(BaseLLMMoveHandler):
         else:
             # For non-castling moves, take the first whitespace-delimited token
             # Leaving punctuation for the sanitizer to strip preserves cases like '1...e5'
-            stripped = raw_move_text.strip()
-            parts = stripped.split()
-            raw_move_text = parts[0] if parts else ""
+            stripped_text = raw_move_text.strip()
+            move_tokens = stripped_text.split()
+            raw_move_text = move_tokens[0] if move_tokens else ""
 
         return raw_move_text
 
@@ -283,17 +286,16 @@ class GameArenaLLMMoveHandler(BaseLLMMoveHandler):
         sanitized_move_text = sanitized_move_text.strip()
 
         # Normalize castling variations early to avoid treating leading zeros as move numbers
-        normalized_castling = sanitized_move_text.upper().replace(" ", "")
-        if normalized_castling in {"OO", "0-0", "O-O"}:
-            return "O-O"
-        if normalized_castling in {"OOO", "0-0-0", "O-O-O"}:
-            return "O-O-O"
+        upper_text = sanitized_move_text.upper().replace(" ", "")
+        if upper_text in {"OO", "0-0", "O-O", "OOO", "0-0-0", "O-O-O"}:
+            return normalize_castling_notation(sanitized_move_text)
 
         if sanitized_move_text and sanitized_move_text[0].isdigit():
-            # Remove leading move numbers like "12." or "1..." or "23)"
-            match = re.match(r"\d+\s*(\.+|[:\)]+)?\s*(.*)", sanitized_move_text)
-            if match and match.group(2):
-                sanitized_move_text = match.group(2)
+            move_number_match = re.match(
+                r"\d+\s*(\.+|[:\)]+)?\s*(.*)", sanitized_move_text
+            )
+            if move_number_match and move_number_match.group(2):
+                sanitized_move_text = move_number_match.group(2)
             else:
                 # Fall back to stripping the leading digits and any separators
                 sanitized_move_text = re.sub(r"^\d+[\.\s:-]*", "", sanitized_move_text)
@@ -301,7 +303,7 @@ class GameArenaLLMMoveHandler(BaseLLMMoveHandler):
                     return None
 
         # Strip symbols that python-chess rejects to increase parse success
-        for char in [
+        for invalid_character in [
             ":",
             ".",
             "*",
@@ -318,7 +320,7 @@ class GameArenaLLMMoveHandler(BaseLLMMoveHandler):
             "?",
             "!",
         ]:
-            sanitized_move_text = sanitized_move_text.replace(char, "")
+            sanitized_move_text = sanitized_move_text.replace(invalid_character, "")
 
         # LLMs sometimes output "exd6ep" but python-chess expects just "exd6"
         if sanitized_move_text.endswith("ep"):
@@ -339,21 +341,21 @@ class GameArenaLLMMoveHandler(BaseLLMMoveHandler):
         Returns:
             str: Human-readable move sequence with turn numbers.
         """
-        flattened_move_history_in_uci = []
-        for i, move_in_uci in enumerate(move_history_in_uci):
-            move_num = (i // 2) + 1
-            if i % 2 == 0:
-                flattened_move_history_in_uci.append(f"{move_num}.")
-            flattened_move_history_in_uci.append(move_in_uci)
+        flattened_history_tokens: list[str] = []
+        for move_index, move_in_uci in enumerate(move_history_in_uci):
+            turn_number = (move_index // 2) + 1
+            if move_index % 2 == 0:
+                flattened_history_tokens.append(f"{turn_number}.")
+            flattened_history_tokens.append(move_in_uci)
 
-        return " ".join(flattened_move_history_in_uci)
+        return " ".join(flattened_history_tokens)
 
 
-def _strip_model_formatting(text: str) -> str:
+def _strip_model_formatting(raw_text: str) -> str:
     """Remove language-model specific wrappers from the move region."""
-    cleaned = LATEX_PREFIX_PATTERN.sub("", text)
+    cleaned = LATEX_PREFIX_PATTERN.sub("", raw_text)
     cleaned = cleaned.replace("}", "")
-    for artifact in MODEL_FORMATTING_TOKENS:
-        cleaned = cleaned.replace(artifact, "")
+    for formatting_artifact in MODEL_FORMATTING_TOKENS:
+        cleaned = cleaned.replace(formatting_artifact, "")
     cleaned = cleaned.replace("\n", " ")
     return cleaned

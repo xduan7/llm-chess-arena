@@ -8,7 +8,9 @@ from unittest.mock import patch
 from omegaconf import OmegaConf
 
 from llm_chess_arena import config
-from llm_chess_arena.config import _ensure_color, RandomPlayerConfig
+from llm_chess_arena.config import RandomPlayerConfig
+from llm_chess_arena.config.schema import _ensure_player_color
+from llm_chess_arena.config import loader
 from llm_chess_arena.game import Game
 from llm_chess_arena.player.base_player import BasePlayer
 from llm_chess_arena.types import PlayerDecision
@@ -19,7 +21,7 @@ class TestLoadEnv:
 
     def setup_method(self):
         """Reset global state before each test."""
-        config._ENV_LOADED = False
+        loader._ENV_LOADED = False
         # Clear any test env vars
         for key in list(os.environ.keys()):
             if key.startswith("TEST_"):
@@ -43,7 +45,7 @@ class TestLoadEnv:
         assert loaded_path == env_file
         assert os.environ.get("TEST_VAR") == "test_value"
         assert os.environ.get("TEST_NUMBER") == "42"
-        assert config._ENV_LOADED is True
+        assert loader._ENV_LOADED is True
 
     def test_load_env__when_called_twice__then_skips_second_load(self, tmp_path):
         """Test that load_env doesn't reload on second call unless override=True."""
@@ -86,7 +88,7 @@ class TestLoadEnv:
         """Test that load_env returns None when file doesn't exist."""
         result = config.load_env("nonexistent.env")
         assert result is None
-        assert config._ENV_LOADED is False
+        assert loader._ENV_LOADED is False
 
     def test_load_env__given_env_file_envvar__when_no_filename__then_uses_envvar(
         self, tmp_path, monkeypatch
@@ -114,7 +116,7 @@ class TestLoadEnv:
         loaded_path = config.load_env(str(env_file))
 
         assert loaded_path == env_file
-        assert config._ENV_LOADED is True
+        assert loader._ENV_LOADED is True
 
     def test_load_env__given_comments_and_whitespace__when_called__then_parses_correctly(
         self, tmp_path
@@ -177,14 +179,14 @@ class TestConfigIntegration:
     def test_config_module_import_does_not_load_env(self):
         """Test that importing config module doesn't automatically load env."""
         # Reset state
-        config._ENV_LOADED = False
+        loader._ENV_LOADED = False
 
         # Re-import shouldn't trigger load
         import importlib
 
         importlib.reload(config)
 
-        assert config._ENV_LOADED is False
+        assert loader._ENV_LOADED is False
 
     def test_config_with_api_keys_pattern(self, tmp_path):
         """Test typical API key configuration pattern."""
@@ -197,7 +199,7 @@ GOOGLE_API_KEY=goog-test789
 """
         )
 
-        config._ENV_LOADED = False
+        loader._ENV_LOADED = False
         # Use override=True to overwrite any existing values
         config.load_env(str(env_file), override=True)
         assert os.environ.get("OPENAI_API_KEY") == "sk-test123"
@@ -270,7 +272,10 @@ class TestHydraConfig:
         assert cfg.players.white.kind == "random"
         assert cfg.players.black.kind == "random"
         assert cfg.metrics.stockfish_depth == 20
-        assert cfg.metrics.stockfish_engine_options == {"Threads": 4, "Hash": 1024}
+        assert cfg.metrics.stockfish_engine_options == {
+            "Threads": 4,
+            "Hash": 1024,
+        }
         assert cfg.metrics.quality_thresholds.excellent == 50.0
 
     def test_load_app_config__when_overrides_supplied__then_applies_changes(self):
@@ -305,34 +310,45 @@ class TestHydraConfig:
             "players@players.black=random",
         ]
 
-        cfg = config.load_app_config(overrides=overrides)
+        app_config = config.load_app_config(overrides=overrides)
 
-        default_player_cfg = OmegaConf.load(
+        default_player_settings = OmegaConf.load(
             Path(__file__).resolve().parents[2]
             / "configs"
             / "players"
             / "llm"
             / "default.yaml"
         )
-        default_connector_cfg = default_player_cfg.connector
+        default_connector_settings = default_player_settings.connector
 
-        assert cfg.players.white.kind == "llm"
-        assert cfg.players.white.name == "GPT-4o Mini"
-        assert cfg.players.white.max_move_retries == 3
-        assert cfg.players.white.num_votes == 1
-        assert cfg.players.white.connector.model == "gpt-4o-mini"
+        assert app_config.players.white.kind == "llm"
+        assert app_config.players.white.name == "GPT-4o Mini"
+        assert app_config.players.white.max_move_retries == 3
+        assert app_config.players.white.num_votes == 1
+        assert app_config.players.white.connector.model == "gpt-4o-mini"
         assert (
-            cfg.players.white.connector.temperature == default_connector_cfg.temperature
+            app_config.players.white.connector.temperature
+            == default_connector_settings.temperature
         )
-        # max_tokens should be resolved from fractional (0.8) to actual tokens
-        from llm_chess_arena.config import BASE_MODEL_OUTPUT_TOKEN_LIMITS
+        # max_num_tokens should be resolved from fractional (0.8) to actual tokens
+        from llm_chess_arena.config.schema import (
+            resolve_model_limit as _resolve_model_limit,
+        )
 
-        gpt_4o_mini_limit = BASE_MODEL_OUTPUT_TOKEN_LIMITS["gpt-4o-mini"]
-        expected_max_tokens = int(gpt_4o_mini_limit * 0.8)
-        assert cfg.players.white.connector.max_tokens == expected_max_tokens
-        assert cfg.players.white.connector.timeout == default_connector_cfg.timeout
+        recognized, gpt_4o_mini_limit = _resolve_model_limit("gpt-4o-mini")
+        assert recognized, "gpt-4o-mini should be recognized by LiteLLM or fallback"
+        assert gpt_4o_mini_limit is not None, "Token limit should be available"
+        expected_max_num_tokens = int(gpt_4o_mini_limit * 0.8)
         assert (
-            cfg.players.white.connector.max_retries == default_connector_cfg.max_retries
+            app_config.players.white.connector.max_num_tokens == expected_max_num_tokens
+        )
+        assert (
+            app_config.players.white.connector.request_timeout_in_seconds
+            == default_connector_settings.request_timeout_in_seconds
+        )
+        assert (
+            app_config.players.white.connector.max_api_request_retries
+            == default_connector_settings.max_api_request_retries
         )
 
     def test_load_app_config__when_using_stockfish_elo_profile__then_sets_engine_options(
@@ -408,14 +424,14 @@ class TestHydraConfig:
         assert app_cfg.players.white.kind == "random"
         assert app_cfg.players.black.seed == 2
 
-    @patch("llm_chess_arena.config.logger")
+    @patch("llm_chess_arena.config.loader.logger")
     def test_load_env_logs_appropriately(self, mock_logger, tmp_path):
         """Test that load_env logs debug messages appropriately."""
         env_file = tmp_path / ".env"
         env_file.write_text("TEST=value")
 
         # Reset state
-        config._ENV_LOADED = False
+        loader._ENV_LOADED = False
 
         # Load existing file
         config.load_env(str(env_file))
@@ -425,7 +441,7 @@ class TestHydraConfig:
 
         # Reset mock
         mock_logger.reset_mock()
-        config._ENV_LOADED = False
+        loader._ENV_LOADED = False
 
         # Try loading non-existent file
         config.load_env("nonexistent.env")
@@ -434,11 +450,13 @@ class TestHydraConfig:
         )
 
 
-class TestEnsureColor:
-    """Tests for _ensure_color function immutability behavior."""
+class TestEnsurePlayerColor:
+    """Tests for _ensure_player_color function immutability behavior."""
 
-    def test_ensure_color__when_called__then_returns_new_instance_with_color_set(self):
-        """Test that _ensure_color returns a new config instance with the color set."""
+    def test_ensure_player_color__when_called__then_returns_new_instance_with_color_set(
+        self,
+    ):
+        """Test that _ensure_player_color returns a new config instance with the color set."""
         # Create original config with existing default color
         original_config = RandomPlayerConfig(
             kind="random",
@@ -449,8 +467,8 @@ class TestEnsureColor:
         # Original config has default color "white"
         assert original_config.color == "white"
 
-        # Apply different color using _ensure_color
-        new_config = _ensure_color(original_config, "black")
+        # Apply different color using _ensure_player_color
+        new_config = _ensure_player_color(original_config, "black")
 
         # Verify original config remains unchanged (immutability)
         assert original_config.color == "white"
@@ -466,10 +484,10 @@ class TestEnsureColor:
         # Verify they are different objects
         assert new_config is not original_config
 
-    def test_ensure_color__when_config_already_has_color__then_overrides_with_fallback(
+    def test_ensure_player_color__when_config_already_has_color__then_overrides_with_fallback(
         self,
     ):
-        """Test that _ensure_color overrides existing color with fallback."""
+        """Test that _ensure_player_color overrides existing color with fallback."""
         # Create config with existing color
         original_config = RandomPlayerConfig(
             kind="random",
@@ -478,8 +496,8 @@ class TestEnsureColor:
             seed=42,
         )
 
-        # Apply different color using _ensure_color
-        new_config = _ensure_color(original_config, "white")
+        # Apply different color using _ensure_player_color
+        new_config = _ensure_player_color(original_config, "white")
 
         # Verify original config remains unchanged
         assert original_config.color == "black"

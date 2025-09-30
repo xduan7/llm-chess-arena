@@ -16,20 +16,22 @@ class MetricsFactory:
 
     @staticmethod
     @config_operation
-    def create_metrics_tracker(config: "MetricsConfig") -> MetricsTracker:
+    def create_metrics_tracker(
+        metrics_config: "MetricsConfig",
+    ) -> MetricsTracker:
         """Create a Stockfish-based metrics tracker from configuration.
 
         Args:
-            config: Metrics configuration containing Stockfish settings and quality thresholds.
+            metrics_config: Metrics configuration containing Stockfish settings and quality thresholds.
 
         Returns:
             MetricsTracker: Configured metrics tracker for move evaluation.
         """
         engine_options: Mapping[str, Any] | None = None
-        if config.stockfish_engine_options:
-            engine_options = dict(config.stockfish_engine_options)
+        if metrics_config.stockfish_engine_options:
+            engine_options = dict(metrics_config.stockfish_engine_options)
 
-        thresholds_config = config.quality_thresholds
+        thresholds_config = metrics_config.quality_thresholds
         thresholds = MoveQualityThresholds(
             excellent=thresholds_config.excellent,
             good=thresholds_config.good,
@@ -38,8 +40,8 @@ class MetricsFactory:
         )
 
         return MetricsTracker.from_stockfish(
-            depth=config.stockfish_depth,
-            binary_path=config.stockfish_binary_path,
+            depth=metrics_config.stockfish_depth,
+            binary_path=metrics_config.stockfish_binary_path,
             engine_options=engine_options,
             thresholds=thresholds,
         )

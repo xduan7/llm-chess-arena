@@ -77,6 +77,7 @@ class TestLLMPlayerBehaviorSnapshots:
             color="white",
             connector=connector,
             handler=GameArenaLLMMoveHandler(),
+            max_move_retries=3,
             num_votes=3,
         )
 
@@ -106,6 +107,7 @@ class TestLLMPlayerBehaviorSnapshots:
             connector=connector,
             handler=GameArenaLLMMoveHandler(),
             max_move_retries=2,
+            num_votes=1,
         )
 
         decision = player._make_decision(context)

@@ -98,8 +98,8 @@ class TestRecordWriter:
     def test_calculate_summary_basic(self):
         """Test basic summary calculation."""
         moves = [
-            {"player": "white", "thinking_time_seconds": 2.5},
-            {"player": "black", "thinking_time_seconds": 1.8},
+            {"player": "white", "thinking_time_in_seconds": 2.5},
+            {"player": "black", "thinking_time_in_seconds": 1.8},
         ]
         outcome = chess.Outcome(
             termination=chess.Termination.CHECKMATE, winner=chess.WHITE
@@ -117,7 +117,7 @@ class TestRecordWriter:
         moves = [
             {
                 "player": "white",
-                "thinking_time_seconds": 2.5,
+                "thinking_time_in_seconds": 2.5,
                 "llm_decision_process": {
                     "api_calls": [
                         {
@@ -141,7 +141,7 @@ class TestRecordWriter:
         assert summary["termination"] == "unknown"
         assert summary["total_moves"] == 1
         assert "white" in summary["players"]
-        assert summary["players"]["white"]["thinking_time_seconds"] == 2.5
+        assert summary["players"]["white"]["thinking_time_in_seconds"] == 2.5
         assert summary["players"]["white"]["api_calls"] == 1
         assert summary["players"]["white"]["tokens_prompt"] == 100
         assert summary["players"]["white"]["tokens_completion"] == 50

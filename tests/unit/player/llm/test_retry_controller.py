@@ -17,19 +17,9 @@ def test_iter_attempts_yields_expected_count() -> None:
     ]
 
 
-def test_mark_attempt_updates_attempts_used() -> None:
-    """Marking attempts should track how many retries were consumed."""
-    controller = RetryController(max_retries=1)
-    for attempt in controller.iter_attempts():
-        controller.mark_attempt(attempt.attempt_number)
-
-    assert controller.attempts_used == 2
-
-
 def test_create_resignation_logs() -> None:
     """Generating a resignation should produce a resign decision."""
     controller = RetryController(max_retries=0)
-    controller.mark_attempt(1)
     decision = controller.create_resignation()
 
     assert decision.action == "resign"

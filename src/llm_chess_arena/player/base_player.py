@@ -1,6 +1,7 @@
 """Abstract base class for chess-playing agents."""
 
 from abc import ABC, abstractmethod
+from typing import Any
 
 import chess
 
@@ -59,6 +60,11 @@ class BasePlayer(ABC):
 
     def close(self) -> None:
         """Release resources for subclasses that manage external state."""
+
+    def get_last_decision_artifacts(self) -> Any | None:
+        """Optional hook for retrieving metadata about the most recent decision."""
+
+        return None
 
     def __str__(self) -> str:
         """Return the player name suffixed by its color initial."""

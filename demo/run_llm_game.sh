@@ -10,6 +10,7 @@ mkdir -p "${OUTPUT_ROOT}"
 
 python -m llm_chess_arena.cli.main \
   "game.record_dir=${OUTPUT_ROOT}" \
+  game.enable_metrics=false \
   players@players.white=llm/default \
   players.white.connector.model=gpt-4o-mini \
   players.white.name="GPT-4o Mini" \

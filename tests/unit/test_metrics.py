@@ -35,8 +35,8 @@ def test_metrics_tracker_records_and_summarizes_moves():
     metrics_sequence = [
         MoveMetrics(
             player_color="white",
-            move_uci="e2e4",
-            best_move_uci="e2e4",
+            move_in_uci="e2e4",
+            best_move_in_uci="e2e4",
             centipawn_loss=5.0,
             win_probability_delta=0.02,
             best_move_hit=False,
@@ -44,8 +44,8 @@ def test_metrics_tracker_records_and_summarizes_moves():
         ),
         MoveMetrics(
             player_color="black",
-            move_uci="e7e5",
-            best_move_uci="e7e5",
+            move_in_uci="e7e5",
+            best_move_in_uci="e7e5",
             centipawn_loss=0.0,
             win_probability_delta=0.0,
             best_move_hit=True,
@@ -53,8 +53,8 @@ def test_metrics_tracker_records_and_summarizes_moves():
         ),
         MoveMetrics(
             player_color="white",
-            move_uci="g1f3",
-            best_move_uci="g1f3",
+            move_in_uci="g1f3",
+            best_move_in_uci="g1f3",
             centipawn_loss=0.0,
             win_probability_delta=0.0,
             best_move_hit=True,

@@ -12,7 +12,7 @@ import chess.engine
 from loguru import logger
 
 from llm_chess_arena.core.policies import metrics_operation
-from llm_chess_arena.utils import find_stockfish_binary
+from llm_chess_arena.utils import find_stockfish_binary, initialize_stockfish_engine
 from llm_chess_arena.types import Color
 
 MATE_SCORE = 100_000
@@ -98,8 +98,8 @@ class MoveMetrics:
     """Evaluation metrics for a single move."""
 
     player_color: Color
-    move_uci: str
-    best_move_uci: str
+    move_in_uci: str
+    best_move_in_uci: str
     centipawn_loss: float
     win_probability_delta: float
     best_move_hit: bool
@@ -160,7 +160,7 @@ class StockfishMetricsEvaluator:
         self.binary_path = find_stockfish_binary(binary_path)
         self.engine_options = dict(engine_options or {})
         self._engine: chess.engine.SimpleEngine | None = None
-        self._wdl_model: chess.engine.WdlModel = "sf"
+        self._win_draw_loss_model: chess.engine.WdlModel = "sf"
         self._thresholds = thresholds or DEFAULT_MOVE_QUALITY_THRESHOLDS
 
     def evaluate_move(self, board: chess.Board, move: chess.Move) -> MoveMetrics:
@@ -182,44 +182,48 @@ class StockfishMetricsEvaluator:
         player_color: Color = (
             "white" if board_for_engine.turn == chess.WHITE else "black"
         )
-        player_turn = chess.WHITE if player_color == "white" else chess.BLACK
+        player_turn_color = chess.WHITE if player_color == "white" else chess.BLACK
 
-        limit = chess.engine.Limit(depth=self.depth)
+        search_limit = chess.engine.Limit(depth=self.depth)
 
-        best_move_result = engine.play(board_for_engine, limit)
+        best_move_result = engine.play(board_for_engine, search_limit)
         best_move = best_move_result.move
         if best_move is None:
             raise RuntimeError("Stockfish did not return a best move during evaluation")
 
-        best_metrics = self._evaluate_resulting_position(
-            board_for_engine, best_move, player_turn
+        best_move_evaluation = self._evaluate_resulting_position(
+            board_for_engine, best_move, player_turn_color
         )
-        actual_metrics = self._evaluate_resulting_position(
-            board_for_engine, move, player_turn
+        played_move_evaluation = self._evaluate_resulting_position(
+            board_for_engine, move, player_turn_color
         )
 
-        centipawn_loss = max(0.0, best_metrics.centipawns - actual_metrics.centipawns)
+        centipawn_loss = max(
+            0.0,
+            best_move_evaluation.centipawns - played_move_evaluation.centipawns,
+        )
         win_probability_delta = (
-            best_metrics.win_probability - actual_metrics.win_probability
+            best_move_evaluation.win_probability
+            - played_move_evaluation.win_probability
         )
         best_move_hit = move == best_move
 
         return MoveMetrics(
             player_color=player_color,
-            move_uci=move.uci(),
-            best_move_uci=best_move.uci(),
+            move_in_uci=move.uci(),
+            best_move_in_uci=best_move.uci(),
             centipawn_loss=centipawn_loss,
             win_probability_delta=win_probability_delta,
             best_move_hit=best_move_hit,
             quality=classify_move_quality(
                 best_move_hit=best_move_hit,
                 centipawn_loss=centipawn_loss,
-                best_move_is_mate=best_metrics.is_mate,
-                played_move_is_mate=actual_metrics.is_mate,
+                best_move_is_mate=best_move_evaluation.is_mate,
+                played_move_is_mate=played_move_evaluation.is_mate,
                 thresholds=self._thresholds,
             ),
-            best_move_centipawns=best_metrics.centipawns,
-            actual_centipawns=actual_metrics.centipawns,
+            best_move_centipawns=best_move_evaluation.centipawns,
+            actual_centipawns=played_move_evaluation.centipawns,
         )
 
     def close(self) -> None:
@@ -228,8 +232,10 @@ class StockfishMetricsEvaluator:
             return
         try:
             self._engine.quit()
-        except Exception as exc:  # pragma: no cover - defensive cleanup
-            logger.warning("Error while closing Stockfish metrics engine: {}", exc)
+        except Exception as engine_close_error:  # pragma: no cover - defensive cleanup
+            logger.warning(
+                "Error while closing Stockfish metrics engine: {}", engine_close_error
+            )
         finally:
             self._engine = None
 
@@ -238,45 +244,41 @@ class StockfishMetricsEvaluator:
         if self._engine is not None:
             return self._engine
 
-        engine = chess.engine.SimpleEngine.popen_uci(self.binary_path)
-        try:
-            if self.engine_options:
-                engine.configure(self.engine_options)
-        except Exception:
-            engine.quit()
-            raise
-
-        self._engine = engine
-        return engine
+        self._engine = initialize_stockfish_engine(
+            self.binary_path, self.engine_options
+        )
+        return self._engine
 
     def _evaluate_resulting_position(
         self,
         board: chess.Board,
         move: chess.Move,
-        player_turn: chess.Color,
+        player_turn_color: chess.Color,
     ) -> "_PositionEvaluation":
         """Evaluate the board after applying ``move`` from ``board``."""
         engine = self._ensure_engine()
-        limit = chess.engine.Limit(depth=self.depth)
+        search_limit = chess.engine.Limit(depth=self.depth)
 
         resulting_board = board.copy(stack=False)
         resulting_board.push(move)
 
-        info = engine.analyse(resulting_board, limit)
-        score = info.get("score")
-        if score is None:
+        analysis_result = engine.analyse(resulting_board, search_limit)
+        evaluation_score = analysis_result.get("score")
+        if evaluation_score is None:
             raise RuntimeError("Stockfish analysis did not include a score field")
 
-        pov_score = score.pov(player_turn)
-        centipawns = float(pov_score.score(mate_score=MATE_SCORE))
+        player_perspective_score = evaluation_score.pov(player_turn_color)
+        centipawns = float(player_perspective_score.score(mate_score=MATE_SCORE))
 
-        wdl = pov_score.wdl(model=self._wdl_model)
-        win_probability = wdl.expectation()
+        win_draw_loss_distribution = player_perspective_score.wdl(
+            model=self._win_draw_loss_model
+        )
+        win_probability = win_draw_loss_distribution.expectation()
 
         return _PositionEvaluation(
             centipawns=centipawns,
             win_probability=win_probability,
-            is_mate=pov_score.is_mate(),
+            is_mate=player_perspective_score.is_mate(),
         )
 
 
@@ -299,11 +301,11 @@ class MetricsTracker:
             evaluator: Move metrics evaluator or ``None`` to disable evaluation.
         """
         self._evaluator = evaluator
-        self._metrics_by_color: dict[Color, list[MoveMetrics]] = {
+        self._metrics_by_player_color: dict[Color, list[MoveMetrics]] = {
             "white": [],
             "black": [],
         }
-        self._metrics_disabled_logged = False
+        self._metrics_disabled_notice_logged = False
 
     @property
     def enabled(self) -> bool:
@@ -338,7 +340,11 @@ class MetricsTracker:
                 engine_options=engine_options,
                 thresholds=thresholds,
             )
-        except (FileNotFoundError, chess.engine.EngineError, OSError) as exc:
+        except (
+            FileNotFoundError,
+            chess.engine.EngineError,
+            OSError,
+        ) as stockfish_initialization_error:
             logger.warning(
                 "Stockfish unavailable - metrics evaluation disabled. "
                 "Set STOCKFISH_BINARY_PATH or install Stockfish to enable metrics."
@@ -346,7 +352,10 @@ class MetricsTracker:
             logger.info(
                 "Install Stockfish: brew install stockfish (macOS) or apt install stockfish (Ubuntu)"
             )
-            logger.debug("Stockfish initialization failure details: {}", exc)
+            logger.debug(
+                "Stockfish initialization failure details: {}",
+                stockfish_initialization_error,
+            )
             evaluator = None
         return cls(evaluator)
 
@@ -369,45 +378,47 @@ class MetricsTracker:
             ``None`` if metrics are disabled or evaluation fails.
         """
         if self._evaluator is None:
-            if not self._metrics_disabled_logged:
+            if not self._metrics_disabled_notice_logged:
                 logger.debug("Metrics evaluator unavailable - skipping move metrics")
-                self._metrics_disabled_logged = True
+                self._metrics_disabled_notice_logged = True
             return None
 
         try:
-            metrics = self._evaluator.evaluate_move(board_before_move, move)
-        except Exception as exc:  # pragma: no cover - defensive fallback
-            logger.warning("Disabling metrics after evaluator error: {}", exc)
+            move_metrics = self._evaluator.evaluate_move(board_before_move, move)
+        except Exception as evaluation_error:  # pragma: no cover - defensive fallback
+            logger.warning(
+                "Disabling metrics after evaluator error: {}", evaluation_error
+            )
             if self._evaluator is not None:
                 try:
                     self._evaluator.close()
-                except Exception as close_exc:  # pragma: no cover
+                except Exception as close_error:  # pragma: no cover
                     logger.debug(
                         "Error while closing evaluator after failure: {}",
-                        close_exc,
+                        close_error,
                     )
             self._evaluator = None
-            self._metrics_disabled_logged = True
+            self._metrics_disabled_notice_logged = True
             return None
 
-        self._metrics_by_color[metrics.player_color].append(metrics)
+        self._metrics_by_player_color[move_metrics.player_color].append(move_metrics)
 
-        player_label = player_name or metrics.player_color
+        player_label = player_name or move_metrics.player_color
         best_move_text = (
             "matched engine's best move"
-            if metrics.best_move_hit
+            if move_metrics.best_move_hit
             else "did not match best move"
         )
         logger.debug(
             "Move evaluation for {} playing {}: {:.1f} centipawn loss, {:.1%} win probability change, {}, quality: {}",
             player_label,
-            metrics.move_uci,
-            metrics.centipawn_loss,
-            metrics.win_probability_delta,
+            move_metrics.move_in_uci,
+            move_metrics.centipawn_loss,
+            move_metrics.win_probability_delta,
             best_move_text,
-            metrics.quality.value,
+            move_metrics.quality.value,
         )
-        return metrics
+        return move_metrics
 
     def summarize(self) -> dict[Color, MetricsSummary]:
         """Aggregate metrics for each player color.
@@ -415,11 +426,11 @@ class MetricsTracker:
         Returns:
             dict[Color, MetricsSummary]: Summary metrics keyed by player color.
         """
-        summaries: dict[Color, MetricsSummary] = {}
-        for color, metrics_list in self._metrics_by_color.items():
-            moves_evaluated = len(metrics_list)
+        summary_by_color: dict[Color, MetricsSummary] = {}
+        for player_color, player_metrics in self._metrics_by_player_color.items():
+            moves_evaluated = len(player_metrics)
             if moves_evaluated == 0:
-                summaries[color] = MetricsSummary(
+                summary_by_color[player_color] = MetricsSummary(
                     moves_evaluated=0,
                     average_centipawn_loss=None,
                     best_move_hit_rate=None,
@@ -428,18 +439,58 @@ class MetricsTracker:
                 continue
 
             average_centipawn_loss = (
-                sum(m.centipawn_loss for m in metrics_list) / moves_evaluated
+                sum(metric.centipawn_loss for metric in player_metrics)
+                / moves_evaluated
             )
-            best_move_hits = sum(1 for m in metrics_list if m.best_move_hit)
+            best_move_hits = sum(1 for metric in player_metrics if metric.best_move_hit)
             best_move_hit_rate = best_move_hits / moves_evaluated
-            quality_counts = Counter(m.quality for m in metrics_list)
-            summaries[color] = MetricsSummary(
+            quality_counts = Counter(metric.quality for metric in player_metrics)
+            summary_by_color[player_color] = MetricsSummary(
                 moves_evaluated=moves_evaluated,
                 average_centipawn_loss=average_centipawn_loss,
                 best_move_hit_rate=best_move_hit_rate,
                 quality_counts=dict(quality_counts),
             )
-        return summaries
+        return summary_by_color
+
+    def get_ordered_move_qualities(
+        self, move_stack: list[Any]
+    ) -> list[MoveQuality | None]:
+        """Return move qualities ordered to match the game's move sequence.
+
+        Args:
+            move_stack: The game's move stack to determine ordering.
+
+        Returns:
+            list[MoveQuality | None]: Move qualities in chronological order,
+            or None for moves without metrics.
+        """
+        white_metrics = self._metrics_by_player_color["white"]
+        black_metrics = self._metrics_by_player_color["black"]
+
+        move_qualities: list[MoveQuality | None] = []
+        white_metric_index = black_metric_index = 0
+
+        for move_index, move in enumerate(move_stack):
+            move_color = "white" if move_index % 2 == 0 else "black"
+
+            if move_color == "white" and white_metric_index < len(white_metrics):
+                player_move_metrics = white_metrics[white_metric_index]
+                move_qualities.append(
+                    player_move_metrics.quality if player_move_metrics else None
+                )
+                white_metric_index += 1
+            elif move_color == "black" and black_metric_index < len(black_metrics):
+                player_move_metrics = black_metrics[black_metric_index]
+                move_qualities.append(
+                    player_move_metrics.quality if player_move_metrics else None
+                )
+                black_metric_index += 1
+            else:
+                # No metrics available for this move
+                move_qualities.append(None)
+
+        return move_qualities
 
     def close(self) -> None:
         """Close the underlying evaluator if present."""

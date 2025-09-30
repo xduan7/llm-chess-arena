@@ -3,13 +3,13 @@
 from __future__ import annotations
 
 import functools
-from typing import Any, Callable, Optional, TypeVar
+from typing import Any, Callable, TypeVar
 
 from loguru import logger
 
 from llm_chess_arena.exceptions import MoveError
 
-T = TypeVar("T")
+ReturnType = TypeVar("ReturnType")
 
 
 class ErrorPolicy:
@@ -20,104 +20,119 @@ class ErrorPolicy:
     """
 
     @staticmethod
-    def handle_move_validation_error(func: Callable[..., T]) -> Callable[..., T]:
+    def handle_move_validation_error(
+        target_callable: Callable[..., ReturnType],
+    ) -> Callable[..., ReturnType]:
         """Ensure move validation functions raise ``MoveError`` derivatives.
 
         Args:
-            func: Callable responsible for validating a move.
+            target_callable: Callable responsible for validating a move.
 
         Returns:
-            Callable[..., T]: Wrapped function that converts unexpected errors
-            into ``MoveError`` instances.
+            Wrapped function that converts unexpected errors into ``MoveError`` instances.
 
         Raises:
-            MoveError: When the wrapped function raises an unexpected
-            exception.
+            MoveError: When the wrapped function raises an unexpected exception.
         """
 
-        @functools.wraps(func)
-        def wrapper(*args: Any, **kwargs: Any) -> T:
+        @functools.wraps(target_callable)
+        def wrapped_function(*args: Any, **kwargs: Any) -> ReturnType:
             try:
-                return func(*args, **kwargs)
+                return target_callable(*args, **kwargs)
             except MoveError:
                 raise
-            except Exception as exc:  # pragma: no cover - defensive conversion
+            except Exception as caught_exception:  # pragma: no cover
                 logger.warning(
                     "Unexpected error in {}: {}",
-                    func.__name__,
-                    exc,
+                    target_callable.__name__,
+                    caught_exception,
                 )
-                raise MoveError(f"Move validation failed: {exc}") from exc
+                raise MoveError(
+                    f"Move validation failed: {caught_exception}"
+                ) from caught_exception
 
-        return wrapper
+        return wrapped_function
 
     @staticmethod
-    def handle_network_error(func: Callable[..., T]) -> Callable[..., T]:
+    def handle_network_error(
+        target_callable: Callable[..., ReturnType],
+    ) -> Callable[..., ReturnType]:
         """Allow network-layer errors to propagate without alteration.
 
         Args:
-            func: Callable performing a network operation.
+            target_callable: Callable performing a network operation.
 
         Returns:
-            Callable[..., T]: Wrapped function that simply executes ``func``.
+            Wrapped function that executes the target callable unchanged.
         """
 
-        @functools.wraps(func)
-        def wrapper(*args: Any, **kwargs: Any) -> T:
-            return func(*args, **kwargs)
+        @functools.wraps(target_callable)
+        def wrapped_function(*args: Any, **kwargs: Any) -> ReturnType:
+            return target_callable(*args, **kwargs)
 
-        return wrapper
+        return wrapped_function
 
     @staticmethod
-    def handle_config_error(func: Callable[..., T]) -> Callable[..., T]:
+    def handle_config_error(
+        target_callable: Callable[..., ReturnType],
+    ) -> Callable[..., ReturnType]:
         """Convert configuration failures into ``ValueError`` with context.
 
         Args:
-            func: Callable that may raise arbitrary configuration exceptions.
+            target_callable: Callable that may raise arbitrary configuration exceptions.
 
         Returns:
-            Callable[..., T]: Wrapped function raising ``ValueError`` on
-            unexpected failures.
+            Wrapped function raising ``ValueError`` on unexpected failures.
 
         Raises:
-            ValueError: When ``func`` raises an unexpected exception type.
+            ValueError: When the wrapped function raises an unexpected exception type.
         """
 
-        @functools.wraps(func)
-        def wrapper(*args: Any, **kwargs: Any) -> T:
+        @functools.wraps(target_callable)
+        def wrapped_function(*args: Any, **kwargs: Any) -> ReturnType:
             try:
-                return func(*args, **kwargs)
+                return target_callable(*args, **kwargs)
             except ValueError:
                 raise
-            except Exception as exc:
-                logger.error("Configuration error in {}: {}", func.__name__, exc)
-                raise ValueError(f"Configuration failed: {exc}") from exc
+            except Exception as caught_exception:
+                logger.error(
+                    "Configuration error in {}: {}",
+                    target_callable.__name__,
+                    caught_exception,
+                )
+                raise ValueError(
+                    f"Configuration failed: {caught_exception}"
+                ) from caught_exception
 
-        return wrapper
+        return wrapped_function
 
     @staticmethod
     def handle_metrics_error(
-        func: Callable[..., Optional[T]],
-    ) -> Callable[..., Optional[T]]:
+        target_callable: Callable[..., ReturnType | None],
+    ) -> Callable[..., ReturnType | None]:
         """Log and swallow metrics errors so games can continue.
 
         Args:
-            func: Callable responsible for metrics collection.
+            target_callable: Callable responsible for metrics collection.
 
         Returns:
-            Callable[..., Optional[T]]: Wrapped function that logs and swallows
+            Callable[..., ReturnType | None]: Wrapped function that logs and swallows
             unexpected exceptions while returning ``None``.
         """
 
-        @functools.wraps(func)
-        def wrapper(*args: Any, **kwargs: Any) -> Optional[T]:
+        @functools.wraps(target_callable)
+        def wrapped_function(*args: Any, **kwargs: Any) -> ReturnType | None:
             try:
-                return func(*args, **kwargs)
-            except Exception as exc:  # pragma: no cover - defensive fallback
-                logger.warning("Metrics error in {}: {}", func.__name__, exc)
+                return target_callable(*args, **kwargs)
+            except Exception as caught_exception:  # pragma: no cover
+                logger.warning(
+                    "Metrics error in {}: {}",
+                    target_callable.__name__,
+                    caught_exception,
+                )
                 return None
 
-        return wrapper
+        return wrapped_function
 
 
 move_validation = ErrorPolicy.handle_move_validation_error

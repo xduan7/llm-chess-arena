@@ -2,13 +2,11 @@
 
 from __future__ import annotations
 
-import shutil
 from pathlib import Path
 from typing import Iterable
 
 from hydra import main
 from omegaconf import DictConfig
-from loguru import logger
 
 from llm_chess_arena.config import (
     app_config_from_dictconfig,
@@ -16,32 +14,33 @@ from llm_chess_arena.config import (
     format_game_summary,
     run_game_from_config,
 )
+from llm_chess_arena.utils import is_stockfish_available
 
 
 def _print_game_summary(lines: Iterable[str]) -> None:
     """Print game completion summary lines to stdout."""
-    for line in lines:
-        print(line)
+    for summary_line in lines:
+        print(summary_line)
 
 
-# Hydra config directory relative to project root
 HYDRA_CONFIG_DIR = str(Path(__file__).resolve().parents[3] / "configs")
 
 
 @main(version_base="1.3", config_path=HYDRA_CONFIG_DIR, config_name="config")  # type: ignore[misc, unused-ignore]
-def run_cli_game(cfg: DictConfig) -> None:
+def run_cli_game(hydra_config: DictConfig) -> None:
     """Run a CLI-configured chess game via Hydra.
 
     Args:
-        cfg: Composed Hydra configuration for the application.
+        hydra_config: Composed Hydra configuration for the application.
     """
 
-    app_config = app_config_from_dictconfig(cfg)
+    app_config = app_config_from_dictconfig(hydra_config)
     apply_env_config(app_config.env)
 
-    if cfg.get("metrics") and not shutil.which("stockfish"):
-        logger.warning(
-            "Stockfish not found in PATH - move quality metrics will be unavailable"
+    if app_config.game.enable_metrics and not is_stockfish_available():
+        raise RuntimeError(
+            "Stockfish not found in PATH but game.enable_metrics=true. "
+            "Either install Stockfish or set game.enable_metrics=false to run without move evaluation."
         )
 
     game = run_game_from_config(app_config)

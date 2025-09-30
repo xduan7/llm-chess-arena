@@ -1,10 +1,68 @@
+# =============================================================================
+# Main Configuration - Hydra Composition Root
+# =============================================================================
+# This is the primary configuration file that composes all other configurations.
+# Use Hydra overrides to customize specific components for experiments.
+#
+# Example overrides:
+#   python -m llm_chess_arena.cli.main players.white=llm/default players.black=stockfish
+#   python -m llm_chess_arena.cli.main players.white.connector.model=gpt-4 game.max_num_moves=50
+
 defaults:
-  - env: default
-  - game: default
-  - metrics: default
-  - players@players.white: random
-  - players@players.black: random
-  - hydra: default
-  - override hydra/job_logging: disabled
-  - override hydra/hydra_logging: disabled
-  - _self_
+  # ENVIRONMENT SETTINGS - API keys and system configuration
+  - env: default                    # Loads .env file for API keys and environment variables
+                                   # - Contains sensitive data (API keys, tokens)
+                                   # - CRITICAL: Never commit .env files to version control
+                                   # - Copy .env.example to .env and customize
+
+  # GAME BEHAVIOR - Core game settings
+  - game: default                   # Controls visualization, metrics, and game rules
+                                   # - Override: game.display_board=false for batch runs
+                                   # - Override: game.max_num_moves=100 for quick tests
+
+  # MOVE EVALUATION - Stockfish analysis configuration
+  - metrics: default                # Stockfish-based move quality assessment
+                                   # - Override: metrics.stockfish_depth=15 for faster analysis
+                                   # - Override: metrics.enable_metrics=false to disable
+
+  # PLAYER ASSIGNMENT - White and Black player configurations
+  - players@players.white: random   # White player configuration
+                                   # - Available: random, stockfish, llm/default, llm/reasoning
+                                   # - Override: players.white=llm/default players.white.connector.model=gpt-4
+
+  - players@players.black: random   # Black player configuration
+                                   # - Must be different from white for meaningful games
+                                   # - Override: players.black=stockfish players.black.engine_limits.depth=10
+
+  # HYDRA FRAMEWORK - Experiment management
+  - hydra: default                  # Hydra runtime configuration for experiments
+                                   # - Enables parameter sweeps and multi-run experiments
+                                   # - Override: hydra.mode=MULTIRUN for batch experiments
+
+  # LOGGING CONTROL - Reduce noise in output
+  - override hydra/job_logging: disabled      # Disables Hydra job logging for cleaner output
+  - override hydra/hydra_logging: disabled    # Disables Hydra system logging
+
+  # CONFIGURATION PRIORITY
+  - _self_                          # Current file has highest priority in composition
+
+# =============================================================================
+# COMMON OVERRIDE PATTERNS FOR EXPERIMENTS:
+# =============================================================================
+#
+# LLM vs LLM with different models:
+#   players.white=llm/default players.white.connector.model=gpt-4 \
+#   players.black=llm/default players.black.connector.model=claude-3-5-sonnet
+#
+# LLM vs Stockfish with custom ELO:
+#   players.white=llm/default players.white.connector.model=gpt-4 \
+#   players.black=stockfish/elo_2000
+#
+# Quick test game:
+#   game.max_num_moves=50 game.display_board=false metrics.enable_metrics=false
+#
+# Batch experiment with parameter sweep:
+#   hydra.mode=MULTIRUN players.white.connector.model=gpt-4,claude-3-5-sonnet \
+#   players.white.num_votes=1,3,5
+#
+# =============================================================================

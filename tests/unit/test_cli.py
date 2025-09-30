@@ -118,3 +118,96 @@ def test_run_cli_game_smoke(monkeypatch, capsys):
 
     app_config = captured["app_config"]
     assert app_config.game.max_num_moves == 12
+
+
+def test_run_cli_game_with_llm_config_normalization(monkeypatch, capsys):
+    """Test that Hydra config overrides work and LLM config normalization is applied."""
+
+    stub_game = _StubGame()
+    captured: dict[str, object] = {}
+
+    monkeypatch.setattr(
+        "llm_chess_arena.cli.main.apply_env_config", lambda env_cfg: None
+    )
+
+    def fake_run_game(app_config):
+        """Capture the provided app config and return the stubbed game."""
+        captured["app_config"] = app_config
+        return stub_game
+
+    monkeypatch.setattr(
+        "llm_chess_arena.cli.main.run_game_from_config",
+        fake_run_game,
+    )
+
+    # Mock LiteLLM model registry to test normalization logic
+    monkeypatch.setattr(
+        "llm_chess_arena.config.schema.resolve_model_limit",
+        lambda model: (True, 16384),  # Return recognized model with 16384 token limit
+    )
+
+    # Config with LLM player that has None values and fractional max_num_tokens
+    cfg = OmegaConf.create(
+        {
+            "env": {"load_dotenv": False, "log_level": "INFO", "dotenv_path": None},
+            "game": {
+                "display_board": False,
+                "enable_metrics": False,
+                "max_num_moves": 5,
+                "record_dir": None,
+                "record_name": None,
+            },
+            "metrics": {
+                "stockfish_depth": 10,
+                "stockfish_binary_path": None,
+                "stockfish_engine_options": {},
+                "quality_thresholds": {
+                    "excellent": 50,
+                    "good": 100,
+                    "inaccuracy": 200,
+                    "mistake": 300,
+                },
+            },
+            "players": {
+                "white": {
+                    "kind": "llm",
+                    "name": "Test LLM",
+                    "color": "white",
+                    "max_move_retries": None,  # Should be normalized to 3
+                    "num_votes": None,  # Should be normalized to 1
+                    "connector": {
+                        "model": "gpt-4o-mini",
+                        "temperature": 0.1,
+                        "max_num_tokens": 0.5,  # Fractional - should be resolved to 2048
+                        "request_timeout_in_seconds": 60.0,
+                        "max_api_request_retries": 2,
+                        "provider": None,
+                        "api_base": None,
+                    },
+                    "handler": {"kind": "game_arena"},
+                },
+                "black": {
+                    "kind": "random",
+                    "name": "Random Black",
+                    "color": "black",
+                    "seed": 42,
+                },
+            },
+        }
+    )
+
+    run_cli_game.__wrapped__(cfg)  # type: ignore[attr-defined]
+
+    stdout = capsys.readouterr().out
+    assert "Outcome:" in stdout
+    assert "Termination:" in stdout
+
+    app_config = captured["app_config"]
+    assert app_config.game.max_num_moves == 5
+
+    # Verify LLM config normalization worked
+    white_player = app_config.players.white
+    assert white_player.kind == "llm"
+    assert white_player.max_move_retries == 3  # None should be normalized to 3
+    assert white_player.num_votes == 1  # None should be normalized to 1
+    assert white_player.connector.max_num_tokens == 8192  # 0.5 * 16384 = 8192

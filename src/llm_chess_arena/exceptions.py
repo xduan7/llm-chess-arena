@@ -26,4 +26,4 @@ class LLMPermanentError(Exception):
 
 
 class LLMEmptyResponseError(Exception):
-    """LLM returned a response but content was empty (usually insufficient max_tokens)."""
+    """LLM returned a response but content was empty (usually insufficient max_num_tokens)."""

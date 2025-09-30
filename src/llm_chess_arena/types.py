@@ -27,11 +27,11 @@ class PlayerDecisionContext(BaseModel):
     model_config = ConfigDict(extra="allow")
 
     @field_validator("legal_moves_in_uci", mode="after")
-    def validate_legal_moves_exist(cls, v: list[str]) -> list[str]:
+    def validate_legal_moves_exist(cls, legal_moves: list[str]) -> list[str]:
         """Ensure legal moves exist - empty list indicates undetected game termination.
 
         Args:
-            v: Legal moves in UCI format.
+            legal_moves: Legal moves in UCI format.
 
         Returns:
             list[str]: Validated legal moves.
@@ -39,24 +39,28 @@ class PlayerDecisionContext(BaseModel):
         Raises:
             ValueError: If empty (game should detect termination before requesting moves).
         """
-        if not v:
+        if not legal_moves:
             raise ValueError(
                 "`legal_moves_in_uci` cannot be empty. "
                 "The game should handle checkmate/stalemate before asking for moves."
             )
-        return v
+        return legal_moves
 
 
 class PlayerDecision(BaseModel):
     """Player's decision after evaluating context.
 
     Move required only for action='move', otherwise must be None.
+
+    Common dynamically-added attributes (via extra="allow"):
+        thinking_time_in_seconds (float): Player-reported thinking time
+        response (str): Raw LLM response text (for retry prompts)
+        reason (str): Reason for resignation or error
     """
 
     action: PlayerAction
     attempted_move: str | None = None
 
-    # Extensible for confidence scores, explanations, etc.
     model_config = ConfigDict(extra="allow")
 
     @model_validator(mode="after")
@@ -64,7 +68,7 @@ class PlayerDecision(BaseModel):
         """Ensure attempted_move presence matches action type.
 
         Returns:
-            Self: Validated instance.
+            Validated instance.
 
         Raises:
             ValueError: If move presence inconsistent with action.

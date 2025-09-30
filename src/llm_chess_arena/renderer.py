@@ -1,4 +1,18 @@
-"""Terminal chess board rendering utilities powered by Rich."""
+"""Terminal chess board rendering utilities powered by Rich.
+
+Styling Constants Usage:
+- Board Colors: LIGHT_SQUARE_COLOR, DARK_SQUARE_COLOR for chess board squares
+- Move Highlights: HIGHLIGHT_COLOR, LAST_MOVE_FROM_COLOR, LAST_MOVE_TO_COLOR for move visualization
+- Player Styles: WHITE_PLAYER_STYLE, BLACK_PLAYER_STYLE for player name display
+- Piece Styles: WHITE_BOARD_PIECE_STYLE, BLACK_BOARD_PIECE_STYLE for board piece rendering
+- Text Styles: ACCENT_TEXT_STYLE, DIM_TEXT_STYLE, WIN_TEXT_STYLE, DRAW_TEXT_STYLE, CHECK_TEXT_STYLE
+- Move Quality: QUALITY_SUFFIXES (notation symbols), QUALITY_COLORS (color coding)
+- Material Analysis: STARTING_PIECES, DEFAULT_PIECE_VALUES for captured piece calculation
+
+Note: Some constants (material balance, captured pieces) are used only when rich board display
+is enabled and metrics are available. When metrics are disabled, the color constants for
+move quality and material display are not actively used but remain for feature completeness.
+"""
 
 from __future__ import annotations
 
@@ -45,7 +59,6 @@ QUALITY_SUFFIXES: dict[MoveQuality, str] = {
 }
 
 QUALITY_COLORS: dict[MoveQuality, str] = {
-    # Cool-leaning best moves through warm blunders for a readable gradient across terminal themes.
     MoveQuality.BLUNDER: "bold #dc2626",
     MoveQuality.MISTAKE: "bold #f97316",
     MoveQuality.INACCURACY: "bold #facc15",
@@ -55,7 +68,6 @@ QUALITY_COLORS: dict[MoveQuality, str] = {
 }
 
 
-# Starting piece counts for material balance calculation
 STARTING_PIECES = {
     chess.WHITE: {
         chess.PAWN: 8,
@@ -75,14 +87,13 @@ STARTING_PIECES = {
     },
 }
 
-# Default material values for calculating advantage (can be overridden)
 DEFAULT_PIECE_VALUES = {
     chess.PAWN: 1,
     chess.KNIGHT: 3,
     chess.BISHOP: 3,
     chess.ROOK: 5,
     chess.QUEEN: 9,
-    chess.KING: 0,  # King has no material value
+    chess.KING: 0,
 }
 
 
@@ -152,12 +163,12 @@ def _format_time_display(seconds: float) -> str:
     total_seconds = int(seconds)
     hours = total_seconds // 3600
     minutes = (total_seconds % 3600) // 60
-    secs = total_seconds % 60
+    remaining_seconds = total_seconds % 60
 
     if hours > 0:
-        return f"{hours:02d}:{minutes:02d}:{secs:02d}"
+        return f"{hours:02d}:{minutes:02d}:{remaining_seconds:02d}"
     else:
-        return f"{minutes:02d}:{secs:02d}"
+        return f"{minutes:02d}:{remaining_seconds:02d}"
 
 
 def _quality_annotation(quality: MoveQuality | None) -> Text | None:
@@ -192,9 +203,9 @@ def _piece_symbol_solid(piece: chess.Piece | None) -> str:
         "p": "♟",  # Black Pawn (already solid)
     }
     symbol: str = piece.symbol()
-    result = solid_map.get(symbol)
-    if result is not None:
-        return result
+    piece_symbol = solid_map.get(symbol)
+    if piece_symbol is not None:
+        return piece_symbol
     return symbol
 
 
@@ -209,14 +220,12 @@ def _piece_style(piece: chess.Piece | None, *, for_board: bool = False) -> str:
         return ""
 
     if for_board:
-        # Use higher contrast styles for board pieces
         return (
             WHITE_BOARD_PIECE_STYLE
             if piece.color == chess.WHITE
             else BLACK_BOARD_PIECE_STYLE
         )
     else:
-        # Use standard player styles for history and captures
         return WHITE_PLAYER_STYLE if piece.color == chess.WHITE else BLACK_PLAYER_STYLE
 
 
@@ -226,10 +235,10 @@ def _square_background(
     last_move: chess.Move | None,
 ) -> str:
     """Calculate the background color for ``square``."""
-    file_idx = chess.square_file(square)
-    rank_idx = chess.square_rank(square)
+    file_index = chess.square_file(square)
+    rank_index = chess.square_rank(square)
     base_color = (
-        LIGHT_SQUARE_COLOR if (file_idx + rank_idx) % 2 == 0 else DARK_SQUARE_COLOR
+        LIGHT_SQUARE_COLOR if (file_index + rank_index) % 2 == 0 else DARK_SQUARE_COLOR
     )
 
     if last_move:
@@ -251,7 +260,6 @@ def _build_board_table(
 ) -> Table:
     """Construct a Rich table that visualizes the board state."""
     table = Table.grid(padding=0, expand=False)
-    # Columns: rank + space + 8 board squares + space + rank = 12 total
     table.add_column(justify="right", width=2)  # left rank numbers
     table.add_column(justify="center", width=1)  # spacing
     for _ in range(8):
@@ -272,8 +280,8 @@ def _build_board_table(
             Text(f"{rank + 1}", style=ACCENT_TEXT_STYLE),
             Text(" "),
         ]
-        for file_idx in range(8):
-            square = chess.square(file_idx, rank)
+        for file_index in range(8):
+            square = chess.square(file_index, rank)
             piece = board.piece_at(square)
             bg_color = _square_background(square, highlight_squares, last_move)
             style = _piece_style(piece, for_board=True)
@@ -351,7 +359,7 @@ def _build_move_history(
     history_table.add_column(min_width=8)  # white move column
     history_table.add_column(min_width=8)  # black move column
 
-    for idx, (move_number, white_entry, black_entry) in enumerate(rows):
+    for row_index, (move_number, white_entry, black_entry) in enumerate(rows):
         number_cell = Text(f"{move_number:>2}:", style=ACCENT_TEXT_STYLE)
         white_cell = (
             white_entry.copy()
@@ -364,7 +372,7 @@ def _build_move_history(
             else Text("-", style=MISSING_MOVE_ENTRY_STYLE)
         )
 
-        if idx == len(rows) - 1:
+        if row_index == len(rows) - 1:
             number_cell.stylize("bold")
             white_cell.stylize("bold")
             black_cell.stylize("bold")
@@ -407,12 +415,18 @@ def _build_compact_player_stats_panel(
     """
     if piece_values is None:
         piece_values = DEFAULT_PIECE_VALUES
-    # Calculate material balance
     white_captured, white_advantage, black_captured, black_advantage = (
         _calculate_material_balance(board, piece_values)
     )
 
-    # Calculate dynamic width based on player names
+    # Pre-calculate material values to avoid repeated calculations
+    white_material_captured = sum(
+        piece_values[piece.piece_type] for piece in white_captured
+    )
+    black_material_captured = sum(
+        piece_values[piece.piece_type] for piece in black_captured
+    )
+
     white_display_name = white_player or "White"
     black_display_name = black_player or "Black"
     stats_col_width = max(18, len(white_display_name) + 2, len(black_display_name) + 2)
@@ -420,7 +434,6 @@ def _build_compact_player_stats_panel(
     # Determine if we should show the winrate bar
     show_winrate_bar = white_win_probability is not None
 
-    # Create layout: stats only, or stats | bar depending on metrics availability
     stats_table = Table.grid(padding=0, expand=False)
     stats_table.add_column(
         justify="left", min_width=stats_col_width
@@ -432,35 +445,37 @@ def _build_compact_player_stats_panel(
             justify="right", width=bar_col_width
         )  # bar column with percentages (fixed width for right alignment)
 
-    # Calculate bar distribution - we have 6 actual bar rows (rows 1-6)
     bar_height = 6  # Actual number of bar segments
     black_win_percentage: float | None
     white_win_percentage: float | None
     if white_win_probability is not None:
         black_win_percentage = (1.0 - white_win_probability) * 100
         white_win_percentage = white_win_probability * 100
-        # Use more precise calculation to avoid rounding issues
         black_filled_rows = int(black_win_percentage / 100 * bar_height + 0.5)
     else:
         black_win_percentage = white_win_percentage = None
         black_filled_rows = bar_height // 2  # Default to 50/50
 
-    # Calculate time displays
+    def _get_win_probability_bar_segment(segment_index: int) -> Text:
+        """Get the bar segment for the given index (0-based from top).
+
+        Args:
+            segment_index: 0-based index from top of bar (0 = top, 5 = bottom)
+
+        Returns:
+            Text: Styled bar segment showing black or white advantage
+        """
+        # Black occupies top segments (lower indices), white occupies bottom segments
+        if segment_index < black_filled_rows:
+            return Text("███", style=BLACK_PLAYER_STYLE)
+        else:
+            return Text("▓▓▓", style=WHITE_PLAYER_STYLE)
+
     black_minutes, black_seconds = divmod(int(black_thinking_time), 60)
     white_minutes, white_seconds = divmod(int(white_thinking_time), 60)
 
-    # Calculate material captured
-    black_material_captured = sum(
-        piece_values[piece.piece_type] for piece in black_captured
-    )
-    white_material_captured = sum(
-        piece_values[piece.piece_type] for piece in white_captured
-    )
+    bar_segment_index = 0  # Track which bar segment we're on (0-based from top)
 
-    # Build content
-    row = 0
-
-    # Row 0: Black player name | black percentage (if metrics enabled)
     black_name = _format_player_label(black_player, is_white=False)
     if show_winrate_bar:
         if black_win_percentage is not None:
@@ -475,27 +490,18 @@ def _build_compact_player_stats_panel(
     else:
         stats_table.add_row(black_name)
 
-    # Row 1: Black time | top of bar (if metrics enabled)
     black_time = Text(
         f"time: {black_minutes:02d}:{black_seconds:02d}",
         style=BLACK_PLAYER_STYLE.replace("bold ", ""),
     )
     if show_winrate_bar:
-        bar_char = (
-            Text("███", style=BLACK_PLAYER_STYLE)
-            if row < black_filled_rows
-            else Text("▓▓▓", style=WHITE_PLAYER_STYLE)
-        )
-        stats_table.add_row(black_time, bar_char)
+        bar_segment = _get_win_probability_bar_segment(bar_segment_index)
+        stats_table.add_row(black_time, bar_segment)
     else:
         stats_table.add_row(black_time)
-    row += 1
+    bar_segment_index += 1
 
-    # Row 2: Black lost score | bar (if metrics enabled)
     if white_captured:  # Pieces White captured from Black (Black's losses)
-        white_material_captured = sum(
-            piece_values[piece.piece_type] for piece in white_captured
-        )
         lost_text = Text(
             f"material lost: {white_material_captured}",
             style=BLACK_PLAYER_STYLE.replace("bold ", ""),
@@ -505,20 +511,15 @@ def _build_compact_player_stats_panel(
             "material lost: 0", style=BLACK_PLAYER_STYLE.replace("bold ", "")
         )
     if show_winrate_bar:
-        bar_char = (
-            Text("███", style=BLACK_PLAYER_STYLE)
-            if row < black_filled_rows
-            else Text("▓▓▓", style=WHITE_PLAYER_STYLE)
-        )
-        stats_table.add_row(lost_text, bar_char)
+        bar_segment = _get_win_probability_bar_segment(bar_segment_index)
+        stats_table.add_row(lost_text, bar_segment)
     else:
         stats_table.add_row(lost_text)
-    row += 1
+    bar_segment_index += 1
 
-    # Rows 3-6: Lost pieces + bar (reduced by 1)
-    for i in range(4):
+    for row_index in range(4):
         if (
-            i == 0 and white_captured
+            row_index == 0 and white_captured
         ):  # Black's lost pieces (what White captured from Black)
             # All Black lost pieces on one line
             pieces_text = Text()
@@ -526,18 +527,15 @@ def _build_compact_player_stats_panel(
                 pieces_text.append(
                     _piece_symbol_solid(piece), style=_piece_style(piece)
                 )
-        elif i == 1:  # White player name
+        elif row_index == 1:  # White player name
             pieces_text = _format_player_label(white_player, is_white=True)
-        elif i == 2:  # White time
+        elif row_index == 2:  # White time
             pieces_text = Text(
                 f"time: {white_minutes:02d}:{white_seconds:02d}",
                 style=WHITE_PLAYER_STYLE.replace("bold ", ""),
             )
-        elif i == 3:  # White lost score
+        elif row_index == 3:  # White lost score
             if black_captured:  # Pieces Black captured from White (White's losses)
-                black_material_captured = sum(
-                    piece_values[piece.piece_type] for piece in black_captured
-                )
                 pieces_text = Text(
                     f"material lost: {black_material_captured}",
                     style=WHITE_PLAYER_STYLE.replace("bold ", ""),
@@ -550,15 +548,11 @@ def _build_compact_player_stats_panel(
             pieces_text = Text("")
 
         if show_winrate_bar:
-            bar_char = (
-                Text("███", style=BLACK_PLAYER_STYLE)
-                if row < black_filled_rows
-                else Text("▓▓▓", style=WHITE_PLAYER_STYLE)
-            )
-            stats_table.add_row(pieces_text, bar_char)
+            bar_segment = _get_win_probability_bar_segment(bar_segment_index)
+            stats_table.add_row(pieces_text, bar_segment)
         else:
             stats_table.add_row(pieces_text)
-        row += 1
+        bar_segment_index += 1
 
     # Last row: white lost pieces | white percentage at bottom
     if black_captured:  # White's lost pieces (what Black captured from White)
@@ -665,7 +659,6 @@ def display_board_with_context(
     header_text.append(" vs ", style=ACCENT_TEXT_STYLE)
     header_text.append(black_player or "Black", style=BLACK_PLAYER_STYLE)
 
-    # Build player stats panel (LEFT)
     stats_panel = _build_compact_player_stats_panel(
         board=board,
         white_player=white_player,
@@ -675,7 +668,6 @@ def display_board_with_context(
         white_win_probability=white_win_probability,
     )
 
-    # Build move history panel (RIGHT)
     history_panel = _build_move_history(
         board,
         history_length=history_length,
@@ -795,16 +787,16 @@ def _build_outcome_panel(
             text_kwargs["justify"] = justify
         return Text(text, **text_kwargs)
 
-    content = []
+    content_lines: list[Text] = []
 
     outcome_style = "bold"
-    content.append(
+    content_lines.append(
         _format_line(summary.outcome_line, style=outcome_style, justify="center")
     )
-    content.append(_format_line(summary.termination_line, justify="center"))
+    content_lines.append(_format_line(summary.termination_line, justify="center"))
 
     if summary.winner_line:
-        content.append(
+        content_lines.append(
             _format_line(
                 summary.winner_line,
                 style=WIN_TEXT_STYLE,
@@ -812,11 +804,11 @@ def _build_outcome_panel(
             )
         )
 
-    content.append(_format_line(summary.total_moves_line, justify="center"))
+    content_lines.append(_format_line(summary.total_moves_line, justify="center"))
 
     text_block = Text()
-    for index, line in enumerate(content):
-        if index > 0:
+    for line_index, line in enumerate(content_lines):
+        if line_index > 0:
             text_block.append("\n")
         text_block.append_text(line)
 
@@ -880,32 +872,32 @@ def _build_metrics_panel(
     player_text = Text(player_name, style=name_style)
 
     # Metrics content
-    content = []
+    panel_lines: list[Text] = []
 
     # Basic stats
-    content.append(Text(f"Moves Evaluated: {summary.moves_evaluated}"))
+    panel_lines.append(Text(f"Moves Evaluated: {summary.moves_evaluated}"))
 
     if summary.average_centipawn_loss is not None:
         avg_loss = f"{summary.average_centipawn_loss:.1f}"
-        content.append(Text(f"Avg Centipawn Loss: {avg_loss}"))
+        panel_lines.append(Text(f"Avg Centipawn Loss: {avg_loss}"))
 
     if summary.best_move_hit_rate is not None:
         hit_rate = f"{summary.best_move_hit_rate:.1%}"
-        content.append(Text(f"Best Move Hit Rate: {hit_rate}"))
+        panel_lines.append(Text(f"Best Move Hit Rate: {hit_rate}"))
 
     # Quality breakdown - always show all categories for consistent panel height
-    content.append(Text(""))
-    content.append(Text("Move Quality Breakdown:", style="bold"))
+    panel_lines.append(Text(""))
+    panel_lines.append(Text("Move Quality Breakdown:", style="bold"))
 
     for quality in MOVE_QUALITY_ORDER:
         count = summary.quality_counts.get(quality, 0)
         color = QUALITY_COLORS.get(quality, "")
-        content.append(Text(f"  {quality.value.title()}: {count}", style=color))
+        panel_lines.append(Text(f"  {quality.value.title()}: {count}", style=color))
 
     # Combine all content
     panel_content = Text()
-    for i, line in enumerate(content):
-        if i > 0:
+    for line_index, line in enumerate(panel_lines):
+        if line_index > 0:
             panel_content.append("\n")
         panel_content.append_text(line)
 

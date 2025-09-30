@@ -30,11 +30,11 @@ class PlayerFactory:
 
     @staticmethod
     @config_operation
-    def create_player(config: "PlayerConfig") -> BasePlayer:
+    def create_player(player_config: "PlayerConfig") -> BasePlayer:
         """Create a player implementation from its configuration dataclass.
 
         Args:
-            config: Player configuration containing kind and type-specific settings.
+            player_config: Player configuration containing kind and type-specific settings.
 
         Returns:
             BasePlayer: Configured player instance ready for gameplay.
@@ -42,83 +42,125 @@ class PlayerFactory:
         Raises:
             ValueError: If the player kind is unsupported or configuration is invalid.
         """
-        kind = getattr(config, "kind", None)
+        kind = getattr(player_config, "kind", None)
         if kind == "random":
             return PlayerFactory._create_random_player(
-                cast("RandomPlayerConfig", config)
+                cast("RandomPlayerConfig", player_config)
             )
         if kind == "stockfish":
             return PlayerFactory._create_stockfish_player(
-                cast("StockfishPlayerConfig", config)
+                cast("StockfishPlayerConfig", player_config)
             )
         if kind == "llm":
-            return PlayerFactory._create_llm_player(cast("LLMPlayerConfig", config))
+            return PlayerFactory._create_llm_player(
+                cast("LLMPlayerConfig", player_config)
+            )
         raise ValueError(f"Unsupported player kind: {kind}")
 
     @staticmethod
-    def _create_random_player(config: "RandomPlayerConfig") -> RandomPlayer:
+    def _create_random_player(
+        random_player_config: "RandomPlayerConfig",
+    ) -> RandomPlayer:
         """Create random player from configuration."""
-        name = config.name or f"Random {config.color.capitalize()}"
-        return RandomPlayer(name=name, color=config.color, seed=config.seed)
-
-    @staticmethod
-    def _create_stockfish_player(config: "StockfishPlayerConfig") -> StockfishPlayer:
-        """Create Stockfish player from configuration."""
-        name = config.name or "Stockfish"
-        limits = dict(config.engine_limits) if config.engine_limits else None
-        options = dict(config.engine_options) if config.engine_options else None
-        return StockfishPlayer(
+        name = (
+            random_player_config.name
+            or f"Random {random_player_config.color.capitalize()}"
+        )
+        return RandomPlayer(
             name=name,
-            color=config.color,
-            binary_path=config.binary_path,
-            engine_limits=limits,
-            engine_options=options,
+            color=random_player_config.color,
+            seed=random_player_config.seed,
         )
 
     @staticmethod
-    def _create_llm_player(config: "LLMPlayerConfig") -> LLMPlayer:
+    def _create_stockfish_player(
+        stockfish_player_config: "StockfishPlayerConfig",
+    ) -> StockfishPlayer:
+        """Create Stockfish player from configuration."""
+        name = stockfish_player_config.name or "Stockfish"
+        engine_limits = (
+            dict(stockfish_player_config.engine_limits)
+            if stockfish_player_config.engine_limits
+            else None
+        )
+        engine_options = (
+            dict(stockfish_player_config.engine_options)
+            if stockfish_player_config.engine_options
+            else None
+        )
+        return StockfishPlayer(
+            name=name,
+            color=stockfish_player_config.color,
+            binary_path=stockfish_player_config.binary_path,
+            engine_limits=engine_limits,
+            engine_options=engine_options,
+        )
+
+    @staticmethod
+    def _create_llm_player(llm_player_config: "LLMPlayerConfig") -> LLMPlayer:
         """Create LLM player from configuration."""
-        connector_cfg = config.connector
-        if connector_cfg is None:
+        connector_config = llm_player_config.connector
+        if connector_config is None:
             raise ValueError("LLM player configuration requires connector settings")
 
-        connector = PlayerFactory._create_llm_connector(connector_cfg)
-        handler = PlayerFactory._create_llm_handler(config.handler)
-        name = config.name or connector_cfg.model
+        connector = PlayerFactory._create_llm_connector(connector_config)
+        handler = PlayerFactory._create_llm_handler(llm_player_config.handler)
+        name = llm_player_config.name or connector_config.model
+
+        if llm_player_config.max_move_retries is None:
+            raise ValueError(
+                "max_move_retries must be set by config normalization - check config pipeline"
+            )
+        if llm_player_config.num_votes is None:
+            raise ValueError(
+                "num_votes must be set by config normalization - check config pipeline"
+            )
 
         return LLMPlayer(
             name=name,
-            color=config.color,
+            color=llm_player_config.color,
             connector=connector,
             handler=handler,
-            max_move_retries=config.max_move_retries,
-            num_votes=config.num_votes,
+            max_move_retries=llm_player_config.max_move_retries,
+            num_votes=llm_player_config.num_votes,
         )
 
     @staticmethod
-    def _create_llm_connector(config: "LLMConnectorConfig") -> LLMConnector:
+    def _create_llm_connector(
+        connector_config: "LLMConnectorConfig",
+    ) -> LLMConnector:
         """Create LLM connector from configuration."""
-        if config.model is None:
+        if connector_config.model is None:
             raise ValueError("LLM connector requires a model to be specified")
 
+        max_num_tokens = None
+        if connector_config.max_num_tokens is not None:
+            if (
+                isinstance(connector_config.max_num_tokens, float)
+                and connector_config.max_num_tokens < 1
+            ):
+                raise ValueError(
+                    f"Fractional max_num_tokens ({connector_config.max_num_tokens}) cannot be converted to integer - "
+                    f"this indicates a configuration error where token normalization failed"
+                )
+            max_num_tokens = int(connector_config.max_num_tokens)
+
         return LLMConnector(
-            model=config.model,
-            temperature=config.temperature,
-            max_tokens=(
-                int(config.max_tokens) if config.max_tokens is not None else None
-            ),
-            timeout=config.timeout,
-            max_retries=config.max_retries,
-            provider=config.provider,
-            api_base=config.api_base,
+            model=connector_config.model,
+            temperature=connector_config.temperature,
+            max_num_tokens=max_num_tokens,
+            request_timeout_in_seconds=connector_config.request_timeout_in_seconds,
+            max_api_request_retries=connector_config.max_api_request_retries,
+            provider=connector_config.provider,
+            api_base=connector_config.api_base,
         )
 
     @staticmethod
     def _create_llm_handler(
-        config: "LLMHandlerConfig" | None,
+        handler_config: "LLMHandlerConfig" | None,
     ) -> GameArenaLLMMoveHandler:
         """Create LLM move handler from configuration."""
-        kind = getattr(config, "kind", "game_arena")
+        kind = getattr(handler_config, "kind", "game_arena")
         if kind == "game_arena":
             return GameArenaLLMMoveHandler()
         raise ValueError(f"Unsupported LLM handler kind: {kind}")

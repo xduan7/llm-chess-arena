@@ -238,8 +238,8 @@ class RecordingEvaluator:
         self.calls.append((player_color, board.fen(), move.uci()))
         return MoveMetrics(
             player_color=player_color,
-            move_uci=move.uci(),
-            best_move_uci=move.uci(),
+            move_in_uci=move.uci(),
+            best_move_in_uci=move.uci(),
             centipawn_loss=1.0,
             win_probability_delta=0.0,
             best_move_hit=True,
@@ -289,7 +289,7 @@ class TestGameMetrics:
         assert summary["black"].moves_evaluated == 2
         assert summary["black"].quality_counts[MoveQuality.BEST] == 2
         assert evaluator.closed
-        assert game._move_qualities == [MoveQuality.BEST] * 4
+        assert game._get_move_qualities_for_display() == [MoveQuality.BEST] * 4
 
 
 def test_format_quality_summary_handles_empty_counts() -> None:

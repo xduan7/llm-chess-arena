@@ -1,13 +1,58 @@
+# =============================================================================
+# LLM Player Configuration
+# =============================================================================
+# This configuration defines an LLM-based chess player that uses language
+# models to generate moves. Critical interdependencies are documented below.
+
 kind: llm
-name: null
-max_move_retries: 3
-num_votes: 1
+name: null  # Override with specific model name (e.g., "GPT-4", "Claude-3.5")
+
+# MOVE RETRY LOGIC - Critical for game completion
+max_move_retries: 3  # IMPORTANT: Balance between game completion and avoiding infinite loops
+                     # - Too low (0-1): Games may end prematurely due to LLM parsing errors
+                     # - Too high (>5): May get stuck on impossible positions or bad prompts
+                     # - Recommended: 2-4 for most models
+
+# VOTING SYSTEM - Reliability vs Cost tradeoff
+num_votes: 1         # CRITICAL: Controls reliability and API costs
+                     # - 1: Single response, fastest and cheapest but less reliable
+                     # - 3: Majority voting, good reliability boost with moderate cost increase
+                     # - 5+: Diminishing returns, mostly useful for unreliable models
+                     # - MUST be odd number to prevent ties in voting
+                     # - Cost scales linearly: num_votes=3 costs 3x more than num_votes=1
+
 connector:
-  model: null
-  temperature: 0.2
-  max_tokens: 0.8
-  timeout: 600.0
-  max_retries: 3
-  provider: null
+  model: null                    # Required: Must be set to valid model name (e.g., "gpt-4", "claude-3-5-sonnet")
+  temperature: 0.2               # Low temperature for more deterministic chess moves
+                                # - 0.0-0.3: Deterministic, good for chess
+                                # - 0.7+: More creative but potentially erratic moves
+
+  # TOKEN LIMITS - Critical setting that affects response completeness
+  max_num_tokens: 0.8           # CRITICAL: Controls response length and cost
+                                # - Value is fraction (0.0-1.0) of model's context window
+                                # - Too low (0.1-0.3): May cause empty responses, failed parsing
+                                # - Too high (0.9-1.0): Increases cost significantly
+                                # - Sweet spot: 0.6-0.8 for most models
+                                # - DEPENDENCY: Must account for prompt length and voting (num_votes)
+
+  # TIMEOUT SETTINGS - Network reliability vs responsiveness
+  request_timeout_in_seconds: 600.0  # 10 minutes - generous for most models
+                                     # - Standard models: 60-300 seconds
+                                     # - Reasoning models (o1, etc): 600-1200 seconds
+                                     # - DEPENDENCY: Longer timeouts needed for complex positions
+
+  # NETWORK RESILIENCE - Balances reliability with speed
+  max_api_request_retries: 3    # Retries for transient network/API errors
+                               # - Too low (0-1): May fail on temporary outages
+                               # - Too high (>5): Delays game completion unnecessarily
+                               # - Does NOT retry for permanent errors (auth, rate limits)
+
+  provider: null                # Optional: Override LiteLLM provider detection
+                               # - Usually auto-detected from model name
+                               # - Set explicitly for custom endpoints or ambiguous names
+
 handler:
-  kind: game_arena
+  kind: game_arena             # Standard chess move handler
+                              # - Handles UCI/SAN move parsing
+                              # - Provides chess-specific prompting
+                              # - Alternative: custom handlers for specialized prompting

@@ -61,6 +61,7 @@ def test_refactored_player_voting() -> None:
         color="white",
         connector=connector,
         handler=GameArenaLLMMoveHandler(),
+        max_move_retries=3,
         num_votes=3,
     )
 
@@ -89,6 +90,7 @@ def test_refactored_player_retry_flow() -> None:
         connector=connector,
         handler=GameArenaLLMMoveHandler(),
         max_move_retries=1,
+        num_votes=1,
     )
 
     decision = player._make_decision(_build_context())

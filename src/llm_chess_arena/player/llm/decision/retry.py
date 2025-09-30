@@ -29,10 +29,15 @@ class RetryController:
 
         Args:
             max_retries: Maximum number of retries allowed before resignation.
+                        0 means one attempt with no retries, 3 means up to 4 total attempts.
+
+        Raises:
+            ValueError: If max_retries is negative.
         """
-        self.max_retries = max_retries
-        self._max_attempts = max_retries + 1
-        self.attempts_used: int = 0
+        if max_retries < 0:
+            raise ValueError(f"max_retries must be >= 0, got {max_retries}")
+
+        self.max_attempts = max_retries + 1
 
     def iter_attempts(self) -> Iterator[RetryAttempt]:
         """Generate retry attempts up to the configured maximum.
@@ -40,18 +45,10 @@ class RetryController:
         Yields:
             RetryAttempt: Metadata for each retry attempt.
         """
-        for attempt_number in range(1, self._max_attempts + 1):
+        for attempt_number in range(1, self.max_attempts + 1):
             yield RetryAttempt(
-                attempt_number=attempt_number, max_attempts=self._max_attempts
+                attempt_number=attempt_number, max_attempts=self.max_attempts
             )
-
-    def mark_attempt(self, attempt_number: int) -> None:
-        """Record that an attempt has been used.
-
-        Args:
-            attempt_number: The attempt number that was executed.
-        """
-        self.attempts_used = attempt_number
 
     def create_resignation(self) -> PlayerDecision:
         """Create a resignation decision after exhausting retry attempts.

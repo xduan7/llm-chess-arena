@@ -29,7 +29,7 @@ class TestLLMConnectorWithMockResponse:
             connector = LLMConnector(
                 model="gpt-3.5-turbo",
                 temperature=0.7,
-                max_tokens=150,
+                max_num_tokens=150,
             )
 
             response = connector.query("What's your move?")
@@ -75,8 +75,8 @@ class TestLLMConnectorWithMockResponse:
 
             connector = LLMConnector(
                 model="gpt-4",
-                timeout=5.0,
-                max_retries=1,
+                request_timeout_in_seconds=5.0,
+                max_api_request_retries=1,
             )
 
             with pytest.raises(TimeoutError, match="Request timed out after 5.0s"):
@@ -89,7 +89,7 @@ class TestLLMConnectorWithMockResponse:
 
             connector = LLMConnector(
                 model="gpt-3.5-turbo",
-                max_retries=1,
+                max_api_request_retries=1,
             )
 
             with pytest.raises(ConnectionError, match="Unexpected exception"):
@@ -104,9 +104,11 @@ class TestLLMConnectorWithMockResponse:
         with patch(
             "litellm.completion", return_value=empty_response
         ) as mock_completion:
-            connector = LLMConnector(model="gpt-3.5-turbo", max_retries=2)
+            connector = LLMConnector(model="gpt-3.5-turbo", max_api_request_retries=2)
 
-            with pytest.raises(LLMEmptyResponseError, match="check max_tokens setting"):
+            with pytest.raises(
+                LLMEmptyResponseError, match="check max_num_tokens setting"
+            ):
                 connector.query("test prompt")
 
             assert mock_completion.call_count == 1  # No internal retries
@@ -118,9 +120,11 @@ class TestLLMConnectorWithMockResponse:
         with patch(
             "litellm.completion", return_value=empty_response
         ) as mock_completion:
-            connector = LLMConnector(model="gpt-3.5-turbo", max_retries=1)
+            connector = LLMConnector(model="gpt-3.5-turbo", max_api_request_retries=1)
 
-            with pytest.raises(LLMEmptyResponseError, match="check max_tokens setting"):
+            with pytest.raises(
+                LLMEmptyResponseError, match="check max_num_tokens setting"
+            ):
                 connector.query("test")
 
             assert mock_completion.call_count == 1  # No internal retries
@@ -138,7 +142,7 @@ class TestLLMConnectorRetryLogic:
 
             connector = LLMConnector(
                 model="gpt-3.5-turbo",
-                max_retries=5,
+                max_api_request_retries=5,
             )
 
             response = connector.query("Test")
@@ -153,7 +157,7 @@ class TestLLMConnectorRetryLogic:
 
             connector = LLMConnector(
                 model="gpt-3.5-turbo",
-                max_retries=2,
+                max_api_request_retries=2,
             )
 
             with pytest.raises(ConnectionError, match="Unexpected exception"):
@@ -313,9 +317,9 @@ class TestLLMConnectorConfiguration:
         connector = LLMConnector(
             model="gpt-4",
             temperature=0.5,
-            max_tokens=100,
-            timeout=20.0,
-            max_retries=5,
+            max_num_tokens=100,
+            request_timeout_in_seconds=20.0,
+            max_api_request_retries=5,
         )
 
         connector.query("Test prompt")
@@ -339,8 +343,8 @@ class TestLLMConnectorRealAPI:
         openai_connector = LLMConnector(
             model="gpt-3.5-turbo",
             temperature=0.0,
-            max_tokens=10,
-            timeout=10.0,
+            max_num_tokens=10,
+            request_timeout_in_seconds=10.0,
         )
 
         llm_response = openai_connector.query(
@@ -360,8 +364,8 @@ class TestLLMConnectorRealAPI:
         anthropic_connector = LLMConnector(
             model="claude-3-haiku-20240307",
             temperature=0.0,
-            max_tokens=10,
-            timeout=10.0,
+            max_num_tokens=10,
+            request_timeout_in_seconds=10.0,
         )
 
         llm_response = anthropic_connector.query(
@@ -381,8 +385,8 @@ class TestLLMConnectorRealAPI:
         gemini_connector = LLMConnector(
             model="gemini/gemini-2.0-flash-exp",
             temperature=0.0,
-            max_tokens=10,
-            timeout=10.0,
+            max_num_tokens=10,
+            request_timeout_in_seconds=10.0,
         )
 
         llm_response = gemini_connector.query(
@@ -408,8 +412,8 @@ class TestLLMConnectorRealAPI:
         chess_llm_connector = LLMConnector(
             model=selected_model,
             temperature=0.0,
-            max_tokens=20,
-            timeout=10.0,
+            max_num_tokens=20,
+            request_timeout_in_seconds=10.0,
         )
 
         chess_move_prompt = "You are playing chess. The board is at the starting position. What is a good opening move? Reply with just the move in standard chess notation (e.g., 'e4')."
@@ -441,8 +445,8 @@ class TestLLMConnectorRealAPI:
         chess_themed_connector = LLMConnector(
             model=selected_model,
             temperature=0.0,
-            max_tokens=10,
-            timeout=10.0,
+            max_num_tokens=10,
+            request_timeout_in_seconds=10.0,
         )
 
         llm_response_with_system_context = chess_themed_connector.query(

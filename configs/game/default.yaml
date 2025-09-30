@@ -1,5 +1,37 @@
-display_board: true
-enable_metrics: true
-max_num_moves: null
-record_dir: null
-record_name: null
+# =============================================================================
+# Game Configuration - Core Game Settings
+# =============================================================================
+# Controls game behavior, visualization, and data collection.
+
+# VISUALIZATION - Terminal output control
+display_board: true          # Show chess board in terminal during gameplay
+                            # - true: Rich terminal visualization with move annotations
+                            # - false: Minimal text output, faster for batch runs
+                            # - DEPENDENCY: Rich terminal features may not work in all environments
+
+# EVALUATION SYSTEM - Move quality assessment
+enable_metrics: true         # Enable Stockfish-based move evaluation
+                            # - true: Provides move quality analysis (excellent/good/mistake/blunder)
+                            # - false: Disables metrics, faster execution
+                            # - DEPENDENCY: Requires Stockfish installation when enabled
+                            # - INTERDEPENDENCY: Uses settings from metrics/default.yaml
+
+# GAME TERMINATION - Prevent infinite games
+max_num_moves: null          # Maximum moves before forced draw
+                            # - null: No limit, games end naturally (recommended)
+                            # - 50-100: Quick games for testing
+                            # - 150-200: Reasonable limit for research
+                            # - DEPENDENCY: LLM players may need more moves due to retries
+
+# DATA COLLECTION - Game record export
+record_dir: null             # Directory for saving game records
+                            # - null: No recording (games run without saving)
+                            # - "outputs/": Save to outputs directory
+                            # - "./games/": Save to local games directory
+                            # - DEPENDENCY: Directory must be writable
+
+record_name: null            # Filename for game record (without extension)
+                            # - null: Auto-generate timestamp-based name
+                            # - "experiment_1": Custom name for organized experiments
+                            # - INTERDEPENDENCY: Works with record_dir setting
+                            # - OUTPUT: Creates both PGN and JSON files

@@ -44,7 +44,7 @@ class TestLLMIntegrationVCR:
         connector = LLMConnector(
             model="gpt-4o-mini",
             temperature=0.0,  # Deterministic
-            max_tokens=500,
+            max_num_tokens=500,
         )
         handler = GameArenaLLMMoveHandler()
         player = LLMPlayer(
@@ -102,6 +102,7 @@ class TestLLMIntegrationVCR:
             connector=connector,
             handler=handler,
             color="white",
+            max_move_retries=3,
             num_votes=3,  # Request 3 samples
         )
 
@@ -117,7 +118,13 @@ class TestLLMIntegrationVCR:
         """Test LLM on complex middlegame position with recording."""
         connector = LLMConnector(model="gpt-4o-mini", temperature=0.0)
         handler = GameArenaLLMMoveHandler()
-        player = LLMPlayer(connector=connector, handler=handler, color="white")
+        player = LLMPlayer(
+            connector=connector,
+            handler=handler,
+            color="white",
+            max_move_retries=3,
+            num_votes=1,
+        )
 
         # Complex tactical position
         board = chess.Board(
@@ -136,7 +143,13 @@ class TestLLMIntegrationVCR:
         """Test LLM in endgame position with recording."""
         connector = LLMConnector(model="gpt-4o-mini", temperature=0.0)
         handler = GameArenaLLMMoveHandler()
-        player = LLMPlayer(connector=connector, handler=handler, color="white")
+        player = LLMPlayer(
+            connector=connector,
+            handler=handler,
+            color="white",
+            max_move_retries=3,
+            num_votes=1,
+        )
 
         # King and pawn endgame
         board = chess.Board("8/8/8/3k4/8/3K4/3P4/8 w - - 0 1")
@@ -162,10 +175,16 @@ class TestLLMErrorHandlingVCR:
         """Test timeout handling with recorded response."""
         connector = LLMConnector(
             model="gpt-4o-mini",
-            timeout=1,  # Very short timeout
+            request_timeout_in_seconds=1,  # Very short timeout
         )
         handler = GameArenaLLMMoveHandler()
-        player = LLMPlayer(connector=connector, handler=handler, color="white")
+        player = LLMPlayer(
+            connector=connector,
+            handler=handler,
+            color="white",
+            max_move_retries=3,
+            num_votes=1,
+        )
 
         board = chess.Board()
 
@@ -190,7 +209,11 @@ class TestLLMErrorHandlingVCR:
         connector = LLMConnector(model="gpt-4o-mini", temperature=1.0)
         handler = GameArenaLLMMoveHandler()
         player = LLMPlayer(
-            connector=connector, handler=handler, color="white", max_move_retries=3
+            connector=connector,
+            handler=handler,
+            color="white",
+            max_move_retries=3,
+            num_votes=1,
         )
 
         board = chess.Board()
@@ -213,7 +236,13 @@ def llm_player_vcr(vcr_cassette_name):
     with vcr_config.use_cassette(vcr_cassette_name):
         connector = LLMConnector(model="gpt-4o-mini", temperature=0.0)
         handler = GameArenaLLMMoveHandler()
-        player = LLMPlayer(connector=connector, handler=handler, color="white")
+        player = LLMPlayer(
+            connector=connector,
+            handler=handler,
+            color="white",
+            max_move_retries=3,
+            num_votes=1,
+        )
         yield player
 
 
@@ -244,8 +273,20 @@ class TestLLMGamesVCR:
         connector2 = LLMConnector(model="gpt-4o-mini", temperature=0.3)
         handler = GameArenaLLMMoveHandler()
 
-        white = LLMPlayer(connector=connector1, handler=handler, color="white")
-        black = LLMPlayer(connector=connector2, handler=handler, color="black")
+        white = LLMPlayer(
+            connector=connector1,
+            handler=handler,
+            color="white",
+            max_move_retries=3,
+            num_votes=1,
+        )
+        black = LLMPlayer(
+            connector=connector2,
+            handler=handler,
+            color="black",
+            max_move_retries=3,
+            num_votes=1,
+        )
 
         from llm_chess_arena.game import Game
 

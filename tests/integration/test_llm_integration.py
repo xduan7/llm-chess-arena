@@ -45,13 +45,17 @@ def test_llm_player_generates_legal_opening_move_from_starting_position(
     deterministic_llm_connector = LLMConnector(
         model=llm_model_name,
         temperature=0.0,
-        max_tokens=1000,
-        timeout=10.0,
-        max_retries=3,
+        max_num_tokens=1000,
+        request_timeout_in_seconds=10.0,
+        max_api_request_retries=3,
     )
     game_arena_handler = GameArenaLLMMoveHandler()
     white_llm_player = LLMPlayer(
-        connector=deterministic_llm_connector, handler=game_arena_handler, color="white"
+        connector=deterministic_llm_connector,
+        handler=game_arena_handler,
+        color="white",
+        max_move_retries=3,
+        num_votes=1,
     )
 
     starting_position_board = chess.Board()
@@ -71,9 +75,9 @@ def test_llm_retry_mechanism_recovers_from_illegal_move_attempts():
     deterministic_llm_connector = LLMConnector(
         model=available_llm_model,
         temperature=0.0,
-        max_tokens=1000,
-        timeout=10.0,
-        max_retries=3,
+        max_num_tokens=1000,
+        request_timeout_in_seconds=10.0,
+        max_api_request_retries=3,
     )
 
     game_arena_handler = GameArenaLLMMoveHandler()
@@ -82,6 +86,7 @@ def test_llm_retry_mechanism_recovers_from_illegal_move_attempts():
         handler=game_arena_handler,
         color="black",
         max_move_retries=2,
+        num_votes=1,
     )
 
     # FEN: position after 1.e4 e5
@@ -103,15 +108,17 @@ def test_llm_plays_coherent_opening_sequence_over_five_moves():
     slightly_creative_llm_connector = LLMConnector(
         model=available_llm_model,
         temperature=0.3,
-        max_tokens=1000,
-        timeout=10.0,
-        max_retries=3,
+        max_num_tokens=1000,
+        request_timeout_in_seconds=10.0,
+        max_api_request_retries=3,
     )
     game_arena_handler = GameArenaLLMMoveHandler()
     white_llm_player = LLMPlayer(
         connector=slightly_creative_llm_connector,
         handler=game_arena_handler,
         color="white",
+        max_move_retries=3,
+        num_votes=1,
     )
 
     evolving_game_board = chess.Board()

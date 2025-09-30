@@ -25,9 +25,9 @@ class RandomPlayer(BasePlayer):
         """
         super().__init__(name, color)
         self.seed = seed
-        self.rng = random.Random(seed)
+        self.random_generator = random.Random(seed)
 
     def _make_decision(self, context: PlayerDecisionContext) -> PlayerDecision:
         """Return a uniformly sampled legal move."""
-        selected_move = self.rng.choice(context.legal_moves_in_uci)
-        return PlayerDecision(action="move", attempted_move=selected_move)
+        selected_move_in_uci = self.random_generator.choice(context.legal_moves_in_uci)
+        return PlayerDecision(action="move", attempted_move=selected_move_in_uci)
