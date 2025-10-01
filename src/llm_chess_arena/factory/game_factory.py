@@ -41,6 +41,7 @@ class GameFactory:
             white_player=white_player,
             black_player=black_player,
             display_board=app_config.game.display_board,
+            display_summary=app_config.game.display_summary,
             enable_metrics=app_config.game.enable_metrics,
             metrics_tracker=metrics_tracker,
             record_dir=app_config.game.record_dir,

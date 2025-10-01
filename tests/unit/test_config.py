@@ -245,7 +245,7 @@ def test_run_game_from_config_closes_players_once(monkeypatch):
     app_config = config.AppConfig(
         env=config.EnvConfig(load_dotenv=False),
         game=config.GameConfig(enable_metrics=False, max_num_moves=1),
-        metrics=config.MetricsConfig(),
+        metrics=config.MetricsConfig(max_centipawn_loss_per_move=1000),
         players=config.PlayersConfig(
             white=config.RandomPlayerConfig(color="white", name="Random White"),
             black=config.RandomPlayerConfig(color="black", name="Random Black"),
@@ -386,6 +386,7 @@ class TestHydraConfig:
                     "max_num_moves": 10,
                 },
                 "metrics": {
+                    "max_centipawn_loss_per_move": 1000,
                     "stockfish_depth": 12,
                     "stockfish_binary_path": "/tmp/stockfish",
                     "stockfish_engine_options": {"Threads": 4},

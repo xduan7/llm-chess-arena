@@ -5,11 +5,10 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
 export PYTHONPATH="${PYTHONPATH:-}:${ROOT_DIR}/src"
 
-OUTPUT_ROOT="${ROOT_DIR}/output/demo/llm_game"
-mkdir -p "${OUTPUT_ROOT}"
-
 python -m llm_chess_arena.cli.main \
-  "game.record_dir=${OUTPUT_ROOT}" \
+  tournament.output_dir="${ROOT_DIR}/output/demo" \
+  tournament.match_name="llm_game" \
+  tournament.num_games=1 \
   game.enable_metrics=false \
   players@players.white=llm/default \
   players.white.connector.model=gpt-4o-mini \

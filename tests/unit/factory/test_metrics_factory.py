@@ -10,6 +10,7 @@ from llm_chess_arena.metrics import MetricsTracker
 def test_create_metrics_tracker() -> None:
     """Verify factory produces a tracker instance from configuration."""
     config = MetricsConfig(
+        max_centipawn_loss_per_move=1000,
         stockfish_depth=8,
         stockfish_binary_path=None,
         stockfish_engine_options={"Threads": 1},

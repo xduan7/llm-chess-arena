@@ -46,6 +46,7 @@ class LLMConnector:
         max_api_request_retries: int = 3,
         provider: str | None = None,
         api_base: str | None = None,
+        rate_limiter: Any | None = None,
     ) -> None:
         """Configure a LiteLLM-backed connector for querying language models.
 
@@ -57,6 +58,7 @@ class LLMConnector:
             max_api_request_retries: Maximum retries for transient failures.
             provider: Optional LiteLLM provider override (e.g., "anthropic").
             api_base: Optional custom API base URL for self-hosted endpoints.
+            rate_limiter: Optional tournament rate limiter for proactive throttling.
         """
         self.model = model
         self.temperature = temperature
@@ -66,6 +68,7 @@ class LLMConnector:
         self.provider = provider
         self.api_base = api_base.rstrip("/") if api_base else None
         self._default_request_parameters: dict[str, Any] = {}
+        self._rate_limiter = rate_limiter
 
         # Usage bookkeeping
         self._last_usage: UsageRecord | None = None
@@ -108,6 +111,30 @@ class LLMConnector:
         if self.provider:
             return f"{self.provider} ({self.model})"
         return self.model
+
+    def _get_provider_for_rate_limiting(self) -> str:
+        """Extract provider name for rate limiting.
+
+        Returns:
+            str: Provider name (e.g., "openai", "anthropic").
+        """
+        if self.provider:
+            return self.provider.lower()
+
+        # Infer from model name (e.g., "openai/gpt-4" -> "openai")
+        if "/" in self.model:
+            return self.model.split("/")[0].lower()
+
+        # Default heuristics for common model names
+        model_lower = self.model.lower()
+        if "gpt" in model_lower:
+            return "openai"
+        elif "claude" in model_lower:
+            return "anthropic"
+        elif "gemini" in model_lower or "palm" in model_lower:
+            return "google"
+
+        return "unknown"
 
     def _setup_argo(self) -> None:
         """Configure Argo-specific connector settings based on model alias."""
@@ -188,6 +215,17 @@ class LLMConnector:
         max_attempts = self.max_api_request_retries + 1
         endpoint = self._get_endpoint_description()
 
+        # Acquire rate limit permit if limiter is configured
+        if self._rate_limiter is not None:
+            provider_name = self._get_provider_for_rate_limiting()
+            permit_granted = self._rate_limiter.acquire_permit(
+                provider_name, timeout_seconds=self.request_timeout_in_seconds
+            )
+            if not permit_granted:
+                raise TimeoutError(
+                    f"Rate limiter timeout waiting for permit from {provider_name}"
+                )
+
         for attempt in range(1, max_attempts + 1):
             try:
                 response = litellm.completion(**completion_kwargs)
@@ -231,22 +269,29 @@ class LLMConnector:
                 litellm_exceptions.APIError,
                 litellm_exceptions.APIConnectionError,
             ) as transient_api_error:
-                status = getattr(transient_api_error, "status_code", "unknown")
+                status_code = getattr(transient_api_error, "status_code", 0)
+                if isinstance(status_code, str):
+                    try:
+                        status_code = int(status_code)
+                    except (ValueError, TypeError):
+                        status_code = 0
+
                 error_type = (
                     type(transient_api_error).__name__.replace("Error", "").lower()
                 )
+
                 logger.warning(
                     "Network attempt {}/{} to {} failed - {} ({})",
                     attempt,
                     max_attempts,
                     endpoint,
                     error_type,
-                    status,
+                    status_code or "unknown",
                 )
 
                 if attempt >= max_attempts:
                     raise ConnectionError(
-                        f"{error_type.replace('_', ' ').title()} ({status}) after {max_attempts} network attempts"
+                        f"{error_type.replace('_', ' ').title()} ({status_code or 'unknown'}) after {max_attempts} network attempts"
                     ) from transient_api_error
             except Exception as unexpected_error:  # pragma: no cover - defensive guard
                 error_type = (

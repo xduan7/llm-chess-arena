@@ -46,7 +46,8 @@ ACCENT_TEXT_STYLE = "cyan"
 DIM_TEXT_STYLE = "dim"
 MISSING_MOVE_ENTRY_STYLE = "grey70"
 WIN_TEXT_STYLE = "bold green"
-DRAW_TEXT_STYLE = "bold cyan"
+DRAW_TEXT_STYLE = "bold yellow"
+LOSS_TEXT_STYLE = "bold red"
 CHECK_TEXT_STYLE = "bold red"
 
 QUALITY_SUFFIXES: dict[MoveQuality, str] = {
@@ -881,18 +882,19 @@ def _build_metrics_panel(
         avg_loss = f"{summary.average_centipawn_loss:.1f}"
         panel_lines.append(Text(f"Avg Centipawn Loss: {avg_loss}"))
 
-    if summary.best_move_hit_rate is not None:
-        hit_rate = f"{summary.best_move_hit_rate:.1%}"
-        panel_lines.append(Text(f"Best Move Hit Rate: {hit_rate}"))
-
     # Quality breakdown - always show all categories for consistent panel height
     panel_lines.append(Text(""))
     panel_lines.append(Text("Move Quality Breakdown:", style="bold"))
 
+    # Calculate percentages based on moves evaluated
+    total_moves = summary.moves_evaluated
     for quality in MOVE_QUALITY_ORDER:
         count = summary.quality_counts.get(quality, 0)
+        percentage = (count / total_moves * 100) if total_moves > 0 else 0
         color = QUALITY_COLORS.get(quality, "")
-        panel_lines.append(Text(f"  {quality.value.title()}: {count}", style=color))
+        panel_lines.append(
+            Text(f"  {quality.value.title()}: {percentage:.1f}%", style=color)
+        )
 
     # Combine all content
     panel_content = Text()
@@ -904,4 +906,205 @@ def _build_metrics_panel(
     return Panel.fit(panel_content, title=player_text, padding=(1, 2))
 
 
-__all__ = ["display_board_with_context", "display_game_summary"]
+def display_tournament_summary(
+    match_name: str,
+    player1: str,
+    player2: str,
+    total_games: int,
+    player1_wins: int,
+    player2_wins: int,
+    draws: int,
+    duration_seconds: float | None,
+    total_cost: float,
+    avg_game_length: float,
+    player1_avg_centipawn_loss: float | None,
+    player2_avg_centipawn_loss: float | None,
+    player1_avg_thinking_time: float,
+    player2_avg_thinking_time: float,
+    player1_quality_counts: dict[str, int],
+    player2_quality_counts: dict[str, int],
+) -> None:
+    """Display tournament summary with Rich formatting (no color assignments).
+
+    Args:
+        match_name: Tournament/match name.
+        player1: Name of first player (no fixed color).
+        player2: Name of second player (no fixed color).
+        total_games: Total number of games played.
+        player1_wins: Number of games won by player 1.
+        player2_wins: Number of games won by player 2.
+        draws: Number of drawn games.
+        duration_seconds: Total tournament duration in seconds.
+        total_cost: Total API cost across all games.
+        avg_game_length: Average game length in moves.
+        player1_avg_centipawn_loss: Average centipawn loss for player 1 (if available).
+        player2_avg_centipawn_loss: Average centipawn loss for player 2 (if available).
+        player1_avg_thinking_time: Average thinking time for player 1 in seconds.
+        player2_avg_thinking_time: Average thinking time for player 2 in seconds.
+    """
+    # Build player stats panels first (so we can match result panel width)
+    player1_panel = _build_tournament_player_panel(
+        player_name=player1,
+        wins=player1_wins,
+        draws=draws,
+        losses=player2_wins,
+        avg_centipawn_loss=player1_avg_centipawn_loss,
+        avg_thinking_time=player1_avg_thinking_time,
+        quality_counts=player1_quality_counts,
+    )
+
+    player2_panel = _build_tournament_player_panel(
+        player_name=player2,
+        wins=player2_wins,
+        draws=draws,
+        losses=player1_wins,
+        avg_centipawn_loss=player2_avg_centipawn_loss,
+        avg_thinking_time=player2_avg_thinking_time,
+        quality_counts=player2_quality_counts,
+    )
+
+    # Layout player panels side by side
+    player_grid = Table.grid(expand=False, padding=(0, 3))
+    player_grid.add_column()
+    player_grid.add_column()
+    player_grid.add_row(player1_panel, player2_panel)
+
+    # Measure player grid width to match results panel
+    target_width = _measure_renderable_width(player_grid)
+
+    # Build results panel to match width
+    results_panel = _build_tournament_results_panel(
+        match_name=match_name,
+        total_games=total_games,
+        duration_seconds=duration_seconds,
+        avg_game_length=avg_game_length,
+        total_cost=total_cost,
+        width=target_width,
+    )
+
+    # Column layout: results on top, players below
+    column = Table.grid(expand=False, padding=(0, 0))
+    column.add_column(no_wrap=True)
+    column.add_row(results_panel)
+    column.add_row(player_grid)
+
+    console.print()
+    console.print(Align.center(column))
+    console.print()
+
+
+def _build_tournament_results_panel(
+    match_name: str,
+    total_games: int,
+    duration_seconds: float | None,
+    avg_game_length: float,
+    total_cost: float,
+    width: int | None = None,
+) -> Panel:
+    """Build results panel for tournament summary."""
+    horizontal_padding = 2
+    border_space = 2
+    inner_width = (
+        None
+        if width is None
+        else max(width - (horizontal_padding * 2) - border_space, 0)
+    )
+
+    def _format_line(text: str, style: str | None = None) -> Text:
+        if inner_width is not None and inner_width > 0:
+            text = text.center(inner_width)
+        return Text(text, style=style)
+
+    content_lines: list[Text] = []
+
+    # Match name (bold like game outcome)
+    content_lines.append(_format_line(f"Match: {match_name}", style="bold"))
+
+    # Duration
+    if duration_seconds is not None:
+        content_lines.append(
+            _format_line(f"Duration: {_format_time_display(duration_seconds)}")
+        )
+
+    # Total games and averages
+    content_lines.append(_format_line(f"Total Games: {total_games}"))
+    content_lines.append(_format_line(f"Avg Game Length: {avg_game_length:.1f} moves"))
+    content_lines.append(_format_line(f"Total Cost: ${total_cost:.4f}"))
+
+    # Combine all content
+    text_block = Text()
+    for line_index, line in enumerate(content_lines):
+        if line_index > 0:
+            text_block.append("\n")
+        text_block.append_text(line)
+
+    return Panel.fit(
+        text_block, title="Tournament Results", padding=(1, 2), width=width
+    )
+
+
+def _build_tournament_player_panel(
+    player_name: str,
+    wins: int,
+    draws: int,
+    losses: int,
+    avg_centipawn_loss: float | None,
+    avg_thinking_time: float,
+    quality_counts: dict[str, int],
+) -> Panel:
+    """Build a Rich panel displaying tournament aggregate stats for one player."""
+    # No color styling for tournaments (players swap colors)
+    player_text = Text(player_name, style="bold")
+
+    panel_lines: list[Text] = []
+
+    # Player record (W/D/L) - with color coding for clarity
+    record_line = Text("W/D/L: ", style="bold")
+    record_line.append(f"{wins}", style=WIN_TEXT_STYLE)
+    record_line.append("/", style="bold")
+    record_line.append(f"{draws}", style=DRAW_TEXT_STYLE)
+    record_line.append("/", style="bold")
+    record_line.append(f"{losses}", style=LOSS_TEXT_STYLE)
+    panel_lines.append(record_line)
+
+    # Average thinking time
+    panel_lines.append(
+        Text(f"Avg Thinking Time: {_format_time_display(avg_thinking_time)}")
+    )
+
+    # Average centipawn loss (if available)
+    if avg_centipawn_loss is not None:
+        panel_lines.append(Text(f"Avg Centipawn Loss: {avg_centipawn_loss:.1f}"))
+    else:
+        panel_lines.append(Text("Avg Centipawn Loss: N/A", style=DIM_TEXT_STYLE))
+
+    # Move quality breakdown (if available) - with color coding
+    if quality_counts:
+        panel_lines.append(Text(""))  # Blank line
+        panel_lines.append(Text("Move Quality Breakdown:", style="bold"))
+
+        # Calculate average percentages across all games
+        total_moves = sum(quality_counts.values())  # Total moves for this player
+        for quality in MOVE_QUALITY_ORDER:
+            count = quality_counts.get(quality.value, 0)
+            percentage = (count / total_moves * 100) if total_moves > 0 else 0
+            color = QUALITY_COLORS.get(quality, "")
+            panel_lines.append(
+                Text(f"  {quality.value.title()}: {percentage:.1f}%", style=color)
+            )
+
+    # Combine all content
+    panel_content = Text()
+    for line_index, line in enumerate(panel_lines):
+        if line_index > 0:
+            panel_content.append("\n")
+        panel_content.append_text(line)
+
+    return Panel.fit(panel_content, title=player_text, padding=(1, 2))
+
+
+__all__ = [
+    "display_board_with_context",
+    "display_game_summary",
+    "display_tournament_summary",
+]

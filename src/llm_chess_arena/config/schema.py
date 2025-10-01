@@ -26,6 +26,7 @@ class GameConfig:
     """Configuration values for coordinating a chess game."""
 
     display_board: bool = False
+    display_summary: bool = True
     enable_metrics: bool = True
     max_num_moves: int | None = None
     record_dir: str | None = None
@@ -46,6 +47,7 @@ class MoveQualityThresholdsConfig:
 class MetricsConfig:
     """Configuration for Stockfish-based metrics collection."""
 
+    max_centipawn_loss_per_move: int | None  # No default - must be set in config YAML
     stockfish_depth: int = 10
     stockfish_binary_path: str | None = None
     stockfish_engine_options: Mapping[str, Any] = field(default_factory=dict)
@@ -127,9 +129,9 @@ class PlayersConfig:
 class AppConfig:
     """Top-level application configuration composed by Hydra."""
 
-    env: EnvConfig = field(default_factory=EnvConfig)
-    game: GameConfig = field(default_factory=GameConfig)
-    metrics: MetricsConfig = field(default_factory=MetricsConfig)
+    metrics: MetricsConfig  # No default - must be provided via Hydra config
+    env: EnvConfig = field(default_factory=lambda: EnvConfig())
+    game: GameConfig = field(default_factory=lambda: GameConfig())
     players: PlayersConfig = field(
         default_factory=lambda: PlayersConfig(
             white=RandomPlayerConfig(color="white", name="Random White"),

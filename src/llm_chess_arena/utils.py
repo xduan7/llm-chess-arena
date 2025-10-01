@@ -4,9 +4,11 @@ from __future__ import annotations
 
 import os
 import shutil
+import time
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Final, Any
+from threading import Lock
+from typing import Final, Any, Protocol
 
 import chess
 import chess.engine
@@ -778,3 +780,107 @@ def build_game_outcome_summary(
         winner_name=winner_name,
         winner_color=winner_color,
     )
+
+
+# ============================================================================
+# Rate Limiting Utilities
+# ============================================================================
+
+
+class RateLimiter(Protocol):
+    """Protocol for rate limiting implementations."""
+
+    def acquire_permit(self, provider_name: str, timeout_seconds: float) -> bool:
+        """Try to acquire a permit.
+
+        Args:
+            provider_name: API provider name (ignored in simple implementation).
+            timeout_seconds: Maximum time to wait for a permit.
+
+        Returns:
+            bool: True if permit acquired, False if timeout.
+        """
+        ...
+
+    def report_rate_limit_error(
+        self, provider_name: str, _retry_after: float | None
+    ) -> None:
+        """Report a rate limit error (ignored in simple implementation).
+
+        Args:
+            provider_name: API provider that returned the rate limit error.
+            _retry_after: Optional retry-after value from API (in seconds).
+        """
+        ...
+
+
+class TokenBucketRateLimiter:
+    """Simple global rate limiter enforcing requests per minute (RPM).
+
+    Dead simple:
+    - Enforces GLOBAL limit on API CALLS per minute
+    - rate_limit_rpm: 60 = max 60 API requests per minute total
+    - Blocks until request slot available or timeout
+    - Thread-safe
+    """
+
+    def __init__(self, requests_per_minute: float) -> None:
+        """Initialize rate limiter.
+
+        Args:
+            requests_per_minute: Max API CALLS per minute (global limit).
+        """
+        self.rpm = requests_per_minute
+        self.requests_per_second = requests_per_minute / 60.0
+
+        # Track available request slots
+        self.available_requests = 1.0
+        self.last_update = time.time()
+        self.lock = Lock()
+
+    def acquire_permit(self, provider_name: str, timeout_seconds: float) -> bool:
+        """Try to acquire permission for one API call.
+
+        Args:
+            provider_name: Ignored (global limit).
+            timeout_seconds: Max wait time.
+
+        Returns:
+            bool: True if permit acquired, False if timeout.
+        """
+        deadline = time.time() + timeout_seconds
+
+        while time.time() < deadline:
+            with self.lock:
+                now = time.time()
+
+                # Refill request slots based on time elapsed
+                elapsed = now - self.last_update
+                self.available_requests = min(
+                    1.0, self.available_requests + elapsed * self.requests_per_second
+                )
+                self.last_update = now
+
+                if self.available_requests >= 1.0:
+                    # Have a slot - use it
+                    self.available_requests -= 1.0
+                    return True
+
+                # Calculate wait time until we have a slot
+                wait_seconds = (
+                    1.0 - self.available_requests
+                ) / self.requests_per_second
+                sleep_time = min(wait_seconds, 0.1)
+
+            # Sleep outside lock
+            if time.time() + sleep_time > deadline:
+                return False
+            time.sleep(sleep_time)
+
+        return False
+
+    def report_rate_limit_error(
+        self, provider_name: str, _retry_after: float | None
+    ) -> None:
+        """Ignored - if you hit limits, configure lower RPM."""
+        pass

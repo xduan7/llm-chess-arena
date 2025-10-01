@@ -44,4 +44,5 @@ class MetricsFactory:
             binary_path=metrics_config.stockfish_binary_path,
             engine_options=engine_options,
             thresholds=thresholds,
+            max_centipawn_loss=metrics_config.max_centipawn_loss_per_move,
         )

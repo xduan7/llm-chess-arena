@@ -26,7 +26,7 @@ class TestDemoScriptConfigurations:
         """Set up Hydra for each test."""
         GlobalHydra.instance().clear()
         # This imports and registers the config schemas with Hydra
-        from llm_chess_arena.cli.main import run_cli_game  # noqa: F401
+        from llm_chess_arena.cli.main import run_tournament_cli  # noqa: F401
 
     def teardown_method(self) -> None:
         """Clean up Hydra after each test."""

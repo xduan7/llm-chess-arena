@@ -46,6 +46,7 @@ class Game:
         white_player: BasePlayer,
         black_player: BasePlayer,
         display_board: bool = False,
+        display_summary: bool = True,
         enable_metrics: bool = True,
         metrics_tracker: MetricsTracker | None = None,
         record_dir: str | Path | None = None,
@@ -58,6 +59,7 @@ class Game:
             white_player: Player controlling white pieces.
             black_player: Player controlling black pieces.
             display_board: Whether to display the board after each move.
+            display_summary: Whether to display game summary at end.
             enable_metrics: Whether to compute move quality metrics.
             metrics_tracker: Optional preconfigured metrics tracker.
             record_dir: Optional directory path for writing game records when
@@ -78,6 +80,7 @@ class Game:
         self.black_player = black_player
         self.board = chess.Board()
         self.display_board = display_board
+        self.display_summary = display_summary
         self.metrics_tracker = (
             metrics_tracker
             if metrics_tracker is not None
@@ -596,14 +599,17 @@ class Game:
         )
         outcome_summary = resolved_game_summary.to_game_outcome_summary()
 
-        rendered = display_game_summary(
-            white_player=str(self.white_player),
-            black_player=str(self.black_player),
-            white_summary=white_summary,
-            black_summary=black_summary,
-            outcome_summary=outcome_summary,
-        )
-        self._rendered_metrics_summary = rendered
+        if self.display_summary:
+            rendered = display_game_summary(
+                white_player=str(self.white_player),
+                black_player=str(self.black_player),
+                white_summary=white_summary,
+                black_summary=black_summary,
+                outcome_summary=outcome_summary,
+            )
+            self._rendered_metrics_summary = rendered
+        else:
+            self._rendered_metrics_summary = False
 
         # Still log for debugging/records
         for color, player_metrics_summary in summary_by_color.items():

@@ -9,6 +9,10 @@ display_board: true          # Show chess board in terminal during gameplay
                             # - false: Minimal text output, faster for batch runs
                             # - DEPENDENCY: Rich terminal features may not work in all environments
 
+display_summary: true        # Show game summary panel at end of each game
+                            # - true: Rich terminal summary with outcome and metrics
+                            # - false: No end-game summary, cleaner for batch runs
+
 # EVALUATION SYSTEM - Move quality assessment
 enable_metrics: true         # Enable Stockfish-based move evaluation
                             # - true: Provides move quality analysis (excellent/good/mistake/blunder)

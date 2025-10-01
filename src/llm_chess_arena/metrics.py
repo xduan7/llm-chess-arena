@@ -147,12 +147,16 @@ class StockfishMetricsEvaluator:
         binary_path: str | None = None,
         engine_options: Mapping[str, Any] | None = None,
         thresholds: MoveQualityThresholds | None = None,
+        max_centipawn_loss: int | None = None,
     ) -> None:
         """Initialize the Stockfish-backed evaluator.
 
         Args:
             depth: Search depth for analysis.
             binary_path: Optional explicit Stockfish binary path.
+            engine_options: Stockfish UCI options.
+            thresholds: Move quality thresholds.
+            max_centipawn_loss: Cap for centipawn loss per move (prevents mate scores from skewing ACPL).
             engine_options: Optional UCI engine options.
             thresholds: Optional thresholds used when classifying move quality.
         """
@@ -162,6 +166,7 @@ class StockfishMetricsEvaluator:
         self._engine: chess.engine.SimpleEngine | None = None
         self._win_draw_loss_model: chess.engine.WdlModel = "sf"
         self._thresholds = thresholds or DEFAULT_MOVE_QUALITY_THRESHOLDS
+        self._max_centipawn_loss = max_centipawn_loss
 
     def evaluate_move(self, board: chess.Board, move: chess.Move) -> MoveMetrics:
         """Evaluate ``move`` and compare it with the engine-recommended alternative.
@@ -202,6 +207,11 @@ class StockfishMetricsEvaluator:
             0.0,
             best_move_evaluation.centipawns - played_move_evaluation.centipawns,
         )
+
+        # Apply cap if configured (prevents mate positions from skewing ACPL)
+        if self._max_centipawn_loss is not None:
+            centipawn_loss = min(centipawn_loss, float(self._max_centipawn_loss))
+
         win_probability_delta = (
             best_move_evaluation.win_probability
             - played_move_evaluation.win_probability
@@ -320,6 +330,7 @@ class MetricsTracker:
         binary_path: str | None = None,
         engine_options: Mapping[str, Any] | None = None,
         thresholds: MoveQualityThresholds | None = None,
+        max_centipawn_loss: int | None = None,
     ) -> "MetricsTracker":
         """Construct a tracker backed by a Stockfish-powered evaluator.
 
@@ -328,6 +339,7 @@ class MetricsTracker:
             binary_path: Optional explicit path to the Stockfish executable.
             engine_options: Optional UCI options passed to Stockfish.
             thresholds: Optional override for move quality thresholds.
+            max_centipawn_loss: Cap for centipawn loss per move (prevents mate scores from skewing ACPL).
 
         Returns:
             MetricsTracker: Tracker instance that evaluates moves with Stockfish
@@ -339,6 +351,7 @@ class MetricsTracker:
                 binary_path=binary_path,
                 engine_options=engine_options,
                 thresholds=thresholds,
+                max_centipawn_loss=max_centipawn_loss,
             )
         except (
             FileNotFoundError,

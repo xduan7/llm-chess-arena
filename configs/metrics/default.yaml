@@ -54,6 +54,14 @@ quality_thresholds:
                           # - Clear errors that worsen position
                           # - > 300 centipawns = "Blunder" (major error)
 
+# CENTIPAWN LOSS CALCULATION - Cap for average calculation
+max_centipawn_loss_per_move: 1000  # Maximum CP loss counted per move for ACPL
+                                   # - Prevents mate positions from skewing averages
+                                   # - Industry standards: Chess.com=1000, Lichess=1000, python-chess-annotator=2000
+                                   # - Without cap: missing mate = ~100,000 CP loss (breaks averages)
+                                   # - With cap: missing mate = 2000 CP loss (reasonable penalty)
+                                   # - Set to null to disable capping (not recommended)
+
 # USAGE NOTES:
 # - All metrics depend on Stockfish being installed and accessible
 # - Higher depth and memory improve accuracy but slow down games
