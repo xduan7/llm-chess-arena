@@ -226,7 +226,7 @@ class TestHydraConfig:
     def test_load_app_config__when_overrides_supplied__then_applies_changes(self):
         """Hydra overrides should mutate the resulting AppConfig dataclasses."""
         overrides = [
-            "players@players.white=stockfish",
+            "players@players.white=stockfish/elo_2000",
             "+players.white.engine_limits.depth=16",
             "players@players.black=llm/default",
             "players.black.connector.model=gpt-4",

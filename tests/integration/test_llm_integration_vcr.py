@@ -311,3 +311,46 @@ class TestLLMGamesVCR:
             game.make_move()
 
         assert len(game.board.move_stack) >= 2
+
+    @vcr_config.use_cassette("llm_coherent_opening.yaml")
+    def test_llm_coherent_opening_sequence__with_vcr__then_plays_sensibly(self):
+        """Test that LLM plays coherent opening moves with VCR."""
+        connector = LLMConnector(
+            model="gpt-4o-mini",
+            temperature=0.3,
+            max_num_tokens=1000,
+            request_timeout_in_seconds=10.0,
+            max_api_request_retries=3,
+        )
+        handler = GameArenaLLMMoveHandler()
+        white_player = LLMPlayer(
+            connector=connector,
+            handler=handler,
+            color="white",
+            max_move_retries=5,
+            num_votes=1,
+        )
+
+        board = chess.Board()
+        white_moves = []
+
+        for _ in range(5):
+            decision = white_player(board)
+            assert decision.action == "move"
+
+            move = chess.Move.from_uci(decision.attempted_move)
+            assert move in board.legal_moves
+
+            white_moves.append(board.san(move))
+            board.push(move)
+
+            # Play first legal black move
+            if not board.is_game_over():
+                black_moves = list(board.legal_moves)
+                board.push(black_moves[0])
+
+        assert len(white_moves) == 5
+
+        # First move should be a common opening
+        common_openings = ["e4", "d4", "Nf3", "c4"]
+        assert white_moves[0] in common_openings
