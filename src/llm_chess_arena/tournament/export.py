@@ -90,19 +90,19 @@ class ResultsExporter:
                     "result": game.result,
                     "total_moves": game.total_moves,
                     "white_centipawn_loss": (
-                        f"{game.white_centipawn_loss:.2f}"
+                        game.white_centipawn_loss
                         if game.white_centipawn_loss is not None
                         else ""
                     ),
                     "black_centipawn_loss": (
-                        f"{game.black_centipawn_loss:.2f}"
+                        game.black_centipawn_loss
                         if game.black_centipawn_loss is not None
                         else ""
                     ),
-                    "white_thinking_time": f"{game.white_thinking_time:.2f}",
-                    "black_thinking_time": f"{game.black_thinking_time:.2f}",
-                    "white_cost": f"{game.white_cost:.6f}",
-                    "black_cost": f"{game.black_cost:.6f}",
+                    "white_thinking_time": game.white_thinking_time,
+                    "black_thinking_time": game.black_thinking_time,
+                    "white_cost": game.white_cost,
+                    "black_cost": game.black_cost,
                     # White player move quality counts
                     "white_best": game.white_quality_counts.get("best", 0),
                     "white_excellent": game.white_quality_counts.get("excellent", 0),
@@ -125,43 +125,3 @@ class ResultsExporter:
         logger.info(
             "Exported {} game results to CSV: {}", len(result.games), output_path
         )
-
-    @staticmethod
-    def print_summary(result: TournamentResult) -> None:
-        """Print human-readable tournament summary to console.
-
-        Args:
-            result: Tournament results to summarize.
-        """
-        print("\n" + "=" * 80)
-        print(f"Tournament: {result.match_name}")
-        print("=" * 80)
-
-        print(
-            f"Duration: {result.duration_seconds:.1f}s"
-            if result.duration_seconds
-            else "Duration: N/A"
-        )
-        print(f"Total Games: {result.total_games}")
-        print(f"Total Cost: ${result.total_cost:.4f}")
-
-        print("\n" + "-" * 80)
-        print("Results:")
-        print("-" * 80)
-
-        print(f"Player 1: {result.player1_name} | Player 2: {result.player2_name}")
-        print(f"Games: {result.total_games}")
-        print(
-            f"Results: P1={result.player1_wins} D={result.draws} P2={result.player2_wins}"
-        )
-        print(
-            f"Win Rates: P1={result.win_rate_player1:.1%} Draw={result.draw_rate:.1%} P2={result.win_rate_player2:.1%}"
-        )
-        print(f"Avg Game Length: {result.avg_game_length:.1f} moves")
-
-        if result.player1_avg_centipawn_loss is not None:
-            print(f"Player 1 Avg CP Loss: {result.player1_avg_centipawn_loss:.1f}")
-        if result.player2_avg_centipawn_loss is not None:
-            print(f"Player 2 Avg CP Loss: {result.player2_avg_centipawn_loss:.1f}")
-
-        print("\n" + "=" * 80 + "\n")

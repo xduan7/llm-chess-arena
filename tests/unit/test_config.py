@@ -11,9 +11,6 @@ from llm_chess_arena import config
 from llm_chess_arena.config import RandomPlayerConfig
 from llm_chess_arena.config.schema import _ensure_player_color
 from llm_chess_arena.config import loader
-from llm_chess_arena.game import Game
-from llm_chess_arena.player.base_player import BasePlayer
-from llm_chess_arena.types import PlayerDecision
 
 
 class TestLoadEnv:
@@ -207,58 +204,6 @@ GOOGLE_API_KEY=goog-test789
         assert os.environ.get("GOOGLE_API_KEY") == "goog-test789"
 
 
-class CloseCountingPlayer(BasePlayer):
-    """Test helper that tracks how many times close() is invoked."""
-
-    def __init__(self, name: str, color: str) -> None:
-        """Initialize the stub player and reset close() counters."""
-        super().__init__(name=name, color=color)
-        self.close_calls = 0
-
-    def _make_decision(self, context) -> PlayerDecision:  # type: ignore[override]
-        """Always resign so the game loop terminates quickly in tests."""
-        return PlayerDecision(action="resign")
-
-    def close(self) -> None:  # noqa: D401
-        """Increment the counter to track cleanup calls."""
-        self.close_calls += 1
-
-
-def test_run_game_from_config_closes_players_once(monkeypatch):
-    """Ensure run_game_from_config relies on Game.play for cleanup."""
-
-    white_player = CloseCountingPlayer("White", "white")
-    black_player = CloseCountingPlayer("Black", "black")
-    game = Game(white_player, black_player, enable_metrics=False)
-
-    captured_config: dict[str, config.AppConfig] = {}
-
-    def fake_create_game(app_config: config.AppConfig) -> Game:
-        """Capture the config used to build a game and return the stub instance."""
-        captured_config["app_config"] = app_config
-        return game
-
-    monkeypatch.setattr(
-        "llm_chess_arena.factory.GameFactory.create_game", fake_create_game
-    )
-
-    app_config = config.AppConfig(
-        env=config.EnvConfig(load_dotenv=False),
-        game=config.GameConfig(enable_metrics=False, max_num_moves=1),
-        metrics=config.MetricsConfig(max_centipawn_loss_per_move=1000),
-        players=config.PlayersConfig(
-            white=config.RandomPlayerConfig(color="white", name="Random White"),
-            black=config.RandomPlayerConfig(color="black", name="Random Black"),
-        ),
-    )
-
-    config.run_game_from_config(app_config)
-
-    assert white_player.close_calls == 1
-    assert black_player.close_calls == 1
-    assert captured_config["app_config"].game.max_num_moves == 1
-
-
 class TestHydraConfig:
     """Tests validating Hydra-backed configuration helpers."""
 
@@ -382,6 +327,7 @@ class TestHydraConfig:
                 },
                 "game": {
                     "display_board": True,
+                    "display_summary": False,
                     "enable_metrics": False,
                     "max_num_moves": 10,
                 },
@@ -458,21 +404,21 @@ class TestEnsurePlayerColor:
         self,
     ):
         """Test that _ensure_player_color returns a new config instance with the color set."""
-        # Create original config with existing default color
+        # Create original config without color (defaults to None)
         original_config = RandomPlayerConfig(
             kind="random",
             name="Test Player",
             seed=42,
         )
 
-        # Original config has default color "white"
-        assert original_config.color == "white"
+        # Original config has default color None
+        assert original_config.color is None
 
-        # Apply different color using _ensure_player_color
+        # Apply color using _ensure_player_color
         new_config = _ensure_player_color(original_config, "black")
 
         # Verify original config remains unchanged (immutability)
-        assert original_config.color == "white"
+        assert original_config.color is None
 
         # Verify new config has the new color set
         assert new_config.color == "black"

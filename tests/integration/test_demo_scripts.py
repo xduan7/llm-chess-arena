@@ -7,16 +7,16 @@ This ensures the demo configurations work end-to-end.
 
 from __future__ import annotations
 
+from pathlib import Path
 from unittest.mock import patch, MagicMock
 import pytest
 from hydra import compose, initialize
 from hydra.core.global_hydra import GlobalHydra
 
 from llm_chess_arena.config.schema import AppConfig
-from llm_chess_arena.config.loader import (
-    app_config_from_dictconfig,
-    run_game_from_config,
-)
+from llm_chess_arena.config.loader import app_config_from_dictconfig
+from llm_chess_arena.tournament.types import TournamentConfig
+from llm_chess_arena.tournament.executor import TournamentRunner
 
 
 class TestDemoScriptConfigurations:
@@ -57,16 +57,34 @@ class TestDemoScriptConfigurations:
         assert app_config.players.black.kind == "random"
 
         # Verify the configuration can be used to create actual game components
+        # Create a single-game tournament to test the production path
+        tournament_config = TournamentConfig(
+            match_name="test_random",
+            num_games=1,
+            parallel_games=1,
+            alternate_colors=False,  # Don't swap colors for single game
+            output_dir=Path("/tmp/test_output"),
+            display_summary=False,
+        )
+        runner = TournamentRunner(
+            tournament_config=tournament_config,
+            game_config=app_config.game,
+            metrics_config=app_config.metrics,
+            white_player_config=app_config.players.white,
+            black_player_config=app_config.players.black,
+        )
+
         # Mock the game.play() method to avoid actually running a game
         with patch("llm_chess_arena.game.Game.play"):
-            game = run_game_from_config(app_config)
+            result = runner.run()
 
-        # Verify game was created successfully
-        assert game is not None
-        assert hasattr(game, "white_player")
-        assert hasattr(game, "black_player")
-        assert game.white_player.name.startswith("Random")
-        assert game.black_player.name.startswith("Random")
+        # Verify tournament and game were created successfully
+        assert result is not None
+        assert result.total_games == 1
+        assert len(result.games) == 1
+        game_result = result.games[0]
+        assert game_result.white_player_name.startswith("Random")
+        assert game_result.black_player_name.startswith("Random")
 
     def test_stockfish_vs_random_demo_config_composes(self) -> None:
         """Verify the Stockfish vs random demo configuration composes correctly."""
@@ -90,14 +108,34 @@ class TestDemoScriptConfigurations:
         assert app_config.players.black.kind == "random"
 
         # Verify the configuration can be used to create actual game components
+        # Create a single-game tournament to test the production path
+        tournament_config = TournamentConfig(
+            match_name="test_stockfish",
+            num_games=1,
+            parallel_games=1,
+            alternate_colors=False,  # Don't swap colors for single game
+            output_dir=Path("/tmp/test_output"),
+            display_summary=False,
+        )
+        runner = TournamentRunner(
+            tournament_config=tournament_config,
+            game_config=app_config.game,
+            metrics_config=app_config.metrics,
+            white_player_config=app_config.players.white,
+            black_player_config=app_config.players.black,
+        )
+
         # Mock the game.play() method to avoid actually running a game
         with patch("llm_chess_arena.game.Game.play"):
-            game = run_game_from_config(app_config)
+            result = runner.run()
 
-        # Verify game was created successfully
-        assert game is not None
-        assert "Stockfish" in game.white_player.name
-        assert game.black_player.name.startswith("Random")
+        # Verify tournament and game were created successfully
+        assert result is not None
+        assert result.total_games == 1
+        assert len(result.games) == 1
+        game_result = result.games[0]
+        assert "Stockfish" in game_result.white_player_name
+        assert game_result.black_player_name.startswith("Random")
 
     def test_llm_vs_random_demo_config_composes(self) -> None:
         """Verify the LLM vs random demo configuration composes correctly."""
@@ -132,6 +170,23 @@ class TestDemoScriptConfigurations:
             prompt_tokens=0, completion_tokens=0, total_tokens=0, cost=0.0
         )
 
+        # Create a single-game tournament to test the production path
+        tournament_config = TournamentConfig(
+            match_name="test_llm",
+            num_games=1,
+            parallel_games=1,
+            alternate_colors=False,  # Don't swap colors for single game
+            output_dir=Path("/tmp/test_output"),
+            display_summary=False,
+        )
+        runner = TournamentRunner(
+            tournament_config=tournament_config,
+            game_config=app_config.game,
+            metrics_config=app_config.metrics,
+            white_player_config=app_config.players.white,
+            black_player_config=app_config.players.black,
+        )
+
         with (
             patch(
                 "llm_chess_arena.factory.player_factory.LLMConnector",
@@ -139,12 +194,15 @@ class TestDemoScriptConfigurations:
             ),
             patch("llm_chess_arena.game.Game.play"),
         ):
-            game = run_game_from_config(app_config)
+            result = runner.run()
 
-        # Verify game was created successfully
-        assert game is not None
-        assert "GPT-4o Mini" in game.white_player.name
-        assert game.black_player.name.startswith("Random")
+        # Verify tournament and game were created successfully
+        assert result is not None
+        assert result.total_games == 1
+        assert len(result.games) == 1
+        game_result = result.games[0]
+        assert "GPT-4o Mini" in game_result.white_player_name
+        assert game_result.black_player_name.startswith("Random")
 
     def test_llm_config_includes_gpt_4o_mini_token_limits(self) -> None:
         """Verify that gpt-4o-mini has proper token limits configured."""

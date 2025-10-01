@@ -45,7 +45,13 @@ class TestRandomVsRandom:
             white_player = RandomPlayer(name="White", color="white", seed=white_seed)
             black_player = RandomPlayer(name="Black", color="black", seed=black_seed)
 
-            game = Game(white_player, black_player)
+            game = Game(
+                white_player,
+                black_player,
+                display_board=False,
+                display_summary=False,
+                enable_metrics=False,
+            )
             game.play(max_num_moves=move_limit)
 
             outcome = game.outcome.result() if game.finished else "unfinished"
@@ -72,7 +78,13 @@ class TestRandomVsRandom:
             white_player = RandomPlayer(name="White", color="white", seed=white_seed)
             black_player = RandomPlayer(name="Black", color="black", seed=black_seed)
 
-            game = Game(white_player, black_player)
+            game = Game(
+                white_player,
+                black_player,
+                display_board=False,
+                display_summary=False,
+                enable_metrics=False,
+            )
             game.play(max_num_moves=move_limit)
 
             if game.finished and game.outcome:
@@ -90,7 +102,13 @@ class TestGameWithCustomBoard:
         self, white_player, black_player
     ):
         """Run play from a Ruy Lopez setup and ensure progress occurs."""
-        game = Game(white_player, black_player)
+        game = Game(
+            white_player,
+            black_player,
+            display_board=False,
+            display_summary=False,
+            enable_metrics=False,
+        )
 
         spanish_opening_moves = ["e4", "e5", "Nf3", "Nc6", "Bb5", "a6", "Ba4", "Nf6"]
 
@@ -133,7 +151,13 @@ class TestPlayerInteraction:
         """Check that recording players view alternating board states."""
         white_recording_player = RecordingPlayer(name="White", color="white", seed=42)
         black_recording_player = RecordingPlayer(name="Black", color="black", seed=43)
-        game = Game(white_recording_player, black_recording_player)
+        game = Game(
+            white_recording_player,
+            black_recording_player,
+            display_board=False,
+            display_summary=False,
+            enable_metrics=False,
+        )
 
         moves_to_play = 6
         for _ in range(moves_to_play):
@@ -158,7 +182,13 @@ class TestPlayerInteraction:
         faulty_white_player = FailingPlayer(
             name="White", color="white", seed=42, fail_after_moves=2
         )
-        game = Game(faulty_white_player, black_player)
+        game = Game(
+            faulty_white_player,
+            black_player,
+            display_board=False,
+            display_summary=False,
+            enable_metrics=False,
+        )
 
         with pytest.raises(RuntimeError, match="Simulated player error"):
             game.play(max_num_moves=10)

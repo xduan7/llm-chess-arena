@@ -58,15 +58,20 @@ def aggregate_tournament_results(
         total_cost += game.white_cost + game.black_cost
         total_moves += game.total_moves
 
+        # Skip failed games (result="*") for win/loss/draw stats
+        # Failed games are still counted in total_games and costs
+        is_completed_game = game.result in ("1-0", "0-1", "1/2-1/2")
+
         # Track stats for white player in this game
         white_name = game.white_player_name
         if white_name in player_stats:
-            if game.result == "1-0":
-                player_stats[white_name]["wins"] += 1
-            elif game.result == "0-1":
-                player_stats[white_name]["losses"] += 1
-            else:
-                player_stats[white_name]["draws"] += 1
+            if is_completed_game:
+                if game.result == "1-0":
+                    player_stats[white_name]["wins"] += 1
+                elif game.result == "0-1":
+                    player_stats[white_name]["losses"] += 1
+                else:  # "1/2-1/2"
+                    player_stats[white_name]["draws"] += 1
 
             if game.white_centipawn_loss is not None:
                 player_stats[white_name]["cp_losses"].append(game.white_centipawn_loss)
@@ -81,12 +86,13 @@ def aggregate_tournament_results(
         # Track stats for black player in this game
         black_name = game.black_player_name
         if black_name in player_stats:
-            if game.result == "0-1":
-                player_stats[black_name]["wins"] += 1
-            elif game.result == "1-0":
-                player_stats[black_name]["losses"] += 1
-            else:
-                player_stats[black_name]["draws"] += 1
+            if is_completed_game:
+                if game.result == "0-1":
+                    player_stats[black_name]["wins"] += 1
+                elif game.result == "1-0":
+                    player_stats[black_name]["losses"] += 1
+                else:  # "1/2-1/2"
+                    player_stats[black_name]["draws"] += 1
 
             if game.black_centipawn_loss is not None:
                 player_stats[black_name]["cp_losses"].append(game.black_centipawn_loss)

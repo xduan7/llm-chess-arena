@@ -782,11 +782,6 @@ def build_game_outcome_summary(
     )
 
 
-# ============================================================================
-# Rate Limiting Utilities
-# ============================================================================
-
-
 class RateLimiter(Protocol):
     """Protocol for rate limiting implementations."""
 

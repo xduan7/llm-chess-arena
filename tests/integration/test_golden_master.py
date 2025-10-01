@@ -2,23 +2,26 @@
 
 from __future__ import annotations
 
-from llm_chess_arena.config import load_app_config, run_game_from_config
+from llm_chess_arena.game import Game
+from llm_chess_arena.player.random_player import RandomPlayer
 
 
 def test_random_game_golden_master() -> None:
     """Fixed-seed random game should retain opening sequence."""
-    app_config = load_app_config(
-        "config",
-        [
-            "players.white.seed=12345",
-            "players.black.seed=67890",
-            "game.max_num_moves=20",
-            "game.enable_metrics=false",
-            "game.display_board=false",
-        ],
-    )
+    # Create players with fixed seeds for deterministic behavior
+    white_player = RandomPlayer(name="White", color="white", seed=12345)
+    black_player = RandomPlayer(name="Black", color="black", seed=67890)
 
-    game = run_game_from_config(app_config)
+    # Create and play game
+    game = Game(
+        white_player=white_player,
+        black_player=black_player,
+        display_board=False,
+        display_summary=False,
+        enable_metrics=False,
+    )
+    game.play(max_num_moves=20)
+
     moves = [move.uci() for move in game.board.move_stack]
 
     assert moves[:3] == ["g2g4", "f7f6", "g1h3"]

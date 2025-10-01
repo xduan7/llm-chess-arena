@@ -53,7 +53,13 @@ def black_player():
 @pytest.fixture
 def game(white_player, black_player):
     """Standard game with two random players."""
-    return Game(white_player, black_player)
+    return Game(
+        white_player,
+        black_player,
+        display_board=False,
+        display_summary=False,
+        enable_metrics=False,
+    )
 
 
 # Common Board Positions
@@ -179,6 +185,12 @@ def setup_game_from_fen(
         white_player = RandomPlayer(name="White", color="white")
     if black_player is None:
         black_player = RandomPlayer(name="Black", color="black")
-    game = Game(white_player, black_player)
+    game = Game(
+        white_player,
+        black_player,
+        display_board=False,
+        display_summary=False,
+        enable_metrics=False,
+    )
     game.board = chess.Board(fen_string)
     return game

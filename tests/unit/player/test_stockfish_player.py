@@ -56,7 +56,13 @@ class TestStockfishPlayer:
             engine_limits={"depth": 5},  # Low depth for speed
         )
 
-        game = Game(stockfish, black_player)
+        game = Game(
+            stockfish,
+            black_player,
+            display_board=False,
+            display_summary=False,
+            enable_metrics=False,
+        )
         game.play(max_num_moves=100)
         assert game.finished or len(game.board.move_stack) == 100
 

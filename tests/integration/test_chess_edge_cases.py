@@ -11,9 +11,15 @@ class TestChessEdgeCases:
 
     def test_en_passant_capture(self):
         """Test that en passant captures work correctly in a game."""
-        white = RandomPlayer(color="white", seed=42)
-        black = RandomPlayer(color="black", seed=43)
-        game = Game(white, black)
+        white = RandomPlayer(name="White", color="white", seed=42)
+        black = RandomPlayer(name="Black", color="black", seed=43)
+        game = Game(
+            white,
+            black,
+            display_board=False,
+            display_summary=False,
+            enable_metrics=False,
+        )
 
         # Set up position for en passant
         # White pawn on e5, black plays d7-d5
@@ -33,9 +39,15 @@ class TestChessEdgeCases:
 
     def test_castling_kingside(self):
         """Test kingside castling mechanics."""
-        white = RandomPlayer(color="white")
-        black = RandomPlayer(color="black")
-        game = Game(white, black)
+        white = RandomPlayer(name="White", color="white")
+        black = RandomPlayer(name="Black", color="black")
+        game = Game(
+            white,
+            black,
+            display_board=False,
+            display_summary=False,
+            enable_metrics=False,
+        )
 
         # Clear path for kingside castling
         game.board = chess.Board("r3k2r/pppppppp/8/8/8/8/PPPPPPPP/R3K2R w KQkq - 0 1")
@@ -54,9 +66,15 @@ class TestChessEdgeCases:
 
     def test_castling_queenside(self):
         """Test queenside castling mechanics."""
-        white = RandomPlayer(color="white")
-        black = RandomPlayer(color="black")
-        game = Game(white, black)
+        white = RandomPlayer(name="White", color="white")
+        black = RandomPlayer(name="Black", color="black")
+        game = Game(
+            white,
+            black,
+            display_board=False,
+            display_summary=False,
+            enable_metrics=False,
+        )
 
         # Clear path for queenside castling
         game.board = chess.Board("r3k2r/pppppppp/8/8/8/8/PPPPPPPP/R3K2R w KQkq - 0 1")
@@ -75,9 +93,15 @@ class TestChessEdgeCases:
 
     def test_pawn_promotion(self):
         """Test pawn promotion to different pieces."""
-        white = RandomPlayer(color="white")
-        black = RandomPlayer(color="black")
-        game = Game(white, black)
+        white = RandomPlayer(name="White", color="white")
+        black = RandomPlayer(name="Black", color="black")
+        game = Game(
+            white,
+            black,
+            display_board=False,
+            display_summary=False,
+            enable_metrics=False,
+        )
 
         # White pawn ready to promote
         game.board = chess.Board("8/P7/8/8/8/8/8/8 w - - 0 1")
@@ -95,9 +119,15 @@ class TestChessEdgeCases:
 
     def test_stalemate_detection(self):
         """Test that stalemate is properly detected."""
-        white = RandomPlayer(color="white")
-        black = RandomPlayer(color="black")
-        game = Game(white, black)
+        white = RandomPlayer(name="White", color="white")
+        black = RandomPlayer(name="Black", color="black")
+        game = Game(
+            white,
+            black,
+            display_board=False,
+            display_summary=False,
+            enable_metrics=False,
+        )
 
         # Classic stalemate position
         game.board = chess.Board("7k/5Q2/6K1/8/8/8/8/8 b - - 0 1")
@@ -110,9 +140,15 @@ class TestChessEdgeCases:
 
     def test_insufficient_material_draw(self):
         """Test draw by insufficient material."""
-        white = RandomPlayer(color="white")
-        black = RandomPlayer(color="black")
-        game = Game(white, black)
+        white = RandomPlayer(name="White", color="white")
+        black = RandomPlayer(name="Black", color="black")
+        game = Game(
+            white,
+            black,
+            display_board=False,
+            display_summary=False,
+            enable_metrics=False,
+        )
 
         # King vs King
         game.board = chess.Board("8/8/8/4k3/8/8/8/4K3 w - - 0 1")
@@ -135,9 +171,15 @@ class TestChessEdgeCases:
 
     def test_threefold_repetition(self):
         """Test threefold repetition detection."""
-        white = RandomPlayer(color="white")
-        black = RandomPlayer(color="black")
-        game = Game(white, black)
+        white = RandomPlayer(name="White", color="white")
+        black = RandomPlayer(name="Black", color="black")
+        game = Game(
+            white,
+            black,
+            display_board=False,
+            display_summary=False,
+            enable_metrics=False,
+        )
 
         # Create a position that will repeat
         moves = [
@@ -161,9 +203,15 @@ class TestChessEdgeCases:
 
     def test_fifty_move_rule(self):
         """Test fifty-move rule detection."""
-        white = RandomPlayer(color="white")
-        black = RandomPlayer(color="black")
-        game = Game(white, black)
+        white = RandomPlayer(name="White", color="white")
+        black = RandomPlayer(name="Black", color="black")
+        game = Game(
+            white,
+            black,
+            display_board=False,
+            display_summary=False,
+            enable_metrics=False,
+        )
 
         # Create a position with high halfmove clock (approaching 50-move rule)
         game.board = chess.Board("8/8/8/3k4/3K4/8/8/8 w - - 99 50")
@@ -181,9 +229,15 @@ class TestComplexPositions:
 
     def test_pinned_piece_cannot_move(self):
         """Test that pinned pieces have restricted movement."""
-        white = RandomPlayer(color="white")
-        black = RandomPlayer(color="black")
-        game = Game(white, black)
+        white = RandomPlayer(name="White", color="white")
+        black = RandomPlayer(name="Black", color="black")
+        game = Game(
+            white,
+            black,
+            display_board=False,
+            display_summary=False,
+            enable_metrics=False,
+        )
 
         # Knight pinned by bishop
         game.board = chess.Board(
@@ -207,9 +261,15 @@ class TestComplexPositions:
 
     def test_discovered_check(self):
         """Test discovered check scenario."""
-        white = RandomPlayer(color="white")
-        black = RandomPlayer(color="black")
-        game = Game(white, black)
+        white = RandomPlayer(name="White", color="white")
+        black = RandomPlayer(name="Black", color="black")
+        game = Game(
+            white,
+            black,
+            display_board=False,
+            display_summary=False,
+            enable_metrics=False,
+        )
 
         # Set up discovered check position
         # White bishop on a1, white knight blocking, black king on h8

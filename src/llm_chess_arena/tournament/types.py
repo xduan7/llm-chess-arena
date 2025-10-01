@@ -16,11 +16,11 @@ class TournamentConfig:
 
     match_name: str
     num_games: int
-    parallel_games: int = 1
-    rate_limit_rpm: int | None = None  # Requests per minute (divided by parallel_games)
-    alternate_colors: bool = True  # Swap colors for half the games
-    display_summary: bool = True  # Display Rich tournament summary at end
-    output_dir: Path = field(default_factory=lambda: Path("output"))
+    parallel_games: int
+    alternate_colors: bool
+    display_summary: bool
+    output_dir: Path
+    rate_limit_rpm: int | None = None
 
     def __post_init__(self) -> None:
         """Validate configuration."""
@@ -28,6 +28,10 @@ class TournamentConfig:
             raise ValueError(f"num_games must be positive, got {self.num_games}")
         if self.parallel_games < 1:
             raise ValueError(f"parallel_games must be >= 1, got {self.parallel_games}")
+        if self.rate_limit_rpm is not None and self.rate_limit_rpm <= 0:
+            raise ValueError(
+                f"rate_limit_rpm must be positive when specified, got {self.rate_limit_rpm}"
+            )
 
         # Warn about odd number of games with color alternation (not perfectly balanced)
         if self.alternate_colors and self.num_games > 1 and self.num_games % 2 != 0:

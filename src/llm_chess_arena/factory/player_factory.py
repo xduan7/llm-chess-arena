@@ -65,6 +65,8 @@ class PlayerFactory:
         random_player_config: "RandomPlayerConfig",
     ) -> RandomPlayer:
         """Create random player from configuration."""
+        if random_player_config.color is None:
+            raise ValueError("Random player configuration must have a color assigned")
         name = (
             random_player_config.name
             or f"Random {random_player_config.color.capitalize()}"
@@ -80,6 +82,10 @@ class PlayerFactory:
         stockfish_player_config: "StockfishPlayerConfig",
     ) -> StockfishPlayer:
         """Create Stockfish player from configuration."""
+        if stockfish_player_config.color is None:
+            raise ValueError(
+                "Stockfish player configuration must have a color assigned"
+            )
         name = stockfish_player_config.name or "Stockfish"
         engine_limits = (
             dict(stockfish_player_config.engine_limits)
@@ -112,6 +118,9 @@ class PlayerFactory:
         Returns:
             LLMPlayer: Configured LLM player instance.
         """
+        if llm_player_config.color is None:
+            raise ValueError("LLM player configuration must have a color assigned")
+
         connector_config = llm_player_config.connector
         if connector_config is None:
             raise ValueError("LLM player configuration requires connector settings")

@@ -21,6 +21,9 @@ class TestTournamentConfig:
             match_name="test_match",
             num_games=10,
             parallel_games=2,
+            alternate_colors=True,
+            display_summary=False,
+            output_dir=Path("output"),
             rate_limit_rpm=60,
         )
 
@@ -29,18 +32,58 @@ class TestTournamentConfig:
         assert config.parallel_games == 2
         assert config.rate_limit_rpm == 60
         assert config.alternate_colors is True
-        assert config.display_summary is True
+        assert config.display_summary is False
         assert isinstance(config.output_dir, Path)
 
     def test_init__given_invalid_num_games__then_raises_error(self) -> None:
         """Test validation for num_games."""
         with pytest.raises(ValueError, match="num_games must be positive"):
-            TournamentConfig(match_name="test", num_games=0)
+            TournamentConfig(
+                match_name="test",
+                num_games=0,
+                parallel_games=1,
+                alternate_colors=True,
+                display_summary=False,
+                output_dir=Path("output"),
+            )
 
     def test_init__given_invalid_parallel_games__then_raises_error(self) -> None:
         """Test validation for parallel_games."""
         with pytest.raises(ValueError, match="parallel_games must be >= 1"):
-            TournamentConfig(match_name="test", num_games=10, parallel_games=0)
+            TournamentConfig(
+                match_name="test",
+                num_games=10,
+                parallel_games=0,
+                alternate_colors=True,
+                display_summary=False,
+                output_dir=Path("output"),
+            )
+
+    def test_init__given_zero_rate_limit__then_raises_error(self) -> None:
+        """Test validation rejects rate_limit_rpm=0."""
+        with pytest.raises(ValueError, match="rate_limit_rpm must be positive"):
+            TournamentConfig(
+                match_name="test",
+                num_games=10,
+                parallel_games=1,
+                alternate_colors=True,
+                display_summary=False,
+                output_dir=Path("output"),
+                rate_limit_rpm=0,
+            )
+
+    def test_init__given_negative_rate_limit__then_raises_error(self) -> None:
+        """Test validation rejects negative rate_limit_rpm."""
+        with pytest.raises(ValueError, match="rate_limit_rpm must be positive"):
+            TournamentConfig(
+                match_name="test",
+                num_games=10,
+                parallel_games=1,
+                alternate_colors=True,
+                display_summary=False,
+                output_dir=Path("output"),
+                rate_limit_rpm=-10,
+            )
 
     def test_init__given_odd_games_with_alternation__then_warns(
         self, caplog: pytest.LogCaptureFixture
@@ -48,7 +91,14 @@ class TestTournamentConfig:
         """Test warning for odd number of games with color alternation."""
         # Note: loguru doesn't integrate with pytest caplog by default
         # Just verify config creation succeeds - the warning is logged but not testable here
-        config = TournamentConfig(match_name="test", num_games=5, alternate_colors=True)
+        config = TournamentConfig(
+            match_name="test",
+            num_games=5,
+            parallel_games=1,
+            alternate_colors=True,
+            display_summary=False,
+            output_dir=Path("output"),
+        )
         assert config.num_games == 5
 
 

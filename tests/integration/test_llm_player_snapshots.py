@@ -12,7 +12,10 @@ from llm_chess_arena.player.llm import (
     LLMPlayer,
 )
 from llm_chess_arena.types import PlayerDecisionContext
-from llm_chess_arena.config import load_app_config, run_game_from_config
+from llm_chess_arena.config import load_app_config
+from llm_chess_arena.tournament.types import TournamentConfig
+from llm_chess_arena.tournament.executor import TournamentRunner
+from pathlib import Path
 
 
 class TestLLMPlayerBehaviorSnapshots:
@@ -155,9 +158,25 @@ def test_end_to_end_game_with_metrics() -> None:
         ],
     )
 
-    game = run_game_from_config(app_config)
-    assert game.board.move_stack  # At least one move played
-    assert len(game.board.move_stack) <= 10
+    tournament_config = TournamentConfig(
+        match_name="test_metrics",
+        num_games=1,
+        parallel_games=1,
+        alternate_colors=False,  # Don't swap colors for single game
+        display_summary=False,
+        output_dir=Path("/tmp/test_output"),
+    )
+    runner = TournamentRunner(
+        tournament_config=tournament_config,
+        game_config=app_config.game,
+        metrics_config=app_config.metrics,
+        white_player_config=app_config.players.white,
+        black_player_config=app_config.players.black,
+    )
+    result = runner.run()
+    assert result.total_games == 1
+    assert result.games[0].total_moves > 0  # At least one move played
+    assert result.games[0].total_moves <= 10
 
     app_config_no_metrics = load_app_config(
         "config",
@@ -168,6 +187,22 @@ def test_end_to_end_game_with_metrics() -> None:
         ],
     )
 
-    game_no_metrics = run_game_from_config(app_config_no_metrics)
-    assert game_no_metrics.board.move_stack
-    assert len(game_no_metrics.board.move_stack) <= 10
+    tournament_config_no_metrics = TournamentConfig(
+        match_name="test_no_metrics",
+        num_games=1,
+        parallel_games=1,
+        alternate_colors=False,  # Don't swap colors for single game
+        display_summary=False,
+        output_dir=Path("/tmp/test_output"),
+    )
+    runner_no_metrics = TournamentRunner(
+        tournament_config=tournament_config_no_metrics,
+        game_config=app_config_no_metrics.game,
+        metrics_config=app_config_no_metrics.metrics,
+        white_player_config=app_config_no_metrics.players.white,
+        black_player_config=app_config_no_metrics.players.black,
+    )
+    result_no_metrics = runner_no_metrics.run()
+    assert result_no_metrics.total_games == 1
+    assert result_no_metrics.games[0].total_moves > 0
+    assert result_no_metrics.games[0].total_moves <= 10

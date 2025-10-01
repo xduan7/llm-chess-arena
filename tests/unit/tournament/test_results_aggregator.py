@@ -7,6 +7,7 @@ from pathlib import Path
 
 import pytest
 
+from llm_chess_arena.tournament.aggregator import aggregate_tournament_results
 from llm_chess_arena.tournament.export import ResultsExporter
 from llm_chess_arena.tournament.types import TournamentResult, GameResult
 
@@ -231,22 +232,177 @@ class TestResultsExporter:
         assert row["white_centipawn_loss"] == ""
         assert row["black_centipawn_loss"] == ""
 
-    def test_print_summary__given_result__then_prints_formatted_output(
-        self, sample_tournament_result: TournamentResult, capsys: pytest.CaptureFixture
+    def test_export_csv__given_numeric_values__then_preserves_types(
+        self, tmp_path: Path
     ) -> None:
-        """Test console summary printing."""
-        ResultsExporter.print_summary(sample_tournament_result)
+        """Test CSV export preserves numeric types for downstream analysis."""
+        result = TournamentResult(
+            match_name="numeric_test",
+            player1_name="P1",
+            player2_name="P2",
+            start_time=datetime.now(UTC),
+            games=[
+                GameResult(
+                    game_id=1,
+                    white_player_name="P1",
+                    black_player_name="P2",
+                    result="1-0",
+                    total_moves=45,
+                    termination_reason="checkmate",
+                    white_centipawn_loss=50.5,
+                    black_centipawn_loss=120.75,
+                    white_thinking_time=10.5,
+                    black_thinking_time=15.25,
+                    white_cost=0.012345,
+                    black_cost=0.023456,
+                    timestamp=datetime.now(UTC),
+                )
+            ],
+        )
 
-        captured = capsys.readouterr()
-        output = captured.out
+        output_file = tmp_path / "numeric.csv"
+        ResultsExporter.export_csv(result, output_file)
 
-        # Verify key information is present
-        assert "test_match" in output
-        assert "Player A" in output
-        assert "Player B" in output
-        assert "Total Games: 2" in output
-        assert "Total Cost: $0.0700" in output
-        assert "P1=1 D=0 P2=1" in output
-        assert "Avg Game Length: 45.0 moves" in output
-        assert "Player 1 Avg CP Loss: 80.0" in output
-        assert "Player 2 Avg CP Loss: 80.0" in output
+        with open(output_file, newline="") as f:
+            reader = csv.DictReader(f)
+            row = next(reader)
+
+        # Verify numeric values are written as numbers (not formatted strings)
+        # CSV stores everything as strings, but they should be parseable as floats
+        assert float(row["white_centipawn_loss"]) == 50.5
+        assert float(row["black_centipawn_loss"]) == 120.75
+        assert float(row["white_thinking_time"]) == 10.5
+        assert float(row["black_thinking_time"]) == 15.25
+        assert float(row["white_cost"]) == 0.012345
+        assert float(row["black_cost"]) == 0.023456
+
+
+class TestTournamentAggregator:
+    """Test aggregator handling of failed games and edge cases."""
+
+    def test_aggregate__given_failed_game__then_excludes_from_win_loss_stats(
+        self,
+    ) -> None:
+        """Test that failed games (result='*') don't inflate draw counts."""
+        start_time = datetime.now(UTC)
+        games = [
+            GameResult(
+                game_id=1,
+                white_player_name="Player A",
+                black_player_name="Player B",
+                result="1-0",
+                total_moves=40,
+                termination_reason="checkmate",
+                timestamp=start_time,
+            ),
+            GameResult(
+                game_id=2,
+                white_player_name="Player A",
+                black_player_name="Player B",
+                result="*",  # Failed game
+                total_moves=0,
+                termination_reason="Error: Connection timeout",
+                timestamp=start_time,
+            ),
+            GameResult(
+                game_id=3,
+                white_player_name="Player B",
+                black_player_name="Player A",
+                result="0-1",
+                total_moves=50,
+                termination_reason="checkmate",
+                timestamp=start_time,
+            ),
+        ]
+
+        result = aggregate_tournament_results(
+            match_name="test",
+            results=games,
+            start_time=start_time,
+            player1_name="Player A",
+            player2_name="Player B",
+        )
+
+        # Total games includes failed game
+        assert result.total_games == 3
+
+        # Win/loss counts exclude failed game
+        assert (
+            result.player1_wins == 2
+        )  # Player A won game 1 (as white) and game 3 (as black)
+        assert result.player2_wins == 0  # Player B lost both completed games
+        assert result.draws == 0  # Failed game should NOT be counted as draw
+
+    def test_aggregate__given_only_failed_games__then_zero_wins_draws(self) -> None:
+        """Test aggregator with only failed games."""
+        start_time = datetime.now(UTC)
+        games = [
+            GameResult(
+                game_id=1,
+                white_player_name="Player A",
+                black_player_name="Player B",
+                result="*",
+                total_moves=0,
+                termination_reason="Error: API failure",
+                timestamp=start_time,
+            ),
+            GameResult(
+                game_id=2,
+                white_player_name="Player A",
+                black_player_name="Player B",
+                result="*",
+                total_moves=0,
+                termination_reason="Error: Timeout",
+                timestamp=start_time,
+            ),
+        ]
+
+        result = aggregate_tournament_results(
+            match_name="test",
+            results=games,
+            start_time=start_time,
+            player1_name="Player A",
+            player2_name="Player B",
+        )
+
+        assert result.total_games == 2
+        assert result.player1_wins == 0
+        assert result.player2_wins == 0
+        assert result.draws == 0
+
+    def test_aggregate__given_draws__then_counts_correctly(self) -> None:
+        """Test that real draws (1/2-1/2) are counted correctly."""
+        start_time = datetime.now(UTC)
+        games = [
+            GameResult(
+                game_id=1,
+                white_player_name="Player A",
+                black_player_name="Player B",
+                result="1/2-1/2",
+                total_moves=60,
+                termination_reason="stalemate",
+                timestamp=start_time,
+            ),
+            GameResult(
+                game_id=2,
+                white_player_name="Player A",
+                black_player_name="Player B",
+                result="1/2-1/2",
+                total_moves=75,
+                termination_reason="fifty-move rule",
+                timestamp=start_time,
+            ),
+        ]
+
+        result = aggregate_tournament_results(
+            match_name="test",
+            results=games,
+            start_time=start_time,
+            player1_name="Player A",
+            player2_name="Player B",
+        )
+
+        assert result.total_games == 2
+        assert result.player1_wins == 0
+        assert result.player2_wins == 0
+        assert result.draws == 2  # Both games are real draws

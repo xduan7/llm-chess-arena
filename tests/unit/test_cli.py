@@ -86,6 +86,7 @@ def test_run_tournament_cli_smoke(monkeypatch, capsys):
             metrics_config,
             white_player_config,
             black_player_config,
+            hydra_config=None,
         ):
             captured["tournament_config"] = tournament_config
             captured["game_config"] = game_config
@@ -109,6 +110,7 @@ def test_run_tournament_cli_smoke(monkeypatch, capsys):
             "env": {"load_dotenv": False, "log_level": "INFO", "dotenv_path": None},
             "game": {
                 "display_board": False,
+                "display_summary": False,
                 "enable_metrics": False,
                 "max_num_moves": 12,
                 "record_dir": None,
@@ -132,6 +134,7 @@ def test_run_tournament_cli_smoke(monkeypatch, capsys):
                 "parallel_games": 1,
                 "rate_limit_rpm": None,
                 "alternate_colors": True,
+                "display_summary": False,
                 "output_dir": "output",
             },
             "players": {
@@ -192,6 +195,7 @@ def test_run_tournament_cli_with_llm_config_normalization(monkeypatch, capsys):
             metrics_config,
             white_player_config,
             black_player_config,
+            hydra_config=None,
         ):
             captured["white_player_config"] = white_player_config
 
@@ -221,6 +225,7 @@ def test_run_tournament_cli_with_llm_config_normalization(monkeypatch, capsys):
             "env": {"load_dotenv": False, "log_level": "INFO", "dotenv_path": None},
             "game": {
                 "display_board": False,
+                "display_summary": False,
                 "enable_metrics": False,
                 "max_num_moves": 5,
                 "record_dir": None,
@@ -244,6 +249,7 @@ def test_run_tournament_cli_with_llm_config_normalization(monkeypatch, capsys):
                 "parallel_games": 1,
                 "rate_limit_rpm": None,
                 "alternate_colors": True,
+                "display_summary": False,
                 "output_dir": "output",
             },
             "players": {

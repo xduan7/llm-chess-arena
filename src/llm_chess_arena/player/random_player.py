@@ -12,7 +12,7 @@ class RandomPlayer(BasePlayer):
     def __init__(
         self,
         *,
-        name: str = "Random Player",
+        name: str,
         color: Color,
         seed: int | None = None,
     ) -> None:

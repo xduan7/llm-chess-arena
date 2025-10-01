@@ -51,7 +51,12 @@ class TestPlayerFactory:
 
     def test_create_llm_player(self) -> None:
         """LLM configuration should construct an LLMPlayer."""
-        connector_config = LLMConnectorConfig(model="gpt-4", temperature=0.5)
+        connector_config = LLMConnectorConfig(
+            model="gpt-4",
+            temperature=0.5,
+            request_timeout_in_seconds=60.0,
+            max_api_request_retries=3,
+        )
         handler_config = LLMHandlerConfig(kind="game_arena")
         config = LLMPlayerConfig(
             color="white",

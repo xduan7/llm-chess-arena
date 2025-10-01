@@ -254,8 +254,14 @@ class TestLLMGamesVCR:
         from llm_chess_arena.player.random_player import RandomPlayer
         from llm_chess_arena.game import Game
 
-        random_player = RandomPlayer(color="black", seed=42)
-        game = Game(llm_player_vcr, random_player)
+        random_player = RandomPlayer(name="Black", color="black", seed=42)
+        game = Game(
+            llm_player_vcr,
+            random_player,
+            display_board=False,
+            display_summary=False,
+            enable_metrics=False,
+        )
 
         # Play up to 10 moves
         for _ in range(10):
@@ -290,7 +296,13 @@ class TestLLMGamesVCR:
 
         from llm_chess_arena.game import Game
 
-        game = Game(white, black)
+        game = Game(
+            white,
+            black,
+            display_board=False,
+            display_summary=False,
+            enable_metrics=False,
+        )
 
         # Play first 4 moves (2 per side)
         for _ in range(4):

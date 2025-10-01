@@ -17,9 +17,6 @@ from llm_chess_arena.config.schema import (
     RandomPlayerConfig,
     StockfishPlayerConfig,
     normalize_llm_player_config,
-    parse_env_config,
-    parse_game_config,
-    parse_metrics_config,
     parse_player_config,
     parse_players_config,
     resolve_model_limit,
@@ -28,10 +25,8 @@ from llm_chess_arena.config.loader import (
     app_config_from_dictconfig,
     apply_env_config,
     configure_logging,
-    format_game_summary,
     load_app_config,
     load_env,
-    run_game_from_config,
 )
 
 __all__ = [
@@ -51,15 +46,10 @@ __all__ = [
     "app_config_from_dictconfig",
     "apply_env_config",
     "configure_logging",
-    "format_game_summary",
     "load_app_config",
     "load_env",
     "normalize_llm_player_config",
-    "parse_env_config",
-    "parse_game_config",
-    "parse_metrics_config",
     "parse_player_config",
     "parse_players_config",
     "resolve_model_limit",
-    "run_game_from_config",
 ]

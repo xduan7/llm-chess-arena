@@ -45,9 +45,9 @@ class Game:
         self,
         white_player: BasePlayer,
         black_player: BasePlayer,
-        display_board: bool = False,
-        display_summary: bool = True,
-        enable_metrics: bool = True,
+        display_board: bool,
+        display_summary: bool,
+        enable_metrics: bool,
         metrics_tracker: MetricsTracker | None = None,
         record_dir: str | Path | None = None,
         record_name: str | None = None,
@@ -104,7 +104,6 @@ class Game:
         self._white_thinking_time = 0.0
         self._black_thinking_time = 0.0
 
-        # Win probability from White's perspective (0.0 = Black wins, 1.0 = White wins)
         self._current_white_win_probability: float | None = None
 
         metrics_enabled = bool(
@@ -120,10 +119,6 @@ class Game:
         else:
             logger.info("Game initialized: {} vs {}", white_player, black_player)
         self._outcome: chess.Outcome | None = None
-
-    # ============================================================================
-    # Game State Properties
-    # ============================================================================
 
     @property
     def current_player(self) -> BasePlayer:
@@ -175,10 +170,6 @@ class Game:
             chess.BLACK: self.black_player,
         }
         return color_to_player[winner_color]
-
-    # ============================================================================
-    # Move Execution and Handling
-    # ============================================================================
 
     def make_move(self) -> None:
         """Execute a single move in the game.
@@ -285,7 +276,6 @@ class Game:
                 if move_metrics is not None:
                     move_quality = move_metrics.quality
 
-                    # Track win probability for display purposes
                     if (
                         hasattr(move_metrics, "actual_centipawns")
                         and move_metrics.actual_centipawns is not None
@@ -301,7 +291,6 @@ class Game:
                         self._current_white_win_probability = 0.5 + 0.5 * (
                             centipawn_evaluation / 100.0
                         ) / (1.0 + abs(centipawn_evaluation / 100.0))
-                        # Clamp to [0, 1]
                         self._current_white_win_probability = max(
                             0.0, min(1.0, self._current_white_win_probability)
                         )
@@ -356,10 +345,6 @@ class Game:
             return None
 
         return self.metrics_tracker.get_ordered_move_qualities(self.board.move_stack)
-
-    # ============================================================================
-    # Main Game Loop
-    # ============================================================================
 
     def play(self, max_num_moves: int | None = None) -> None:
         """Run the game until completion, illegal move, or max moves reached.
@@ -467,10 +452,6 @@ class Game:
                 self._log_metrics_summary(game_summary)
             self._cleanup_players()
 
-    # ============================================================================
-    # Move Recording and Data Collection
-    # ============================================================================
-
     def _record_move_if_configured(
         self, decision: PlayerDecision, decision_artifacts: Any | None
     ) -> str | None:
@@ -559,10 +540,6 @@ class Game:
 
         self._record_collector.add_move(move_data)
         return normalized_uci
-
-    # ============================================================================
-    # Resource Cleanup and Summary Reporting
-    # ============================================================================
 
     def _cleanup_players(self) -> None:
         """Clean up player resources."""

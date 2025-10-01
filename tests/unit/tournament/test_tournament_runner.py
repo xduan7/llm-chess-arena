@@ -39,17 +39,28 @@ def tournament_config() -> TournamentConfig:
 def game_config() -> GameConfig:
     """Create a basic game config."""
     return GameConfig(
-        max_num_moves=100,
+        display_board=False,
+        display_summary=False,
         enable_metrics=False,
+        max_num_moves=100,
     )
 
 
 @pytest.fixture
 def metrics_config() -> MetricsConfig:
     """Create a basic metrics config."""
+    from llm_chess_arena.config.schema import MoveQualityThresholdsConfig
+
     return MetricsConfig(
         max_centipawn_loss_per_move=1000,
         stockfish_depth=10,
+        stockfish_engine_options={},
+        quality_thresholds=MoveQualityThresholdsConfig(
+            excellent=25.0,
+            good=50.0,
+            inaccuracy=100.0,
+            mistake=300.0,
+        ),
         stockfish_binary_path="stockfish",
     )
 

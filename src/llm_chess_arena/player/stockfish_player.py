@@ -27,7 +27,7 @@ class StockfishPlayer(BasePlayer):
     def __init__(
         self,
         *,
-        name: str = "Stockfish",
+        name: str,
         color: Color,
         binary_path: str | None = None,
         engine_limits: Mapping[str, Any] | None = None,

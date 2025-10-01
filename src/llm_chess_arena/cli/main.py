@@ -25,53 +25,48 @@ def run_tournament_cli(hydra_config: DictConfig) -> None:
     Args:
         hydra_config: Composed Hydra configuration for the tournament.
     """
-    # Load normal app config (env, game, metrics, players)
     app_config = app_config_from_dictconfig(hydra_config)
     apply_env_config(app_config.env)
 
-    # Check Stockfish availability if metrics enabled
     if app_config.game.enable_metrics and not is_stockfish_available():
         raise RuntimeError(
             "Stockfish not found in PATH but game.enable_metrics=true. "
             "Either install Stockfish or set game.enable_metrics=false to run without move evaluation."
         )
 
-    # Parse tournament-specific settings
-    resolved = OmegaConf.to_container(hydra_config, resolve=True)
-    if not isinstance(resolved, dict):
+    config_dict = OmegaConf.to_container(hydra_config, resolve=True)
+    if not isinstance(config_dict, dict):
         raise ValueError("Expected dict at root of configuration")
 
-    tournament_dict = resolved.get("tournament", {})
+    tournament_dict = config_dict.get("tournament", {})
     if not isinstance(tournament_dict, dict):
         raise ValueError("Tournament section must be a dict")
 
-    # Create tournament config
     tournament_config = TournamentConfig(
-        match_name=tournament_dict.get("match_name", "default_match"),
-        num_games=tournament_dict.get("num_games", 10),
-        parallel_games=tournament_dict.get("parallel_games", 1),
+        match_name=tournament_dict["match_name"],
+        num_games=tournament_dict["num_games"],
+        parallel_games=tournament_dict["parallel_games"],
         rate_limit_rpm=tournament_dict.get("rate_limit_rpm"),
-        alternate_colors=tournament_dict.get("alternate_colors", True),
-        output_dir=Path(tournament_dict.get("output_dir", "output")),
+        alternate_colors=tournament_dict["alternate_colors"],
+        display_summary=tournament_dict["display_summary"],
+        output_dir=Path(tournament_dict["output_dir"]),
     )
 
-    # Create and run tournament
     runner = TournamentRunner(
         tournament_config=tournament_config,
         game_config=app_config.game,
         metrics_config=app_config.metrics,
         white_player_config=app_config.players.white,
         black_player_config=app_config.players.black,
+        hydra_config=config_dict,
     )
 
     result = runner.run()
 
-    # Export results
     output_dir = tournament_config.output_dir / tournament_config.match_name
     ResultsExporter.export_json(result, output_dir / "results.json")
     ResultsExporter.export_csv(result, output_dir / "results.csv")
 
-    # Display Rich tournament summary (if enabled)
     if tournament_config.display_summary:
         display_tournament_summary(
             match_name=result.match_name,

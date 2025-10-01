@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, UTC
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from loguru import logger
 
@@ -66,6 +66,7 @@ class TournamentRunner:
         metrics_config: MetricsConfig,
         white_player_config: PlayerConfig,
         black_player_config: PlayerConfig,
+        hydra_config: dict[str, Any] | None = None,
     ) -> None:
         """Initialize tournament runner.
 
@@ -75,12 +76,14 @@ class TournamentRunner:
             metrics_config: Metrics configuration for Stockfish evaluation
             white_player_config: White player configuration
             black_player_config: Black player configuration
+            hydra_config: Optional Hydra configuration dict for reproducibility metadata
         """
         self.tournament_config = tournament_config
         self.game_config = game_config
         self.metrics_config = metrics_config
         self.white_player_config = white_player_config
         self.black_player_config = black_player_config
+        self.hydra_config = hydra_config or {}
 
         # Create rate limiter if configured
         self.rate_limiter = None
@@ -300,11 +303,13 @@ class TournamentRunner:
         game = Game(
             white_player=white_player,
             black_player=black_player,
-            display_board=False,  # Always off in tournaments
+            display_board=self.game_config.display_board,
+            display_summary=self.game_config.display_summary,
             enable_metrics=self.game_config.enable_metrics,
             metrics_tracker=metrics_tracker,
             record_dir=record_dir,
             record_name=record_name,
+            hydra_config=self.hydra_config,
         )
 
         game.play(max_num_moves=self.game_config.max_num_moves)

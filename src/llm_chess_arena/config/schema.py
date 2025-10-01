@@ -16,18 +16,18 @@ from llm_chess_arena.types import Color
 class EnvConfig:
     """Settings controlling environment preparation and logging."""
 
-    load_dotenv: bool = True
+    load_dotenv: bool
+    log_level: str
     dotenv_path: str | None = None
-    log_level: str = "INFO"
 
 
 @dataclass(slots=True, frozen=True)
 class GameConfig:
     """Configuration values for coordinating a chess game."""
 
-    display_board: bool = False
-    display_summary: bool = True
-    enable_metrics: bool = True
+    display_board: bool
+    display_summary: bool
+    enable_metrics: bool
     max_num_moves: int | None = None
     record_dir: str | None = None
     record_name: str | None = None
@@ -37,23 +37,21 @@ class GameConfig:
 class MoveQualityThresholdsConfig:
     """Centipawn thresholds controlling move quality categorization."""
 
-    excellent: float = 50.0
-    good: float = 100.0
-    inaccuracy: float = 200.0
-    mistake: float = 300.0
+    excellent: float
+    good: float
+    inaccuracy: float
+    mistake: float
 
 
 @dataclass(slots=True, frozen=True)
 class MetricsConfig:
     """Configuration for Stockfish-based metrics collection."""
 
-    max_centipawn_loss_per_move: int | None  # No default - must be set in config YAML
-    stockfish_depth: int = 10
+    max_centipawn_loss_per_move: int | None
+    stockfish_depth: int
+    stockfish_engine_options: Mapping[str, Any]
+    quality_thresholds: MoveQualityThresholdsConfig
     stockfish_binary_path: str | None = None
-    stockfish_engine_options: Mapping[str, Any] = field(default_factory=dict)
-    quality_thresholds: MoveQualityThresholdsConfig = field(
-        default_factory=MoveQualityThresholdsConfig
-    )
 
 
 @dataclass(slots=True, frozen=True)
@@ -61,7 +59,7 @@ class PlayerConfigBase:
     """Base configuration shared by all player implementations."""
 
     kind: str
-    color: Color = "white"
+    color: Color | None = None
     name: str | None = None
 
 
@@ -88,9 +86,9 @@ class LLMConnectorConfig:
     """Connector parameters for LiteLLM-backed players."""
 
     model: str | None
-    temperature: float = 0.2
-    request_timeout_in_seconds: float = 600.0
-    max_api_request_retries: int = 3
+    temperature: float
+    request_timeout_in_seconds: float
+    max_api_request_retries: int
     max_num_tokens: int | float | None = None
     provider: str | None = None
     api_base: str | None = None
@@ -109,7 +107,7 @@ class LLMPlayerConfig(PlayerConfigBase):
 
     kind: str = "llm"
     connector: LLMConnectorConfig | None = None
-    handler: LLMHandlerConfig = field(default_factory=LLMHandlerConfig)
+    handler: LLMHandlerConfig = field(default_factory=lambda: LLMHandlerConfig())
     max_move_retries: int | None = None
     num_votes: int | None = None
 
@@ -129,15 +127,10 @@ class PlayersConfig:
 class AppConfig:
     """Top-level application configuration composed by Hydra."""
 
-    metrics: MetricsConfig  # No default - must be provided via Hydra config
-    env: EnvConfig = field(default_factory=lambda: EnvConfig())
-    game: GameConfig = field(default_factory=lambda: GameConfig())
-    players: PlayersConfig = field(
-        default_factory=lambda: PlayersConfig(
-            white=RandomPlayerConfig(color="white", name="Random White"),
-            black=RandomPlayerConfig(color="black", name="Random Black"),
-        )
-    )
+    metrics: MetricsConfig
+    env: EnvConfig
+    game: GameConfig
+    players: PlayersConfig
 
 
 _MODEL_METADATA_CACHE: dict[str, Mapping[str, Any]] = {}
@@ -437,31 +430,6 @@ def parse_player_config(
     return _ensure_player_color(player_config, fallback_color)
 
 
-def parse_env_config(raw_config: Mapping[str, Any]) -> EnvConfig:
-    """Parse environment configuration from raw Hydra mapping."""
-
-    return EnvConfig(**raw_config)
-
-
-def parse_game_config(raw_config: Mapping[str, Any]) -> GameConfig:
-    """Parse game configuration from raw Hydra mapping."""
-
-    return GameConfig(**raw_config)
-
-
-def parse_metrics_config(raw_config: Mapping[str, Any]) -> MetricsConfig:
-    """Parse metrics configuration with quality thresholds from raw Hydra mapping."""
-
-    thresholds_config = raw_config.get("quality_thresholds", {})
-    quality_thresholds = MoveQualityThresholdsConfig(**thresholds_config)
-    metrics_parameters = {
-        config_key: config_value
-        for config_key, config_value in raw_config.items()
-        if config_key != "quality_thresholds"
-    }
-    return MetricsConfig(quality_thresholds=quality_thresholds, **metrics_parameters)
-
-
 def parse_players_config(raw_config: Mapping[str, Any]) -> PlayersConfig:
     """Parse both player configurations with enforced colors from raw Hydra mapping."""
 
@@ -485,6 +453,15 @@ def _normalize_players_config(players_config: PlayersConfig) -> PlayersConfig:
     )
 
 
+def register_configs() -> None:
+    """No-op placeholder for backwards compatibility.
+
+    Structured config registration removed because configs require YAML values.
+    All configuration values must be provided via YAML files.
+    """
+    pass
+
+
 __all__ = [
     "AppConfig",
     "EnvConfig",
@@ -500,12 +477,11 @@ __all__ = [
     "RandomPlayerConfig",
     "StockfishPlayerConfig",
     "DEFAULT_MAX_NUM_TOKENS_RATIO",
+    "_normalize_players_config",
     "compute_fractional_tokens",
     "normalize_llm_player_config",
-    "parse_env_config",
-    "parse_game_config",
-    "parse_metrics_config",
     "parse_player_config",
     "parse_players_config",
+    "register_configs",
     "resolve_model_limit",
 ]

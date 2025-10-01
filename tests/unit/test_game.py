@@ -4,12 +4,12 @@ import chess
 import pytest
 
 import llm_chess_arena.renderer as renderer
-from llm_chess_arena import config
 from llm_chess_arena.game import Game
 from llm_chess_arena.exceptions import IllegalMoveError
 from llm_chess_arena.metrics import MetricsTracker, MoveMetrics, MoveQuality
 from llm_chess_arena.player.base_player import BasePlayer
 from llm_chess_arena.types import PlayerDecision, PlayerDecisionContext
+from llm_chess_arena.utils import build_game_summary
 from tests.conftest import (
     FailingPlayer,
     IllegalMovePlayer,
@@ -40,7 +40,13 @@ class TestGameInitialization:
         self, white_player, black_player
     ):
         """Game holds onto the players and starts from the initial state."""
-        game = Game(white_player, black_player)
+        game = Game(
+            white_player,
+            black_player,
+            display_board=False,
+            display_summary=False,
+            enable_metrics=False,
+        )
 
         assert game.white_player == white_player
         assert game.black_player == black_player
@@ -62,7 +68,13 @@ class TestGameInitialization:
         second_white_player = white_player
 
         with pytest.raises(ValueError, match="wrong color"):
-            Game(white_player, second_white_player)
+            Game(
+                white_player,
+                second_white_player,
+                display_board=False,
+                display_summary=False,
+                enable_metrics=False,
+            )
 
 
 class TestGameFlow:
@@ -97,7 +109,13 @@ class TestGameFlow:
         illegal_move_player = IllegalMovePlayer(
             name="Illegal", color="white", illegal_move_uci="b1e4"
         )
-        game = Game(illegal_move_player, black_player)
+        game = Game(
+            illegal_move_player,
+            black_player,
+            display_board=False,
+            display_summary=False,
+            enable_metrics=False,
+        )
 
         with pytest.raises(IllegalMoveError):
             game.make_move()
@@ -116,7 +134,13 @@ class TestGameTermination:
         white_player = ScriptedPlayer("White", "white", scholars_mate_white_moves)
         black_player = ScriptedPlayer("Black", "black", scholars_mate_black_moves)
 
-        game = Game(white_player, black_player)
+        game = Game(
+            white_player,
+            black_player,
+            display_board=False,
+            display_summary=False,
+            enable_metrics=False,
+        )
         game.play()
 
         assert_game_terminated(game, chess.Termination.CHECKMATE, white_player)
@@ -211,11 +235,18 @@ class TestGameResignation:
 
         white_player = AlwaysResignPlayer("LLM", "white")
         black_player = ScriptedPlayer("Opponent", "black", ["e5"])
-        game = Game(white_player, black_player, enable_metrics=False)
+        game = Game(
+            white_player,
+            black_player,
+            display_board=False,
+            display_summary=False,
+            enable_metrics=False,
+        )
 
         game.play(max_num_moves=1)
 
-        summary_lines = config.format_game_summary(game)
+        game_summary = build_game_summary(game)
+        summary_lines = game_summary.to_cli_lines()
         termination_lines = [
             line for line in summary_lines if line.startswith("Termination:")
         ]
@@ -273,6 +304,9 @@ class TestGameMetrics:
         game = Game(
             white_player,
             black_player,
+            display_board=False,
+            display_summary=False,
+            enable_metrics=True,
             metrics_tracker=tracker,
         )
         game.play(max_num_moves=4)
@@ -353,6 +387,8 @@ class TestGameHistory:
         game = Game(
             white_player,
             black_player,
+            display_board=False,
+            display_summary=False,
             enable_metrics=False,
             record_dir=record_dir,
             record_name="test_game",
@@ -392,6 +428,8 @@ class TestGameHistory:
         game = Game(
             white_player,
             black_player,
+            display_board=False,
+            display_summary=False,
             enable_metrics=False,
             record_dir=record_dir,
             record_name="failed_game",

@@ -235,6 +235,7 @@ class TestGameRecordIntegration:
             white_player=white_player,
             black_player=black_player,
             display_board=False,
+            display_summary=False,
             enable_metrics=False,
             record_dir=record_dir,
             record_name="test_game",
