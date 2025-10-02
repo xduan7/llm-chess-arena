@@ -128,7 +128,7 @@ class TestGameResult:
 class TestTournamentResult:
     """Test tournament result aggregation."""
 
-    def test_duration_seconds__given_times__then_calculates_duration(self) -> None:
+    def test_duration_in_sec__given_times__then_calculates_duration(self) -> None:
         """Test duration calculation."""
         start = datetime.now(UTC)
         end = datetime.now(UTC)
@@ -141,8 +141,8 @@ class TestTournamentResult:
             end_time=end,
         )
 
-        assert result.duration_seconds is not None
-        assert result.duration_seconds >= 0
+        assert result.duration_in_sec is not None
+        assert result.duration_in_sec >= 0
 
     def test_win_rates__given_games__then_calculates_rates(self) -> None:
         """Test win rate calculations."""
@@ -251,7 +251,6 @@ class TestTournamentResult:
         assert "player1_percentages" in data["move_quality"]
         assert "player2_percentages" in data["move_quality"]
 
-        # Verify percentages are calculated
         assert data["move_quality"]["player1_percentages"]["best"] == 25.0
         assert data["move_quality"]["player1_percentages"]["good"] == 75.0
         assert data["move_quality"]["player2_percentages"]["excellent"] == 100.0

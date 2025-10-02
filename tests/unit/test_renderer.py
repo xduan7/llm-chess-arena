@@ -17,12 +17,9 @@ class TestRenderer:
         """Test board display produces chess output."""
         board = chess.Board()
 
-        # Create a real console that can capture output
         capture_console = Console(record=True, width=80)
 
-        # Patch the module-level console with our capture console
         with patch("llm_chess_arena.renderer.console", capture_console):
-            # Call the function - it will render to our capture console
             display_board_with_context(
                 board=board,
                 current_player="TestPlayer",
@@ -31,19 +28,15 @@ class TestRenderer:
                 black_player="Black",
             )
 
-            # Get the actual rendered output
             output = capture_console.export_text()
 
-            # Assert on real content that was rendered
             assert any(rank in output for rank in "12345678")  # Rank numbers
             assert any(file in output for file in "abcdefgh")  # File letters
-            # Should contain chess pieces (either Unicode or ASCII)
             assert len(output) > 100  # Board display should be substantial
 
     def test_display_game_summary__should_include_outcome__when_given_game_result(self):
         """Test game summary displays outcome information."""
 
-        # Create proper outcome summary
         outcome = GameOutcomeSummary(
             outcome_line="Outcome: 1-0",
             termination_line="Termination: checkmate",
@@ -53,12 +46,9 @@ class TestRenderer:
             winner_color=chess.WHITE,
         )
 
-        # Create a real console that can capture output
         capture_console = Console(record=True, width=80)
 
-        # Patch the module-level console with our capture console
         with patch("llm_chess_arena.renderer.console", capture_console):
-            # Call the function - it will render to our capture console
             result = display_game_summary(
                 white_player="TestWhite",
                 black_player="TestBlack",
@@ -67,10 +57,8 @@ class TestRenderer:
                 outcome_summary=outcome,
             )
 
-            # Get the actual rendered output
             output = capture_console.export_text()
 
-            # Assert on real content that was rendered
             assert "1-0" in output
             assert "checkmate" in output
             assert "42" in output
@@ -84,7 +72,6 @@ class TestRenderer:
     ):
         """Test that last move highlighting works."""
         board = chess.Board()
-        # Make a move to have a last move
         move = chess.Move.from_uci("e2e4")
         board.push(move)
 
@@ -101,7 +88,4 @@ class TestRenderer:
 
             output = capture_console.export_text()
 
-            # Should render the board with the move applied
             assert len(output) > 100  # Substantial output
-            # The exact highlighting depends on the implementation,
-            # but we can verify the function completes without error

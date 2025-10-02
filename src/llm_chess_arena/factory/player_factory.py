@@ -14,7 +14,7 @@ from llm_chess_arena.player.llm import (
     LLMPlayer,
 )
 
-if TYPE_CHECKING:  # pragma: no cover - import for typing only
+if TYPE_CHECKING:  # pragma: no cover
     from llm_chess_arena.config import (
         LLMConnectorConfig,
         LLMHandlerConfig,
@@ -23,6 +23,7 @@ if TYPE_CHECKING:  # pragma: no cover - import for typing only
         RandomPlayerConfig,
         StockfishPlayerConfig,
     )
+    from llm_chess_arena.utils import RateLimiter
 
 
 class PlayerFactory:
@@ -31,7 +32,7 @@ class PlayerFactory:
     @staticmethod
     @config_operation
     def create_player(
-        player_config: "PlayerConfig", rate_limiter: object | None = None
+        player_config: "PlayerConfig", rate_limiter: "RateLimiter | None" = None
     ) -> BasePlayer:
         """Create a player implementation from its configuration dataclass.
 
@@ -73,7 +74,7 @@ class PlayerFactory:
         )
         return RandomPlayer(
             name=name,
-            color=random_player_config.color,
+            player_color=random_player_config.color,
             seed=random_player_config.seed,
         )
 
@@ -99,7 +100,7 @@ class PlayerFactory:
         )
         return StockfishPlayer(
             name=name,
-            color=stockfish_player_config.color,
+            player_color=stockfish_player_config.color,
             binary_path=stockfish_player_config.binary_path,
             engine_limits=engine_limits,
             engine_options=engine_options,
@@ -107,7 +108,7 @@ class PlayerFactory:
 
     @staticmethod
     def _create_llm_player(
-        llm_player_config: "LLMPlayerConfig", rate_limiter: object | None = None
+        llm_player_config: "LLMPlayerConfig", rate_limiter: "RateLimiter | None" = None
     ) -> LLMPlayer:
         """Create LLM player from configuration.
 
@@ -131,18 +132,12 @@ class PlayerFactory:
         handler = PlayerFactory._create_llm_handler(llm_player_config.handler)
         name = llm_player_config.name or connector_config.model
 
-        if llm_player_config.max_move_retries is None:
-            raise ValueError(
-                "max_move_retries must be set by config normalization - check config pipeline"
-            )
-        if llm_player_config.num_votes is None:
-            raise ValueError(
-                "num_votes must be set by config normalization - check config pipeline"
-            )
+        assert llm_player_config.max_move_retries is not None
+        assert llm_player_config.num_votes is not None
 
         return LLMPlayer(
             name=name,
-            color=llm_player_config.color,
+            player_color=llm_player_config.color,
             connector=connector,
             handler=handler,
             max_move_retries=llm_player_config.max_move_retries,
@@ -152,7 +147,7 @@ class PlayerFactory:
     @staticmethod
     def _create_llm_connector(
         connector_config: "LLMConnectorConfig",
-        rate_limiter: object | None = None,
+        rate_limiter: "RateLimiter | None" = None,
     ) -> LLMConnector:
         """Create LLM connector from configuration.
 

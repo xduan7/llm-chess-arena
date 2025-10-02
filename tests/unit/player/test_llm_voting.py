@@ -28,14 +28,13 @@ class TestLLMVotingEdgeCases:
         player = LLMPlayer(
             connector=connector,
             handler=handler,
-            color="white",
+            player_color="white",
             num_votes=3,
             max_move_retries=1,
         )
 
         board = chess.Board()
         decision = player(board)
-        # Should resign after retries fail
         assert decision.action == "resign"
         assert decision.attempted_move is None
 
@@ -55,7 +54,7 @@ class TestLLMVotingEdgeCases:
         player = LLMPlayer(
             connector=connector,
             handler=handler,
-            color="white",
+            player_color="white",
             num_votes=5,
             max_move_retries=1,
         )
@@ -82,7 +81,7 @@ class TestLLMVotingEdgeCases:
         player = LLMPlayer(
             connector=connector,
             handler=handler,
-            color="white",
+            player_color="white",
             num_votes=5,
             max_move_retries=1,
         )
@@ -109,7 +108,7 @@ class TestLLMVotingEdgeCases:
         player = LLMPlayer(
             connector=connector,
             handler=handler,
-            color="white",
+            player_color="white",
             num_votes=5,
             max_move_retries=1,
         )
@@ -122,7 +121,6 @@ class TestLLMVotingEdgeCases:
 
     def test_voting_with_illegal_moves(self):
         """Test voting when some moves are illegal for the position."""
-        # Set up a position where only certain moves are legal
         board = chess.Board("8/8/8/4k3/8/3K4/8/8 w - - 0 1")  # Kings only
 
         connector = MockLLMConnector(
@@ -141,7 +139,7 @@ class TestLLMVotingEdgeCases:
         player = LLMPlayer(
             connector=connector,
             handler=handler,
-            color="white",
+            player_color="white",
             num_votes=5,
             max_move_retries=1,
         )
@@ -188,18 +186,16 @@ class TestLLMVotingEdgeCases:
         player = LLMPlayer(
             connector=connector,
             handler=handler,
-            color="white",
+            player_color="white",
             num_votes=3,
             max_move_retries=2,
         )
 
         decision = player(board)
 
-        # Should succeed on retry with Kd4 if voting works
         if decision.action == "move":
             assert decision.attempted_move == "d3d4"
         else:
-            # Or resign if retries exhausted
             assert decision.action == "resign"
 
     def test_voting_with_different_move_notations(self):
@@ -218,7 +214,7 @@ class TestLLMVotingEdgeCases:
         player = LLMPlayer(
             connector=connector,
             handler=handler,
-            color="white",
+            player_color="white",
             num_votes=5,
             max_move_retries=1,
         )
@@ -243,7 +239,7 @@ class TestLLMVotingEdgeCases:
         player = LLMPlayer(
             connector=connector,
             handler=handler,
-            color="white",
+            player_color="white",
             num_votes=3,
             max_move_retries=2,
         )
@@ -276,16 +272,14 @@ class TestLLMVotingEdgeCases:
         player = LLMPlayer(
             connector=connector,
             handler=handler,
-            color="white",
+            player_color="white",
             num_votes=3,
             max_move_retries=2,
         )
 
         decision = player(board)
 
-        # Should succeed with e4 after retry
         assert decision.attempted_move == "e2e4"
-        # Should have made 2 queries (one batch of 3, one retry)
         assert connector.query_count == 2
 
     def test_voting_with_unanimous_decision(self):
@@ -302,7 +296,7 @@ class TestLLMVotingEdgeCases:
         player = LLMPlayer(
             connector=connector,
             handler=handler,
-            color="white",
+            player_color="white",
             num_votes=3,
             max_move_retries=1,
         )
@@ -321,7 +315,7 @@ class TestLLMVotingEdgeCases:
         player = LLMPlayer(
             connector=connector,
             handler=handler,
-            color="white",
+            player_color="white",
             num_votes=1,
             max_move_retries=1,
         )
@@ -353,7 +347,7 @@ class TestVotingPerformance:
         player = LLMPlayer(
             connector=connector,
             handler=handler,
-            color="white",
+            player_color="white",
             num_votes=5,
             max_move_retries=1,
         )
@@ -373,7 +367,7 @@ class TestVotingPerformance:
         player = LLMPlayer(
             connector=connector,
             handler=handler,
-            color="white",
+            player_color="white",
             num_votes=100,
             max_move_retries=1,
         )

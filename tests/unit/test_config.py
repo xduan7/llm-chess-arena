@@ -31,14 +31,11 @@ class TestLoadEnv:
         env_file = tmp_path / ".env"
         env_file.write_text("TEST_VAR=test_value\nTEST_NUMBER=42")
 
-        # Ensure vars don't exist yet
         assert "TEST_VAR" not in os.environ
         assert "TEST_NUMBER" not in os.environ
 
-        # Load the env file
         loaded_path = config.load_env(str(env_file))
 
-        # Verify it was loaded
         assert loaded_path == env_file
         assert os.environ.get("TEST_VAR") == "test_value"
         assert os.environ.get("TEST_NUMBER") == "42"
@@ -94,10 +91,8 @@ class TestLoadEnv:
         env_file = tmp_path / "custom.env"
         env_file.write_text("TEST_FROM_CUSTOM=yes")
 
-        # Set ENV_FILE to point to our custom file
         monkeypatch.setenv("ENV_FILE", str(env_file))
 
-        # Call without filename
         loaded_path = config.load_env()
 
         assert loaded_path == env_file
@@ -144,10 +139,8 @@ TEST_QUOTES="quoted value"
         env_file = tmp_path / ".env"
         env_file.write_text("TEST_EXISTING=from_file")
 
-        # Set existing value
         os.environ["TEST_EXISTING"] = "from_environ"
 
-        # Load without override
         config.load_env(str(env_file), override=False)
 
         # Existing value should be preserved
@@ -160,13 +153,10 @@ TEST_QUOTES="quoted value"
         env_file = tmp_path / ".env"
         env_file.write_text("TEST_OVERRIDE=from_file")
 
-        # Set existing value
         os.environ["TEST_OVERRIDE"] = "from_environ"
 
-        # Load with override
         config.load_env(str(env_file), override=True)
 
-        # Should be overwritten
         assert os.environ.get("TEST_OVERRIDE") == "from_file"
 
 
@@ -197,7 +187,6 @@ GOOGLE_API_KEY=goog-test789
         )
 
         loader._ENV_LOADED = False
-        # Use override=True to overwrite any existing values
         config.load_env(str(env_file), override=True)
         assert os.environ.get("OPENAI_API_KEY") == "sk-test123"
         assert os.environ.get("ANTHROPIC_API_KEY") == "ant-test456"
@@ -380,7 +369,6 @@ class TestHydraConfig:
         # Reset state
         loader._ENV_LOADED = False
 
-        # Load existing file
         config.load_env(str(env_file))
         mock_logger.debug.assert_called_with(
             "Loaded environment from: {}", str(env_file)
@@ -404,38 +392,30 @@ class TestEnsurePlayerColor:
         self,
     ):
         """Test that _ensure_player_color returns a new config instance with the color set."""
-        # Create original config without color (defaults to None)
         original_config = RandomPlayerConfig(
             kind="random",
             name="Test Player",
             seed=42,
         )
 
-        # Original config has default color None
         assert original_config.color is None
 
-        # Apply color using _ensure_player_color
         new_config = _ensure_player_color(original_config, "black")
 
-        # Verify original config remains unchanged (immutability)
         assert original_config.color is None
 
-        # Verify new config has the new color set
         assert new_config.color == "black"
 
-        # Verify other attributes are preserved
         assert new_config.kind == "random"
         assert new_config.name == "Test Player"
         assert new_config.seed == 42
 
-        # Verify they are different objects
         assert new_config is not original_config
 
     def test_ensure_player_color__when_config_already_has_color__then_overrides_with_fallback(
         self,
     ):
         """Test that _ensure_player_color overrides existing color with fallback."""
-        # Create config with existing color
         original_config = RandomPlayerConfig(
             kind="random",
             name="Test Player",
@@ -443,14 +423,10 @@ class TestEnsurePlayerColor:
             seed=42,
         )
 
-        # Apply different color using _ensure_player_color
         new_config = _ensure_player_color(original_config, "white")
 
-        # Verify original config remains unchanged
         assert original_config.color == "black"
 
-        # Verify new config has the fallback color
         assert new_config.color == "white"
 
-        # Verify they are different objects
         assert new_config is not original_config

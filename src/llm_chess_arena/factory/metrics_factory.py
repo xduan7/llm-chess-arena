@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING, Mapping, Any
 from llm_chess_arena.core.policies import config_operation
 from llm_chess_arena.metrics import MetricsTracker, MoveQualityThresholds
 
-if TYPE_CHECKING:  # pragma: no cover - typing only
+if TYPE_CHECKING:  # pragma: no cover
     from llm_chess_arena.config import MetricsConfig
 
 

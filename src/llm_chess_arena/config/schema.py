@@ -137,8 +137,7 @@ _MODEL_METADATA_CACHE: dict[str, Mapping[str, Any]] = {}
 
 
 def _load_default_max_num_tokens_ratio() -> float:
-    """Read the default completion ratio from the environment with sane fallback."""
-
+    """Load default token completion ratio from environment variable."""
     env_ratio_str = os.getenv("LLM_DEFAULT_MAX_NUM_TOKENS_RATIO")
     if env_ratio_str is None:
         return 0.8
@@ -167,8 +166,12 @@ BASE_MODEL_OUTPUT_TOKEN_LIMITS: dict[str, int] = {
     "o3-mini": 100_000,
     "gpt-o4-mini": 65_536,
     "o4-mini": 65_536,
+    "claude-4.1-opus": 32_000,
+    "claude-opus-4.1": 32_000,
     "claude-4-opus": 32_000,
     "claude-opus-4": 32_000,
+    "claude-4.5-sonnet": 64_000,
+    "claude-sonnet-4.5": 64_000,
     "claude-4-sonnet": 64_000,
     "claude-sonnet-4": 64_000,
     "claude-3.7-sonnet": 128_000,
@@ -177,6 +180,26 @@ BASE_MODEL_OUTPUT_TOKEN_LIMITS: dict[str, int] = {
     "claude-sonnet-3.5-v2": 8_000,
     "gemini-2.5-pro": 65_536,
     "gemini-2.5-flash": 65_536,
+}
+
+
+# Argo-specific token limit overrides
+# Argo platform imposes additional constraints beyond vendor limits
+ARGO_MODEL_OUTPUT_TOKEN_OVERRIDES: dict[str, int] = {
+    # Claude models: Argo requires streaming for >21,000 tokens
+    # Official limits: Opus 32K, Sonnet 4.5/4 64K, Sonnet 3.7 128K
+    "claude-4.1-opus": 21_000,
+    "claude-opus-4.1": 21_000,
+    "claude-4-opus": 21_000,
+    "claude-opus-4": 21_000,
+    "claude-4.5-sonnet": 21_000,
+    "claude-sonnet-4.5": 21_000,
+    "claude-4-sonnet": 21_000,
+    "claude-sonnet-4": 21_000,
+    "claude-3.7-sonnet": 21_000,
+    "claude-sonnet-3.7": 21_000,
+    "claude-3.5-sonnet-v2": 8_000,
+    "claude-sonnet-3.5-v2": 8_000,
 }
 
 
@@ -208,8 +231,12 @@ ARGO_MODEL_CANONICAL_NAMES: dict[str, str] = {
     "argo:gpt-5-nano": "gpt-5-nano",
     "argo:gemini-2.5-pro": "gemini-2.5-pro",
     "argo:gemini-2.5-flash": "gemini-2.5-flash",
+    "argo:claude-4.1-opus": "claude-4.1-opus",
+    "argo:claude-opus-4.1": "claude-opus-4.1",
     "argo:claude-4-opus": "claude-4-opus",
     "argo:claude-opus-4": "claude-opus-4",
+    "argo:claude-4.5-sonnet": "claude-4.5-sonnet",
+    "argo:claude-sonnet-4.5": "claude-sonnet-4.5",
     "argo:claude-4-sonnet": "claude-4-sonnet",
     "argo:claude-sonnet-4": "claude-sonnet-4",
     "argo:claude-3.7-sonnet": "claude-3.7-sonnet",
@@ -225,7 +252,10 @@ ARGO_MODEL_CANONICAL_NAMES: dict[str, str] = {
 MODEL_OUTPUT_TOKEN_LIMITS: dict[str, int] = {
     **BASE_MODEL_OUTPUT_TOKEN_LIMITS,
     **{
-        argo_model: BASE_MODEL_OUTPUT_TOKEN_LIMITS[canonical_model_name]
+        argo_model: (
+            ARGO_MODEL_OUTPUT_TOKEN_OVERRIDES.get(canonical_model_name)
+            or BASE_MODEL_OUTPUT_TOKEN_LIMITS[canonical_model_name]
+        )
         for argo_model, canonical_model_name in ARGO_MODEL_CANONICAL_NAMES.items()
         if canonical_model_name in BASE_MODEL_OUTPUT_TOKEN_LIMITS
     },
@@ -233,16 +263,28 @@ MODEL_OUTPUT_TOKEN_LIMITS: dict[str, int] = {
 
 
 def _get_cached_model_info(model: str) -> Mapping[str, Any]:
-    """Return cached LiteLLM model metadata to avoid repeated lookups."""
+    """Get LiteLLM model metadata with caching.
 
+    Args:
+        model: Model identifier to look up.
+
+    Returns:
+        Dictionary of model metadata from LiteLLM.
+    """
     if model not in _MODEL_METADATA_CACHE:
         _MODEL_METADATA_CACHE[model] = litellm.get_model_info(model)
     return _MODEL_METADATA_CACHE[model]
 
 
 def resolve_model_limit(model: str | None) -> tuple[bool, int | None]:
-    """Identify whether model is recognised and report its output token limit."""
+    """Identify whether model is recognised and report its output token limit.
 
+    Args:
+        model: Model identifier to resolve.
+
+    Returns:
+        Tuple of (model_recognized, token_limit). token_limit is None if not available.
+    """
     if model is None:
         return False, None
 
@@ -285,8 +327,15 @@ def resolve_model_limit(model: str | None) -> tuple[bool, int | None]:
 
 
 def compute_fractional_tokens(token_limit: int, fractional_ratio: float) -> int:
-    """Convert fractional ratio of a token limit into a bounded positive count."""
+    """Convert fractional ratio of a token limit into a bounded positive count.
 
+    Args:
+        token_limit: Maximum token count for the model.
+        fractional_ratio: Fraction of the limit to use (0 < ratio <= 1).
+
+    Returns:
+        Integer token count bounded between 1 and token_limit.
+    """
     num_tokens = int(token_limit * fractional_ratio)
     if num_tokens <= 0:
         num_tokens = 1
@@ -298,16 +347,33 @@ def compute_fractional_tokens(token_limit: int, fractional_ratio: float) -> int:
 def normalize_llm_player_config(
     player_config: PlayerConfig, player_color: str
 ) -> PlayerConfig:
-    """Return player config with deterministic max_num_tokens handling and defaults."""
+    """Return player config with deterministic max_num_tokens handling and defaults.
 
+    Args:
+        player_config: Player configuration to normalize.
+        player_color: Color of the player (for error messages).
+
+    Returns:
+        Normalized player configuration with resolved token limits and defaults.
+
+    Raises:
+        ValueError: If model is not recognized or token limits cannot be determined.
+    """
     if not isinstance(player_config, LLMPlayerConfig):
         return player_config
 
-    normalized_player_config = player_config
     if player_config.max_move_retries is None:
-        normalized_player_config = replace(normalized_player_config, max_move_retries=3)
+        raise ValueError(
+            f"max_move_retries must be specified in LLM {player_color} player configuration. "
+            "See configs/players/llm/default.yaml for recommended defaults."
+        )
     if player_config.num_votes is None:
-        normalized_player_config = replace(normalized_player_config, num_votes=1)
+        raise ValueError(
+            f"num_votes must be specified in LLM {player_color} player configuration. "
+            "See configs/players/llm/default.yaml for recommended defaults."
+        )
+
+    normalized_player_config = player_config
 
     if normalized_player_config.connector is None:
         return normalized_player_config
@@ -375,18 +441,35 @@ def normalize_llm_player_config(
 
 
 def _ensure_player_color(
-    player_config: PlayerConfig, default_color: Color
+    player_config: PlayerConfig, default_player_color: Color
 ) -> PlayerConfig:
-    """Ensure each player config declares a color."""
+    """Ensure each player config declares a color.
 
-    return replace(player_config, color=default_color)
+    Args:
+        player_config: Player configuration to update.
+        default_player_color: Color to assign if not already set.
+
+    Returns:
+        Player configuration with color assigned.
+    """
+    return replace(player_config, color=default_player_color)
 
 
 def parse_player_config(
-    raw_config: Mapping[str, Any], fallback_color: Color
+    raw_config: Mapping[str, Any], fallback_player_color: Color
 ) -> PlayerConfig:
-    """Convert raw player configuration mapping into strongly typed player config."""
+    """Convert raw player configuration mapping into strongly typed player config.
 
+    Args:
+        raw_config: Raw configuration dictionary from Hydra.
+        fallback_player_color: Color to assign if not specified in config.
+
+    Returns:
+        Typed player configuration (Random, Stockfish, or LLM).
+
+    Raises:
+        ValueError: If configuration is invalid or unsupported player kind.
+    """
     if not isinstance(raw_config, Mapping):
         raise ValueError(
             f"Expected mapping for player config, got {type(raw_config)}: {raw_config}"
@@ -427,12 +510,21 @@ def parse_player_config(
     else:
         raise ValueError(f"Unsupported player kind: {kind}")
 
-    return _ensure_player_color(player_config, fallback_color)
+    return _ensure_player_color(player_config, fallback_player_color)
 
 
 def parse_players_config(raw_config: Mapping[str, Any]) -> PlayersConfig:
-    """Parse both player configurations with enforced colors from raw Hydra mapping."""
+    """Parse both player configurations with enforced colors from raw Hydra mapping.
 
+    Args:
+        raw_config: Raw configuration dictionary containing white and black player configs.
+
+    Returns:
+        Normalized configuration for both players.
+
+    Raises:
+        ValueError: If white or black player configuration is missing.
+    """
     white_config = raw_config.get("white")
     black_config = raw_config.get("black")
     if white_config is None or black_config is None:
@@ -445,21 +537,11 @@ def parse_players_config(raw_config: Mapping[str, Any]) -> PlayersConfig:
 
 
 def _normalize_players_config(players_config: PlayersConfig) -> PlayersConfig:
-    """Normalize both player configs so white/black share consistent defaults."""
-
+    """Apply normalization to both white and black player configurations."""
     return PlayersConfig(
         white=normalize_llm_player_config(players_config.white, "white"),
         black=normalize_llm_player_config(players_config.black, "black"),
     )
-
-
-def register_configs() -> None:
-    """No-op placeholder for backwards compatibility.
-
-    Structured config registration removed because configs require YAML values.
-    All configuration values must be provided via YAML files.
-    """
-    pass
 
 
 __all__ = [
@@ -482,6 +564,5 @@ __all__ = [
     "normalize_llm_player_config",
     "parse_player_config",
     "parse_players_config",
-    "register_configs",
     "resolve_model_limit",
 ]

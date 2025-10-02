@@ -96,15 +96,15 @@ class TestTournamentRunner:
     ) -> None:
         """Test successful runner initialization."""
         runner = TournamentRunner(
-            tournament_config=tournament_config,
-            game_config=game_config,
-            metrics_config=metrics_config,
-            white_player_config=white_player_config,
-            black_player_config=black_player_config,
+            tournament_cfg=tournament_config,
+            game_cfg=game_config,
+            metrics_cfg=metrics_config,
+            white_player_cfg=white_player_config,
+            black_player_cfg=black_player_config,
         )
 
-        assert runner.tournament_config == tournament_config
-        assert runner.game_config == game_config
+        assert runner.tournament_cfg == tournament_config
+        assert runner.game_cfg == game_config
         assert runner.rate_limiter is None  # No rate limit configured
 
     def test_init__given_rate_limit__then_creates_limiter(
@@ -119,11 +119,11 @@ class TestTournamentRunner:
         tournament_config = replace(tournament_config, rate_limit_rpm=60)
 
         runner = TournamentRunner(
-            tournament_config=tournament_config,
-            game_config=game_config,
-            metrics_config=metrics_config,
-            white_player_config=white_player_config,
-            black_player_config=black_player_config,
+            tournament_cfg=tournament_config,
+            game_cfg=game_config,
+            metrics_cfg=metrics_config,
+            white_player_cfg=white_player_config,
+            black_player_cfg=black_player_config,
         )
 
         assert runner.rate_limiter is not None
@@ -173,7 +173,6 @@ class TestTournamentRunner:
         tournament_config: TournamentConfig,
     ) -> None:
         """Test results aggregation with sample games."""
-        # Create sample game results
         games = [
             GameResult(
                 game_id=1,
@@ -184,8 +183,8 @@ class TestTournamentRunner:
                 termination_reason="checkmate",
                 white_centipawn_loss=50.0,
                 black_centipawn_loss=100.0,
-                white_thinking_time=10.0,
-                black_thinking_time=15.0,
+                white_thinking_time_in_sec=10.0,
+                black_thinking_time_in_sec=15.0,
                 white_cost=0.01,
                 black_cost=0.02,
             ),
@@ -198,8 +197,8 @@ class TestTournamentRunner:
                 termination_reason="checkmate",
                 white_centipawn_loss=120.0,
                 black_centipawn_loss=60.0,
-                white_thinking_time=12.0,
-                black_thinking_time=18.0,
+                white_thinking_time_in_sec=12.0,
+                black_thinking_time_in_sec=18.0,
                 white_cost=0.015,
                 black_cost=0.025,
             ),
@@ -212,8 +211,8 @@ class TestTournamentRunner:
                 termination_reason="stalemate",
                 white_centipawn_loss=80.0,
                 black_centipawn_loss=90.0,
-                white_thinking_time=8.0,
-                black_thinking_time=10.0,
+                white_thinking_time_in_sec=8.0,
+                black_thinking_time_in_sec=10.0,
                 white_cost=0.01,
                 black_cost=0.015,
             ),
@@ -228,7 +227,6 @@ class TestTournamentRunner:
             player2_name="Black Player",
         )
 
-        # Verify basic counts
         assert result.total_games == 3
         assert result.player1_name == "White Player"
         assert result.player2_name == "Black Player"
@@ -238,7 +236,6 @@ class TestTournamentRunner:
         assert result.player2_wins == 1
         assert result.draws == 1
 
-        # Verify averages
         assert result.total_cost == pytest.approx(0.1, abs=0.01)
         assert result.avg_game_length == pytest.approx(40.0)  # (40+50+30)/3
 
@@ -246,9 +243,15 @@ class TestTournamentRunner:
         assert result.player1_avg_centipawn_loss == pytest.approx((50 + 120 + 80) / 3)
         assert result.player2_avg_centipawn_loss == pytest.approx((100 + 60 + 90) / 3)
 
-        # Thinking time averages
-        assert result.player1_avg_thinking_time == pytest.approx((10 + 12 + 8) / 3)
-        assert result.player2_avg_thinking_time == pytest.approx((15 + 18 + 10) / 3)
+        # Thinking time totals and averages
+        assert result.player1_total_thinking_time_in_sec == pytest.approx(10 + 12 + 8)
+        assert result.player2_total_thinking_time_in_sec == pytest.approx(15 + 18 + 10)
+        assert result.player1_avg_thinking_time_per_game_in_sec == pytest.approx(
+            (10 + 12 + 8) / 3
+        )
+        assert result.player2_avg_thinking_time_per_game_in_sec == pytest.approx(
+            (15 + 18 + 10) / 3
+        )
 
     def test_aggregate_results__given_color_swapping__then_tracks_by_player(
         self,
@@ -313,7 +316,6 @@ class TestTournamentRunner:
         black_player_config: PlayerConfig,
     ) -> None:
         """Test single game execution."""
-        # Setup mocks
         mock_white_player = MagicMock()
         mock_white_player.name = "White"
         mock_black_player = MagicMock()
@@ -332,21 +334,20 @@ class TestTournamentRunner:
         mock_summary.result = "1-0"
         mock_summary.total_moves = 40
         mock_summary.termination = "checkmate"
-        mock_summary.white_player = MagicMock(cost=0.01, thinking_time_in_seconds=10.0)
-        mock_summary.black_player = MagicMock(cost=0.02, thinking_time_in_seconds=15.0)
+        mock_summary.white_player = MagicMock(cost=0.01, thinking_time_in_sec=10.0)
+        mock_summary.black_player = MagicMock(cost=0.02, thinking_time_in_sec=15.0)
         mock_build_summary.return_value = mock_summary
 
         runner = TournamentRunner(
-            tournament_config=tournament_config,
-            game_config=game_config,
-            metrics_config=metrics_config,
-            white_player_config=white_player_config,
-            black_player_config=black_player_config,
+            tournament_cfg=tournament_config,
+            game_cfg=game_config,
+            metrics_cfg=metrics_config,
+            white_player_cfg=white_player_config,
+            black_player_cfg=black_player_config,
         )
 
         result = runner._run_single_game(1, white_player_config, black_player_config)
 
-        # Verify result
         assert result.game_id == 1
         assert result.white_player_name == "White"
         assert result.black_player_name == "Black"
@@ -354,7 +355,6 @@ class TestTournamentRunner:
         assert result.total_moves == 40
         assert result.termination_reason == "checkmate"
 
-        # Verify game was played
         mock_game.play.assert_called_once_with(max_num_moves=100)
 
     @patch("llm_chess_arena.tournament.executor.PlayerFactory")
@@ -374,13 +374,12 @@ class TestTournamentRunner:
         black_player_config: PlayerConfig,
     ) -> None:
         """Test parallel execution handles game failures gracefully."""
-        # Make _run_single_game raise an exception
         runner = TournamentRunner(
-            tournament_config=tournament_config,
-            game_config=game_config,
-            metrics_config=metrics_config,
-            white_player_config=white_player_config,
-            black_player_config=black_player_config,
+            tournament_cfg=tournament_config,
+            game_cfg=game_config,
+            metrics_cfg=metrics_config,
+            white_player_cfg=white_player_config,
+            black_player_cfg=black_player_config,
         )
 
         with patch.object(
@@ -391,7 +390,6 @@ class TestTournamentRunner:
             schedule = [(white_player_config, black_player_config)]
             results = runner._run_parallel(schedule)
 
-            # Should create failed result instead of crashing
             assert len(results) == 1
             assert results[0].result == "*"
             assert "Error:" in results[0].termination_reason

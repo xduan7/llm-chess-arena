@@ -63,9 +63,7 @@ def test_run_tournament_cli_smoke(monkeypatch, capsys):
     monkeypatch.setattr(
         "llm_chess_arena.cli.main.apply_env_config", lambda env_cfg: None
     )
-    monkeypatch.setattr("llm_chess_arena.cli.main.is_stockfish_available", lambda: True)
 
-    # Create mock tournament result
     mock_result = TournamentResult(
         match_name="test_match",
         player1_name="Random White",
@@ -81,15 +79,15 @@ def test_run_tournament_cli_smoke(monkeypatch, capsys):
     class MockRunner:
         def __init__(
             self,
-            tournament_config,
-            game_config,
-            metrics_config,
-            white_player_config,
-            black_player_config,
-            hydra_config=None,
+            tournament_cfg,
+            game_cfg,
+            metrics_cfg,
+            white_player_cfg,
+            black_player_cfg,
+            hydra_cfg=None,
         ):
-            captured["tournament_config"] = tournament_config
-            captured["game_config"] = game_config
+            captured["tournament_config"] = tournament_cfg
+            captured["game_config"] = game_cfg
 
         def run(self):
             return mock_result
@@ -156,7 +154,6 @@ def test_run_tournament_cli_smoke(monkeypatch, capsys):
 
     run_tournament_cli.__wrapped__(cfg)  # type: ignore[attr-defined]
 
-    # Verify tournament config was captured
     assert captured["tournament_config"].match_name == "test_match"
     assert captured["game_config"].max_num_moves == 12
 
@@ -172,9 +169,7 @@ def test_run_tournament_cli_with_llm_config_normalization(monkeypatch, capsys):
     monkeypatch.setattr(
         "llm_chess_arena.cli.main.apply_env_config", lambda env_cfg: None
     )
-    monkeypatch.setattr("llm_chess_arena.cli.main.is_stockfish_available", lambda: True)
 
-    # Create mock tournament result
     mock_result = TournamentResult(
         match_name="test_match",
         player1_name="Test LLM",
@@ -190,14 +185,14 @@ def test_run_tournament_cli_with_llm_config_normalization(monkeypatch, capsys):
     class MockRunner:
         def __init__(
             self,
-            tournament_config,
-            game_config,
-            metrics_config,
-            white_player_config,
-            black_player_config,
-            hydra_config=None,
+            tournament_cfg,
+            game_cfg,
+            metrics_cfg,
+            white_player_cfg,
+            black_player_cfg,
+            hydra_cfg=None,
         ):
-            captured["white_player_config"] = white_player_config
+            captured["white_player_config"] = white_player_cfg
 
         def run(self):
             return mock_result
@@ -257,12 +252,12 @@ def test_run_tournament_cli_with_llm_config_normalization(monkeypatch, capsys):
                     "kind": "llm",
                     "name": "Test LLM",
                     "color": "white",
-                    "max_move_retries": None,  # Should be normalized to 3
-                    "num_votes": None,  # Should be normalized to 1
+                    "max_move_retries": 3,  # Must be specified (no auto-normalization)
+                    "num_votes": 1,  # Must be specified (no auto-normalization)
                     "connector": {
                         "model": "gpt-4o-mini",
                         "temperature": 0.1,
-                        "max_num_tokens": 0.5,  # Fractional - should be resolved to 2048
+                        "max_num_tokens": 0.5,  # Fractional - should be resolved to 8192
                         "request_timeout_in_seconds": 60.0,
                         "max_api_request_retries": 2,
                         "provider": None,
@@ -282,9 +277,8 @@ def test_run_tournament_cli_with_llm_config_normalization(monkeypatch, capsys):
 
     run_tournament_cli.__wrapped__(cfg)  # type: ignore[attr-defined]
 
-    # Verify LLM config normalization worked
     white_player = captured["white_player_config"]
     assert white_player.kind == "llm"
-    assert white_player.max_move_retries == 3  # None should be normalized to 3
-    assert white_player.num_votes == 1  # None should be normalized to 1
+    assert white_player.max_move_retries == 3  # Passed through from config
+    assert white_player.num_votes == 1  # Passed through from config
     assert white_player.connector.max_num_tokens == 8192  # 0.5 * 16384 = 8192

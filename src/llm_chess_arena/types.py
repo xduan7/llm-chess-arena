@@ -8,7 +8,6 @@ from pydantic import BaseModel, Field, ConfigDict, field_validator, model_valida
 Color = Literal["white", "black"]
 # Currently supported actions
 PlayerAction = Literal["move", "resign"]
-# Future draw support: add draw-related actions here and extend game orchestration accordingly.
 
 
 class PlayerDecisionContext(BaseModel):
@@ -21,7 +20,7 @@ class PlayerDecisionContext(BaseModel):
     player_color: Color
     legal_moves_in_uci: list[str]
     move_history_in_uci: list[str] = Field(default_factory=list)
-    time_remaining_in_seconds: float | None = None
+    time_remaining_in_sec: float | None = None
 
     # Dynamic fields allow LLMs/engines to pass custom metadata without schema changes
     model_config = ConfigDict(extra="allow")
@@ -53,7 +52,7 @@ class PlayerDecision(BaseModel):
     Move required only for action='move', otherwise must be None.
 
     Common dynamically-added attributes (via extra="allow"):
-        thinking_time_in_seconds (float): Player-reported thinking time
+        thinking_time_in_sec (float): Player-reported thinking time
         response (str): Raw LLM response text (for retry prompts)
         reason (str): Reason for resignation or error
     """

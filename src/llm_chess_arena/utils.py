@@ -243,7 +243,7 @@ class PlayerSummary:
 
     name: str
     color: str  # "white" or "black"
-    thinking_time_in_seconds: float = 0.0
+    thinking_time_in_sec: float = 0.0
     api_calls: int = 0
     retry_count: int = 0
     tokens_prompt: int = 0
@@ -252,9 +252,16 @@ class PlayerSummary:
     total_decisions: int = 0
     voting_ties: int = 0
     network_errors: int = 0
-    average_latency_ms: float = 0.0
+    average_latency_in_ms: float = 0.0
     average_response_length: float = 0.0
     cost: float = 0.0
+
+    @property
+    def avg_thinking_time_per_move_in_sec(self) -> float:
+        """Calculate average thinking time per move."""
+        if self.total_decisions == 0:
+            return 0.0
+        return self.thinking_time_in_sec / self.total_decisions
 
 
 @dataclass(slots=True)
@@ -324,9 +331,9 @@ class GameSummary:
         for player_summary in [self.white_player, self.black_player]:
             player_export_data: dict[str, Any] = {}
 
-            if player_summary.thinking_time_in_seconds > 0:
-                player_export_data["thinking_time_in_seconds"] = round(
-                    player_summary.thinking_time_in_seconds, 1
+            if player_summary.thinking_time_in_sec > 0:
+                player_export_data["thinking_time_in_sec"] = round(
+                    player_summary.thinking_time_in_sec, 1
                 )
             if player_summary.api_calls > 0:
                 player_export_data["api_calls"] = player_summary.api_calls
@@ -375,6 +382,14 @@ class GameSummary:
                         player_summary.retry_count,
                     )
 
+                    if player_summary.thinking_time_in_sec > 0:
+                        logger.info(
+                            "{} thinking time: {:.2f}s total, {:.3f}s per move",
+                            player_summary.name,
+                            player_summary.thinking_time_in_sec,
+                            player_summary.avg_thinking_time_per_move_in_sec,
+                        )
+
                     if player_summary.voting_ties > 0:
                         logger.info(
                             "{} had {} voting ties",
@@ -389,11 +404,11 @@ class GameSummary:
                             player_summary.network_errors,
                         )
 
-                    if player_summary.average_latency_ms > 0:
+                    if player_summary.average_latency_in_ms > 0:
                         logger.info(
                             "{} average response time: {:.0f}ms",
                             player_summary.name,
-                            player_summary.average_latency_ms,
+                            player_summary.average_latency_in_ms,
                         )
 
                     if player_summary.average_response_length > 0:
@@ -424,7 +439,7 @@ class GameSummary:
             "threefold_repetition": chess.Termination.THREEFOLD_REPETITION,
             "variant_win": chess.Termination.VARIANT_WIN,
             "variant_loss": chess.Termination.VARIANT_LOSS,
-            "max_moves": chess.Termination.VARIANT_DRAW,
+            "max_num_moves": chess.Termination.VARIANT_DRAW,
         }
 
         termination = termination_map.get(
@@ -481,7 +496,7 @@ def _extract_game_outcome_info(
             chess.Termination.THREEFOLD_REPETITION: "threefold_repetition",
             chess.Termination.VARIANT_WIN: "variant_win",
             chess.Termination.VARIANT_LOSS: "variant_loss",
-            chess.Termination.VARIANT_DRAW: "max_moves",
+            chess.Termination.VARIANT_DRAW: "max_num_moves",
         }
         termination = termination_map.get(outcome.termination, "unknown")
 
@@ -501,9 +516,9 @@ def _process_moves_data(
             else black_player_summary
         )
 
-        if move_record.get("thinking_time_in_seconds"):
-            current_player_summary.thinking_time_in_seconds += move_record[
-                "thinking_time_in_seconds"
+        if move_record.get("thinking_time_in_sec"):
+            current_player_summary.thinking_time_in_sec += move_record[
+                "thinking_time_in_sec"
             ]
 
         llm_decision_process = move_record.get("llm_decision_process")
@@ -557,7 +572,6 @@ def _extract_player_metrics(
         except Exception:
             pass
 
-    # Note: get_llm_performance_metrics was removed from LLMPlayer to eliminate duplicate storage.
     # Extended performance metrics (voting_ties, latencies, etc.) are now calculated
     # directly from game move records when needed.
 
@@ -785,12 +799,12 @@ def build_game_outcome_summary(
 class RateLimiter(Protocol):
     """Protocol for rate limiting implementations."""
 
-    def acquire_permit(self, provider_name: str, timeout_seconds: float) -> bool:
+    def acquire_permit(self, provider_name: str, timeout_in_sec: float) -> bool:
         """Try to acquire a permit.
 
         Args:
             provider_name: API provider name (ignored in simple implementation).
-            timeout_seconds: Maximum time to wait for a permit.
+            timeout_in_sec: Maximum time to wait for a permit.
 
         Returns:
             bool: True if permit acquired, False if timeout.
@@ -833,17 +847,17 @@ class TokenBucketRateLimiter:
         self.last_update = time.time()
         self.lock = Lock()
 
-    def acquire_permit(self, provider_name: str, timeout_seconds: float) -> bool:
+    def acquire_permit(self, provider_name: str, timeout_in_sec: float) -> bool:
         """Try to acquire permission for one API call.
 
         Args:
             provider_name: Ignored (global limit).
-            timeout_seconds: Max wait time.
+            timeout_in_sec: Max wait time.
 
         Returns:
             bool: True if permit acquired, False if timeout.
         """
-        deadline = time.time() + timeout_seconds
+        deadline = time.time() + timeout_in_sec
 
         while time.time() < deadline:
             with self.lock:
@@ -862,10 +876,8 @@ class TokenBucketRateLimiter:
                     return True
 
                 # Calculate wait time until we have a slot
-                wait_seconds = (
-                    1.0 - self.available_requests
-                ) / self.requests_per_second
-                sleep_time = min(wait_seconds, 0.1)
+                wait_in_sec = (1.0 - self.available_requests) / self.requests_per_second
+                sleep_time = min(wait_in_sec, 0.1)
 
             # Sleep outside lock
             if time.time() + sleep_time > deadline:

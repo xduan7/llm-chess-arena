@@ -24,7 +24,7 @@ class TestStockfishPlayer:
     def test_initialization__stores_name_color_and_engine_limits(self):
         """Verify constructor stores metadata and engine configuration."""
         player = StockfishPlayer(
-            name="Test Stockfish", color="white", engine_limits={"depth": 5}
+            name="Test Stockfish", player_color="white", engine_limits={"depth": 5}
         )
         assert player.name == "Test Stockfish"
         assert player.color == "white"
@@ -34,7 +34,7 @@ class TestStockfishPlayer:
     def test_get_move__returns_legal_move_for_given_position(self):
         """Ensure Stockfish returns a legal move in the default position."""
         player = StockfishPlayer(
-            name="Test Stockfish", color="white", engine_limits={"depth": 5}
+            name="Test Stockfish", player_color="white", engine_limits={"depth": 5}
         )
 
         board = chess.Board()
@@ -52,7 +52,7 @@ class TestStockfishPlayer:
         """Check that a game versus a random bot concludes or respects move cap."""
         stockfish = StockfishPlayer(
             name="Stockfish",
-            color="white",
+            player_color="white",
             engine_limits={"depth": 5},  # Low depth for speed
         )
 
@@ -71,7 +71,7 @@ class TestStockfishPlayer:
     def test_close__cleans_up_engine_resources_and_is_idempotent(self):
         """Confirm close releases the engine and tolerates repeat calls."""
         player = StockfishPlayer(
-            name="Test Stockfish", color="white", engine_limits={"depth": 5}
+            name="Test Stockfish", player_color="white", engine_limits={"depth": 5}
         )
 
         board = chess.Board()
@@ -87,7 +87,7 @@ class TestStockfishPlayer:
         """Validate that limited search parameters still produce legal moves."""
         player = StockfishPlayer(
             name="Fast Stockfish",
-            color="white",
+            player_color="white",
             engine_limits={"depth": 10, "time": 0.1},
         )
 
@@ -113,7 +113,7 @@ class TestStockfishNotAvailable:
 
         with pytest.raises(FileNotFoundError) as exc_info:
             StockfishPlayer(
-                name="Test", color="white", binary_path="/nonexistent/stockfish"
+                name="Test", player_color="white", binary_path="/nonexistent/stockfish"
             )
 
         assert "Stockfish binary not found" in str(exc_info.value)
@@ -122,7 +122,7 @@ class TestStockfishNotAvailable:
         """Confirm engine limit dictionaries persist verbatim."""
         player = StockfishPlayer(
             name="Test",
-            color="white",
+            player_color="white",
             engine_limits={"depth": 20, "time": 5.0, "nodes": 1000000},
         )
         assert player.engine_limits["depth"] == 20
@@ -132,7 +132,7 @@ class TestStockfishNotAvailable:
 
         player2 = StockfishPlayer(
             name="Test",
-            color="white",
+            player_color="white",
             engine_limits={"depth": 0},  # Let chess.engine handle validation
         )
         assert player2.engine_limits["depth"] == 0
@@ -142,7 +142,7 @@ class TestStockfishNotAvailable:
         """Ensure engine options dictionary is retained."""
         player = StockfishPlayer(
             name="Configured Stockfish",
-            color="white",
+            player_color="white",
             engine_limits={"depth": 5},
             engine_options={"Hash": 256, "Threads": 2},
         )
@@ -154,7 +154,7 @@ class TestStockfishNotAvailable:
         """Check default-depth configuration still generates legal moves."""
         player = StockfishPlayer(
             name="Test",
-            color="white",
+            player_color="white",
             engine_limits={"depth": 5},
         )
 

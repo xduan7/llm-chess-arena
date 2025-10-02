@@ -269,10 +269,10 @@ class TestLLMConnectorArgo:
             mock_completion.return_value = Mock(
                 choices=[Mock(message=Mock(content="Move"))]
             )
-            connector = LLMConnector(model="argo:gpt-5-low")
+            connector = LLMConnector(model="argo:gpt-5-mini")
             connector.query("Play a move")
         call = mock_completion.call_args.kwargs
-        assert call["model"] == "argo:gpt-5-low"
+        assert call["model"] == "argo:gpt-5-mini"
         assert call["api_base"] == "https://argo.example.com/v1"
         assert call["api_key"] == ARGO_DUMMY_API_KEY
         assert call["custom_llm_provider"] == "openai"

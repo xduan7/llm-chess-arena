@@ -1,18 +1,4 @@
-"""Terminal chess board rendering utilities powered by Rich.
-
-Styling Constants Usage:
-- Board Colors: LIGHT_SQUARE_COLOR, DARK_SQUARE_COLOR for chess board squares
-- Move Highlights: HIGHLIGHT_COLOR, LAST_MOVE_FROM_COLOR, LAST_MOVE_TO_COLOR for move visualization
-- Player Styles: WHITE_PLAYER_STYLE, BLACK_PLAYER_STYLE for player name display
-- Piece Styles: WHITE_BOARD_PIECE_STYLE, BLACK_BOARD_PIECE_STYLE for board piece rendering
-- Text Styles: ACCENT_TEXT_STYLE, DIM_TEXT_STYLE, WIN_TEXT_STYLE, DRAW_TEXT_STYLE, CHECK_TEXT_STYLE
-- Move Quality: QUALITY_SUFFIXES (notation symbols), QUALITY_COLORS (color coding)
-- Material Analysis: STARTING_PIECES, DEFAULT_PIECE_VALUES for captured piece calculation
-
-Note: Some constants (material balance, captured pieces) are used only when rich board display
-is enabled and metrics are available. When metrics are disabled, the color constants for
-move quality and material display are not actively used but remain for feature completeness.
-"""
+"""Terminal chess board rendering utilities powered by Rich."""
 
 from __future__ import annotations
 
@@ -268,7 +254,6 @@ def _build_board_table(
     table.add_column(justify="center", width=1)  # spacing
     table.add_column(justify="left", width=2)  # right rank numbers
 
-    # File labels row: empty + space + 8 letters + space + empty
     file_labels = (
         [Text(" "), Text(" ")]
         + [Text(letter, style=ACCENT_TEXT_STYLE) for letter in "abcdefgh"]
@@ -395,8 +380,8 @@ def _build_compact_player_stats_panel(
     board: chess.Board,
     white_player: str | None,
     black_player: str | None,
-    white_thinking_time: float,
-    black_thinking_time: float,
+    white_thinking_time_in_sec: float,
+    black_thinking_time_in_sec: float,
     white_win_probability: float | None,
     piece_values: dict[int, int] | None = None,
 ) -> Panel:
@@ -406,8 +391,8 @@ def _build_compact_player_stats_panel(
         board: Current board state for material balance calculation.
         white_player: Name of the white player.
         black_player: Name of the black player.
-        white_thinking_time: Cumulative thinking time for white player in seconds.
-        black_thinking_time: Cumulative thinking time for black player in seconds.
+        white_thinking_time_in_sec: Cumulative thinking time for white player.
+        black_thinking_time_in_sec: Cumulative thinking time for black player.
         white_win_probability: Win probability from White's perspective (0.0-1.0).
         piece_values: Optional custom piece values. If None, uses DEFAULT_PIECE_VALUES.
 
@@ -420,7 +405,6 @@ def _build_compact_player_stats_panel(
         _calculate_material_balance(board, piece_values)
     )
 
-    # Pre-calculate material values to avoid repeated calculations
     white_material_captured = sum(
         piece_values[piece.piece_type] for piece in white_captured
     )
@@ -432,7 +416,6 @@ def _build_compact_player_stats_panel(
     black_display_name = black_player or "Black"
     stats_col_width = max(18, len(white_display_name) + 2, len(black_display_name) + 2)
 
-    # Determine if we should show the winrate bar
     show_winrate_bar = white_win_probability is not None
 
     stats_table = Table.grid(padding=0, expand=False)
@@ -472,8 +455,8 @@ def _build_compact_player_stats_panel(
         else:
             return Text("▓▓▓", style=WHITE_PLAYER_STYLE)
 
-    black_minutes, black_seconds = divmod(int(black_thinking_time), 60)
-    white_minutes, white_seconds = divmod(int(white_thinking_time), 60)
+    black_minutes, black_seconds = divmod(int(black_thinking_time_in_sec), 60)
+    white_minutes, white_seconds = divmod(int(white_thinking_time_in_sec), 60)
 
     bar_segment_index = 0  # Track which bar segment we're on (0-based from top)
 
@@ -522,7 +505,6 @@ def _build_compact_player_stats_panel(
         if (
             row_index == 0 and white_captured
         ):  # Black's lost pieces (what White captured from Black)
-            # All Black lost pieces on one line
             pieces_text = Text()
             for piece in white_captured:  # All pieces, not just first 8
                 pieces_text.append(
@@ -555,7 +537,6 @@ def _build_compact_player_stats_panel(
             stats_table.add_row(pieces_text)
         bar_segment_index += 1
 
-    # Last row: white lost pieces | white percentage at bottom
     if black_captured:  # White's lost pieces (what Black captured from White)
         pieces_text = Text()
         for piece in black_captured:  # All pieces on one line
@@ -628,8 +609,8 @@ def display_board_with_context(
     black_player: str | None = None,
     history_length: int = 8,
     move_qualities: Sequence[MoveQuality | None] | None = None,
-    white_thinking_time: float = 0.0,
-    black_thinking_time: float = 0.0,
+    white_thinking_time_in_sec: float = 0.0,
+    black_thinking_time_in_sec: float = 0.0,
     white_win_probability: float | None = None,
 ) -> None:
     """Render the chess board alongside contextual game information using Rich.
@@ -644,8 +625,8 @@ def display_board_with_context(
         black_player: Name of the black player.
         history_length: Maximum number of recent moves to display.
         move_qualities: Quality annotations for each move in the history.
-        white_thinking_time: Cumulative thinking time for white player in seconds.
-        black_thinking_time: Cumulative thinking time for black player in seconds.
+        white_thinking_time_in_sec: Cumulative thinking time for white player.
+        black_thinking_time_in_sec: Cumulative thinking time for black player.
         white_win_probability: Win probability from White's perspective (0.0-1.0).
     """
 
@@ -664,8 +645,8 @@ def display_board_with_context(
         board=board,
         white_player=white_player,
         black_player=black_player,
-        white_thinking_time=white_thinking_time,
-        black_thinking_time=black_thinking_time,
+        white_thinking_time_in_sec=white_thinking_time_in_sec,
+        black_thinking_time_in_sec=black_thinking_time_in_sec,
         white_win_probability=white_win_probability,
     )
 
@@ -675,7 +656,6 @@ def display_board_with_context(
         move_qualities=move_qualities,
     )
 
-    # 3-column layout: stats | board | history
     grid = Table.grid(expand=False, padding=(0, 2))
     grid.add_column()  # stats
     grid.add_column()  # board
@@ -868,25 +848,21 @@ def _build_metrics_panel(
 ) -> Panel:
     """Build a Rich panel displaying a player's metrics."""
 
-    # Player name and style
     name_style = WHITE_PLAYER_STYLE if is_white else BLACK_PLAYER_STYLE
     player_text = Text(player_name, style=name_style)
 
-    # Metrics content
     panel_lines: list[Text] = []
 
-    # Basic stats
     panel_lines.append(Text(f"Moves Evaluated: {summary.moves_evaluated}"))
 
     if summary.average_centipawn_loss is not None:
         avg_loss = f"{summary.average_centipawn_loss:.1f}"
         panel_lines.append(Text(f"Avg Centipawn Loss: {avg_loss}"))
 
-    # Quality breakdown - always show all categories for consistent panel height
+    # Always show all quality categories for consistent panel height
     panel_lines.append(Text(""))
     panel_lines.append(Text("Move Quality Breakdown:", style="bold"))
 
-    # Calculate percentages based on moves evaluated
     total_moves = summary.moves_evaluated
     for quality in MOVE_QUALITY_ORDER:
         count = summary.quality_counts.get(quality, 0)
@@ -896,7 +872,6 @@ def _build_metrics_panel(
             Text(f"  {quality.value.title()}: {percentage:.1f}%", style=color)
         )
 
-    # Combine all content
     panel_content = Text()
     for line_index, line in enumerate(panel_lines):
         if line_index > 0:
@@ -914,13 +889,15 @@ def display_tournament_summary(
     player1_wins: int,
     player2_wins: int,
     draws: int,
-    duration_seconds: float | None,
+    duration_in_sec: float | None,
     total_cost: float,
     avg_game_length: float,
     player1_avg_centipawn_loss: float | None,
     player2_avg_centipawn_loss: float | None,
-    player1_avg_thinking_time: float,
-    player2_avg_thinking_time: float,
+    player1_total_thinking_time_in_sec: float,
+    player2_total_thinking_time_in_sec: float,
+    player1_avg_thinking_time_per_move_in_sec: float,
+    player2_avg_thinking_time_per_move_in_sec: float,
     player1_quality_counts: dict[str, int],
     player2_quality_counts: dict[str, int],
 ) -> None:
@@ -934,13 +911,17 @@ def display_tournament_summary(
         player1_wins: Number of games won by player 1.
         player2_wins: Number of games won by player 2.
         draws: Number of drawn games.
-        duration_seconds: Total tournament duration in seconds.
+        duration_in_sec: Total tournament duration in seconds.
         total_cost: Total API cost across all games.
         avg_game_length: Average game length in moves.
         player1_avg_centipawn_loss: Average centipawn loss for player 1 (if available).
         player2_avg_centipawn_loss: Average centipawn loss for player 2 (if available).
-        player1_avg_thinking_time: Average thinking time for player 1 in seconds.
-        player2_avg_thinking_time: Average thinking time for player 2 in seconds.
+        player1_total_thinking_time_in_sec: Total thinking time for player 1.
+        player2_total_thinking_time_in_sec: Total thinking time for player 2.
+        player1_avg_thinking_time_per_move_in_sec: Average thinking time per move for player 1.
+        player2_avg_thinking_time_per_move_in_sec: Average thinking time per move for player 2.
+        player1_quality_counts: Move quality distribution for player 1.
+        player2_quality_counts: Move quality distribution for player 2.
     """
     # Build player stats panels first (so we can match result panel width)
     player1_panel = _build_tournament_player_panel(
@@ -949,7 +930,8 @@ def display_tournament_summary(
         draws=draws,
         losses=player2_wins,
         avg_centipawn_loss=player1_avg_centipawn_loss,
-        avg_thinking_time=player1_avg_thinking_time,
+        total_thinking_time_in_sec=player1_total_thinking_time_in_sec,
+        avg_thinking_time_per_move_in_sec=player1_avg_thinking_time_per_move_in_sec,
         quality_counts=player1_quality_counts,
     )
 
@@ -959,30 +941,27 @@ def display_tournament_summary(
         draws=draws,
         losses=player1_wins,
         avg_centipawn_loss=player2_avg_centipawn_loss,
-        avg_thinking_time=player2_avg_thinking_time,
+        total_thinking_time_in_sec=player2_total_thinking_time_in_sec,
+        avg_thinking_time_per_move_in_sec=player2_avg_thinking_time_per_move_in_sec,
         quality_counts=player2_quality_counts,
     )
 
-    # Layout player panels side by side
     player_grid = Table.grid(expand=False, padding=(0, 3))
     player_grid.add_column()
     player_grid.add_column()
     player_grid.add_row(player1_panel, player2_panel)
 
-    # Measure player grid width to match results panel
     target_width = _measure_renderable_width(player_grid)
 
-    # Build results panel to match width
     results_panel = _build_tournament_results_panel(
         match_name=match_name,
         total_games=total_games,
-        duration_seconds=duration_seconds,
+        duration_in_sec=duration_in_sec,
         avg_game_length=avg_game_length,
         total_cost=total_cost,
         width=target_width,
     )
 
-    # Column layout: results on top, players below
     column = Table.grid(expand=False, padding=(0, 0))
     column.add_column(no_wrap=True)
     column.add_row(results_panel)
@@ -996,7 +975,7 @@ def display_tournament_summary(
 def _build_tournament_results_panel(
     match_name: str,
     total_games: int,
-    duration_seconds: float | None,
+    duration_in_sec: float | None,
     avg_game_length: float,
     total_cost: float,
     width: int | None = None,
@@ -1017,21 +996,17 @@ def _build_tournament_results_panel(
 
     content_lines: list[Text] = []
 
-    # Match name (bold like game outcome)
     content_lines.append(_format_line(f"Match: {match_name}", style="bold"))
 
-    # Duration
-    if duration_seconds is not None:
+    if duration_in_sec is not None:
         content_lines.append(
-            _format_line(f"Duration: {_format_time_display(duration_seconds)}")
+            _format_line(f"Duration: {_format_time_display(duration_in_sec)}")
         )
 
-    # Total games and averages
     content_lines.append(_format_line(f"Total Games: {total_games}"))
     content_lines.append(_format_line(f"Avg Game Length: {avg_game_length:.1f} moves"))
     content_lines.append(_format_line(f"Total Cost: ${total_cost:.4f}"))
 
-    # Combine all content
     text_block = Text()
     for line_index, line in enumerate(content_lines):
         if line_index > 0:
@@ -1049,7 +1024,8 @@ def _build_tournament_player_panel(
     draws: int,
     losses: int,
     avg_centipawn_loss: float | None,
-    avg_thinking_time: float,
+    total_thinking_time_in_sec: float,
+    avg_thinking_time_per_move_in_sec: float,
     quality_counts: dict[str, int],
 ) -> Panel:
     """Build a Rich panel displaying tournament aggregate stats for one player."""
@@ -1058,7 +1034,6 @@ def _build_tournament_player_panel(
 
     panel_lines: list[Text] = []
 
-    # Player record (W/D/L) - with color coding for clarity
     record_line = Text("W/D/L: ", style="bold")
     record_line.append(f"{wins}", style=WIN_TEXT_STYLE)
     record_line.append("/", style="bold")
@@ -1067,23 +1042,22 @@ def _build_tournament_player_panel(
     record_line.append(f"{losses}", style=LOSS_TEXT_STYLE)
     panel_lines.append(record_line)
 
-    # Average thinking time
     panel_lines.append(
-        Text(f"Avg Thinking Time: {_format_time_display(avg_thinking_time)}")
+        Text(f"Total Thinking Time: {_format_time_display(total_thinking_time_in_sec)}")
+    )
+    panel_lines.append(
+        Text(f"Avg Per Move: {_format_time_display(avg_thinking_time_per_move_in_sec)}")
     )
 
-    # Average centipawn loss (if available)
     if avg_centipawn_loss is not None:
         panel_lines.append(Text(f"Avg Centipawn Loss: {avg_centipawn_loss:.1f}"))
     else:
         panel_lines.append(Text("Avg Centipawn Loss: N/A", style=DIM_TEXT_STYLE))
 
-    # Move quality breakdown (if available) - with color coding
     if quality_counts:
         panel_lines.append(Text(""))  # Blank line
         panel_lines.append(Text("Move Quality Breakdown:", style="bold"))
 
-        # Calculate average percentages across all games
         total_moves = sum(quality_counts.values())  # Total moves for this player
         for quality in MOVE_QUALITY_ORDER:
             count = quality_counts.get(quality.value, 0)
@@ -1093,7 +1067,6 @@ def _build_tournament_player_panel(
                 Text(f"  {quality.value.title()}: {percentage:.1f}%", style=color)
             )
 
-    # Combine all content
     panel_content = Text()
     for line_index, line in enumerate(panel_lines):
         if line_index > 0:

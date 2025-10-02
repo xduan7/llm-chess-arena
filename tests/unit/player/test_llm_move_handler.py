@@ -61,7 +61,6 @@ class TestGameArenaPromptGeneration:
         )
 
         assert "black" in black_player_prompt
-        # Ensure "white" doesn't appear before "black" in the prompt
         assert "white" not in black_player_prompt.split("black")[0]
 
     def test_prompt_template_cannot_access_private_attributes_starting_with_underscore(
@@ -350,7 +349,6 @@ class TestSpecialMoveHandling:
         """Parse error messages should include full response for debugging."""
         move_handler = GameArenaLLMMoveHandler()
 
-        # Create a very long response without a valid move
         long_response = (
             "This is a very long response that doesn't contain a valid move. " * 20
         )
@@ -370,14 +368,12 @@ class TestSpecialMoveHandling:
         """Parse error messages should show when text is found but fails parsing."""
         move_handler = GameArenaLLMMoveHandler()
 
-        # Create a response with text that gets extracted but becomes empty after sanitization
         response_with_invalid_move = "I think about this position. Final Answer: !!??"
 
         with pytest.raises(ParseMoveError) as exc_info:
             move_handler.parse_decision_from_response(response_with_invalid_move)
 
         error_msg = str(exc_info.value)
-        # Should show that text was found but parsing failed
         assert "Found potential move text" in error_msg
         assert "but failed to parse as valid move" in error_msg
         assert "!!??" in error_msg

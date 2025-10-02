@@ -25,8 +25,8 @@ def sample_tournament_result() -> TournamentResult:
             termination_reason="checkmate",
             white_centipawn_loss=50.0,
             black_centipawn_loss=100.0,
-            white_thinking_time=10.0,
-            black_thinking_time=15.0,
+            white_thinking_time_in_sec=10.0,
+            black_thinking_time_in_sec=15.0,
             white_cost=0.01,
             black_cost=0.02,
             white_quality_counts={"best": 5, "good": 10, "inaccuracy": 3},
@@ -44,8 +44,8 @@ def sample_tournament_result() -> TournamentResult:
             termination_reason="checkmate",
             white_centipawn_loss=120.0,
             black_centipawn_loss=60.0,
-            white_thinking_time=12.0,
-            black_thinking_time=18.0,
+            white_thinking_time_in_sec=12.0,
+            black_thinking_time_in_sec=18.0,
             white_cost=0.015,
             black_cost=0.025,
             white_quality_counts={"best": 4, "excellent": 6, "blunder": 2},
@@ -70,8 +70,12 @@ def sample_tournament_result() -> TournamentResult:
         avg_game_length=45.0,
         player1_avg_centipawn_loss=80.0,
         player2_avg_centipawn_loss=80.0,
-        player1_avg_thinking_time=14.0,
-        player2_avg_thinking_time=13.5,
+        player1_total_thinking_time_in_sec=28.0,
+        player2_total_thinking_time_in_sec=27.0,
+        player1_avg_thinking_time_per_game_in_sec=14.0,
+        player2_avg_thinking_time_per_game_in_sec=13.5,
+        player1_avg_thinking_time_per_move_in_sec=0.5,
+        player2_avg_thinking_time_per_move_in_sec=0.48,
         player1_quality_counts={"best": 11, "good": 18, "inaccuracy": 3},
         player2_quality_counts={"best": 7, "excellent": 6, "mistake": 5},
         games=games,
@@ -89,10 +93,8 @@ class TestResultsExporter:
 
         ResultsExporter.export_json(sample_tournament_result, output_file)
 
-        # Verify file exists
         assert output_file.exists()
 
-        # Verify JSON is valid and contains expected data
         with open(output_file) as f:
             data = json.load(f)
 
@@ -106,7 +108,6 @@ class TestResultsExporter:
         assert data["total_cost"] == 0.07
         assert data["avg_game_length"] == 45.0
 
-        # Verify move quality data is included
         assert "move_quality" in data
         assert "player1_counts" in data["move_quality"]
         assert "player1_percentages" in data["move_quality"]
@@ -132,18 +133,14 @@ class TestResultsExporter:
 
         ResultsExporter.export_csv(sample_tournament_result, output_file)
 
-        # Verify file exists
         assert output_file.exists()
 
-        # Verify CSV structure and content
         with open(output_file, newline="") as f:
             reader = csv.DictReader(f)
             rows = list(reader)
 
-        # Should have 2 rows (one per game)
         assert len(rows) == 2
 
-        # Check first game
         row1 = rows[0]
         assert row1["match_name"] == "test_match"
         assert row1["game_id"] == "1"
@@ -156,7 +153,6 @@ class TestResultsExporter:
         assert row1["white_good"] == "10"
         assert row1["white_inaccuracy"] == "3"
 
-        # Check second game
         row2 = rows[1]
         assert row2["game_id"] == "2"
         assert row2["white_player"] == "Player B"
@@ -212,8 +208,8 @@ class TestResultsExporter:
                     termination_reason="resignation",
                     white_centipawn_loss=None,  # Missing
                     black_centipawn_loss=None,  # Missing
-                    white_thinking_time=5.0,
-                    black_thinking_time=6.0,
+                    white_thinking_time_in_sec=5.0,
+                    black_thinking_time_in_sec=6.0,
                     white_cost=0.01,
                     black_cost=0.02,
                     timestamp=datetime.now(UTC),
@@ -228,7 +224,6 @@ class TestResultsExporter:
             reader = csv.DictReader(f)
             row = next(reader)
 
-        # Should have empty strings for missing metrics
         assert row["white_centipawn_loss"] == ""
         assert row["black_centipawn_loss"] == ""
 
@@ -251,8 +246,8 @@ class TestResultsExporter:
                     termination_reason="checkmate",
                     white_centipawn_loss=50.5,
                     black_centipawn_loss=120.75,
-                    white_thinking_time=10.5,
-                    black_thinking_time=15.25,
+                    white_thinking_time_in_sec=10.5,
+                    black_thinking_time_in_sec=15.25,
                     white_cost=0.012345,
                     black_cost=0.023456,
                     timestamp=datetime.now(UTC),
@@ -267,12 +262,11 @@ class TestResultsExporter:
             reader = csv.DictReader(f)
             row = next(reader)
 
-        # Verify numeric values are written as numbers (not formatted strings)
         # CSV stores everything as strings, but they should be parseable as floats
         assert float(row["white_centipawn_loss"]) == 50.5
         assert float(row["black_centipawn_loss"]) == 120.75
-        assert float(row["white_thinking_time"]) == 10.5
-        assert float(row["black_thinking_time"]) == 15.25
+        assert float(row["white_thinking_time_in_sec"]) == 10.5
+        assert float(row["black_thinking_time_in_sec"]) == 15.25
         assert float(row["white_cost"]) == 0.012345
         assert float(row["black_cost"]) == 0.023456
 

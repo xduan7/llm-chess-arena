@@ -1,0 +1,70 @@
+# =============================================================================
+# Metrics Configuration - High Precision Evaluation
+# =============================================================================
+# High precision configuration balancing accuracy and performance.
+# Suitable for cloud instances with moderate resources (16+ cores, 16+ GB RAM).
+# Analysis time: ~5-10x slower than default settings.
+
+# ANALYSIS DEPTH - Accuracy vs Speed tradeoff
+stockfish_depth: 40         # Search depth for move evaluation
+                            # - 10-15: Fast, good for development/testing
+                            # - 15-20: Good balance for research (recommended)
+                            # - 20-25: High accuracy, slower evaluation
+                            # - 25+: Diminishing returns, very slow
+                            # - DEPENDENCY: Higher depth = better move quality assessment but longer games
+
+# STOCKFISH BINARY - Auto-detection vs explicit path
+stockfish_binary_path: null # Path to Stockfish executable
+                            # - null: Auto-detect from PATH or common locations
+                            # - Set explicit path if auto-detection fails
+                            # - Check STOCKFISH_BINARY_PATH environment variable
+                            # - Required for metrics evaluation
+
+# ENGINE PERFORMANCE - Memory and CPU optimization
+stockfish_engine_options:
+  Threads: 16               # CPU threads for Stockfish analysis
+                           # - 1-2: Minimal CPU usage, slower analysis
+                           # - 4-8: Good balance for most systems
+                           # - 16+: Diminishing returns unless many concurrent games
+                           # - DEPENDENCY: Should match available CPU cores
+
+  Hash: 4096               # Memory allocation in MB for Stockfish
+                          # - 64-256 MB: Minimal memory usage
+                          # - 512-1024 MB: Good performance (recommended)
+                          # - 2048+ MB: Better for long games/complex positions
+                          # - DEPENDENCY: Should fit within available system memory
+
+# MOVE QUALITY CLASSIFICATION - Centipawn loss thresholds
+quality_thresholds:
+  # These thresholds classify moves based on centipawn loss vs best move
+  # Lower thresholds = stricter quality standards
+
+  excellent: 50            # <= 50 centipawns loss = "Excellent" move
+                          # - Very good moves, nearly optimal
+                          # - Typical for strong human/engine play
+
+  good: 100               # <= 100 centipawns loss = "Good" move
+                          # - Solid moves with minor inaccuracies
+                          # - Acceptable for intermediate play
+
+  inaccuracy: 200         # <= 200 centipawns loss = "Inaccuracy"
+                          # - Noticeable suboptimal moves
+                          # - Often seen in amateur play
+
+  mistake: 300            # <= 300 centipawns loss = "Mistake"
+                          # - Clear errors that worsen position
+                          # - > 300 centipawns = "Blunder" (major error)
+
+# CENTIPAWN LOSS CALCULATION - Cap for average calculation
+max_centipawn_loss_per_move: 1000  # Maximum CP loss counted per move for ACPL
+                                   # - Prevents mate positions from skewing averages
+                                   # - Industry standards: Chess.com=1000, Lichess=1000, python-chess-annotator=2000
+                                   # - Without cap: missing mate = ~100,000 CP loss (breaks averages)
+                                   # - With cap: missing mate = 2000 CP loss (reasonable penalty)
+                                   # - Set to null to disable capping (not recommended)
+
+# USAGE NOTES:
+# - All metrics depend on Stockfish being installed and accessible
+# - Higher depth and memory improve accuracy but slow down games
+# - Thresholds can be adjusted based on research needs
+# - Metrics gracefully degrade if Stockfish unavailable

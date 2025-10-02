@@ -12,15 +12,15 @@ from llm_chess_arena.utils import get_legal_moves_in_uci, get_move_history_in_uc
 class BasePlayer(ABC):
     """Abstract base class that standardizes player decision flow."""
 
-    def __init__(self, name: str, color: Color) -> None:
+    def __init__(self, name: str, player_color: Color) -> None:
         """Initialize shared player metadata.
 
         Args:
             name: Display name used in logs and UI elements.
-            color: Chess side this player controls.
+            player_color: Chess side this player controls.
         """
         self.name = name
-        self.color = color
+        self.color = player_color
 
     def __call__(self, board: chess.Board) -> PlayerDecision:
         """Compute the player's next move using the template method pattern.

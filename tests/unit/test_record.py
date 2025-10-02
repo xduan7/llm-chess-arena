@@ -98,8 +98,8 @@ class TestRecordWriter:
     def test_calculate_summary_basic(self):
         """Test basic summary calculation."""
         moves = [
-            {"player": "white", "thinking_time_in_seconds": 2.5},
-            {"player": "black", "thinking_time_in_seconds": 1.8},
+            {"player": "white", "thinking_time_in_sec": 2.5},
+            {"player": "black", "thinking_time_in_sec": 1.8},
         ]
         outcome = chess.Outcome(
             termination=chess.Termination.CHECKMATE, winner=chess.WHITE
@@ -117,7 +117,7 @@ class TestRecordWriter:
         moves = [
             {
                 "player": "white",
-                "thinking_time_in_seconds": 2.5,
+                "thinking_time_in_sec": 2.5,
                 "llm_decision_process": {
                     "api_calls": [
                         {
@@ -141,7 +141,7 @@ class TestRecordWriter:
         assert summary["termination"] == "unknown"
         assert summary["total_moves"] == 1
         assert "white" in summary["players"]
-        assert summary["players"]["white"]["thinking_time_in_seconds"] == 2.5
+        assert summary["players"]["white"]["thinking_time_in_sec"] == 2.5
         assert summary["players"]["white"]["api_calls"] == 1
         assert summary["players"]["white"]["tokens_prompt"] == 100
         assert summary["players"]["white"]["tokens_completion"] == 50
@@ -177,14 +177,11 @@ class TestRecordWriter:
         initial_fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
         RecordWriter.write(collector, hydra_config, output_path, initial_fen)
 
-        # Verify file was created
         assert output_path.exists()
 
-        # Load and verify JSON structure
         with output_path.open() as f:
             record = json.load(f)
 
-        # Verify required sections exist
         assert "summary" in record
         assert "environment" in record
         assert "hydra_config" in record
@@ -192,7 +189,6 @@ class TestRecordWriter:
         assert "moves" in record
         assert "game_outcome" in record
 
-        # Verify specific values
         assert record["summary"]["total_moves"] == 1
         assert record["hydra_config"] == hydra_config
         assert len(record["moves"]) == 1
@@ -207,16 +203,13 @@ class TestGameRecordIntegration:
     @patch("llm_chess_arena.record.iso_timestamp")
     def test_game_record_integration(self, mock_record_iso, mock_game_iso, tmp_path):
         """Run mocked game and verify key fields in output."""
-        # Mock consistent timestamps for all iso_timestamp calls
         fixed_timestamp = "2024-01-15T14:30:47.456Z"
         mock_record_iso.return_value = fixed_timestamp
         mock_game_iso.return_value = fixed_timestamp
 
-        # Create players
-        white_player = RandomPlayer(name="Random White", color="white")
-        black_player = RandomPlayer(name="Random Black", color="black")
+        white_player = RandomPlayer(name="Random White", player_color="white")
+        black_player = RandomPlayer(name="Random Black", player_color="black")
 
-        # Create game with record collection
         record_dir = tmp_path / "records"
         hydra_config = {
             "env": {"log_level": "INFO"},
@@ -239,33 +232,28 @@ class TestGameRecordIntegration:
             enable_metrics=False,
             record_dir=record_dir,
             record_name="test_game",
-            hydra_config=hydra_config,
+            hydra_cfg=hydra_config,
         )
 
-        # Play a short game (limit moves to ensure quick completion)
         game.play(max_num_moves=4)
 
-        # Verify both PGN and JSON records were created
         pgn_path = record_dir / "test_game.pgn"
         json_path = record_dir / "test_game.json"
         assert pgn_path.exists()
         assert json_path.exists()
 
-        # Load and verify record structure
         with json_path.open() as f:
             record = json.load(f)
 
-        # Assert on controlled fields only
         assert record["summary"]["total_moves"] == 4
         assert record["summary"]["result"] in ["1-0", "0-1", "1/2-1/2"]
         assert record["summary"]["termination"] in [
             "checkmate",
             "stalemate",
-            "max_moves",
+            "max_num_moves",
             "insufficient_material",
         ]
 
-        # Random players don't have thinking time or LLM data, so players section may be empty
         assert "players" in record["summary"]
 
         assert record["hydra_config"] == hydra_config
@@ -278,7 +266,6 @@ class TestGameRecordIntegration:
         assert record["game_outcome"]["total_moves"] == 4
         assert record["game_outcome"]["end_timestamp"] == fixed_timestamp
 
-        # Verify move structure
         for i, move in enumerate(record["moves"]):
             assert "move_number" in move
             assert "player" in move
