@@ -3,7 +3,7 @@
 import chess
 from omegaconf import OmegaConf
 
-from llm_chess_arena.cli.main import run_cli_game
+from llm_chess_arena.cli.main import run_tournament_cli
 
 
 class _StubPlayer:
@@ -52,24 +52,55 @@ class _StubGame:
         return True
 
 
-def test_run_cli_game_smoke(monkeypatch, capsys):
-    """The CLI should compose config, run the game, and emit a summary."""
+def test_run_tournament_cli_smoke(monkeypatch, capsys):
+    """The CLI should compose config, run tournament, and emit results."""
 
-    stub_game = _StubGame()
+    from llm_chess_arena.tournament.types import TournamentResult
+    from datetime import datetime, UTC
+
     captured: dict[str, object] = {}
 
     monkeypatch.setattr(
         "llm_chess_arena.cli.main.apply_env_config", lambda env_cfg: None
     )
 
-    def fake_run_game(app_config):
-        """Capture the provided app config and return the stubbed game."""
-        captured["app_config"] = app_config
-        return stub_game
+    mock_result = TournamentResult(
+        match_name="test_match",
+        player1_name="Random White",
+        player2_name="Random Black",
+        start_time=datetime.now(UTC),
+        end_time=datetime.now(UTC),
+        total_games=1,
+        player1_wins=0,
+        player2_wins=0,
+        draws=1,
+    )
 
+    class MockRunner:
+        def __init__(
+            self,
+            tournament_cfg,
+            game_cfg,
+            metrics_cfg,
+            white_player_cfg,
+            black_player_cfg,
+            hydra_cfg=None,
+        ):
+            captured["tournament_config"] = tournament_cfg
+            captured["game_config"] = game_cfg
+
+        def run(self):
+            return mock_result
+
+    monkeypatch.setattr("llm_chess_arena.cli.main.TournamentRunner", MockRunner)
     monkeypatch.setattr(
-        "llm_chess_arena.cli.main.run_game_from_config",
-        fake_run_game,
+        "llm_chess_arena.cli.main.ResultsExporter.export_json", lambda *args: None
+    )
+    monkeypatch.setattr(
+        "llm_chess_arena.cli.main.ResultsExporter.export_csv", lambda *args: None
+    )
+    monkeypatch.setattr(
+        "llm_chess_arena.cli.main.display_tournament_summary", lambda **kwargs: None
     )
 
     cfg = OmegaConf.create(
@@ -77,12 +108,14 @@ def test_run_cli_game_smoke(monkeypatch, capsys):
             "env": {"load_dotenv": False, "log_level": "INFO", "dotenv_path": None},
             "game": {
                 "display_board": False,
+                "display_summary": False,
                 "enable_metrics": False,
                 "max_num_moves": 12,
                 "record_dir": None,
                 "record_name": None,
             },
             "metrics": {
+                "max_centipawn_loss_per_move": 1000,
                 "stockfish_depth": 12,
                 "stockfish_binary_path": None,
                 "stockfish_engine_options": {},
@@ -92,6 +125,15 @@ def test_run_cli_game_smoke(monkeypatch, capsys):
                     "inaccuracy": 200,
                     "mistake": 300,
                 },
+            },
+            "tournament": {
+                "match_name": "test_match",
+                "num_games": 1,
+                "parallel_games": 1,
+                "rate_limit_rpm": None,
+                "alternate_colors": True,
+                "display_summary": False,
+                "output_dir": "output",
             },
             "players": {
                 "white": {
@@ -110,34 +152,60 @@ def test_run_cli_game_smoke(monkeypatch, capsys):
         }
     )
 
-    run_cli_game.__wrapped__(cfg)  # type: ignore[attr-defined]
+    run_tournament_cli.__wrapped__(cfg)  # type: ignore[attr-defined]
 
-    stdout = capsys.readouterr().out
-    assert "Outcome:" in stdout
-    assert "Termination:" in stdout
-
-    app_config = captured["app_config"]
-    assert app_config.game.max_num_moves == 12
+    assert captured["tournament_config"].match_name == "test_match"
+    assert captured["game_config"].max_num_moves == 12
 
 
-def test_run_cli_game_with_llm_config_normalization(monkeypatch, capsys):
+def test_run_tournament_cli_with_llm_config_normalization(monkeypatch, capsys):
     """Test that Hydra config overrides work and LLM config normalization is applied."""
 
-    stub_game = _StubGame()
+    from llm_chess_arena.tournament.types import TournamentResult
+    from datetime import datetime, UTC
+
     captured: dict[str, object] = {}
 
     monkeypatch.setattr(
         "llm_chess_arena.cli.main.apply_env_config", lambda env_cfg: None
     )
 
-    def fake_run_game(app_config):
-        """Capture the provided app config and return the stubbed game."""
-        captured["app_config"] = app_config
-        return stub_game
+    mock_result = TournamentResult(
+        match_name="test_match",
+        player1_name="Test LLM",
+        player2_name="Random Black",
+        start_time=datetime.now(UTC),
+        end_time=datetime.now(UTC),
+        total_games=1,
+        player1_wins=0,
+        player2_wins=0,
+        draws=1,
+    )
 
+    class MockRunner:
+        def __init__(
+            self,
+            tournament_cfg,
+            game_cfg,
+            metrics_cfg,
+            white_player_cfg,
+            black_player_cfg,
+            hydra_cfg=None,
+        ):
+            captured["white_player_config"] = white_player_cfg
+
+        def run(self):
+            return mock_result
+
+    monkeypatch.setattr("llm_chess_arena.cli.main.TournamentRunner", MockRunner)
     monkeypatch.setattr(
-        "llm_chess_arena.cli.main.run_game_from_config",
-        fake_run_game,
+        "llm_chess_arena.cli.main.ResultsExporter.export_json", lambda *args: None
+    )
+    monkeypatch.setattr(
+        "llm_chess_arena.cli.main.ResultsExporter.export_csv", lambda *args: None
+    )
+    monkeypatch.setattr(
+        "llm_chess_arena.cli.main.display_tournament_summary", lambda **kwargs: None
     )
 
     # Mock LiteLLM model registry to test normalization logic
@@ -152,12 +220,14 @@ def test_run_cli_game_with_llm_config_normalization(monkeypatch, capsys):
             "env": {"load_dotenv": False, "log_level": "INFO", "dotenv_path": None},
             "game": {
                 "display_board": False,
+                "display_summary": False,
                 "enable_metrics": False,
                 "max_num_moves": 5,
                 "record_dir": None,
                 "record_name": None,
             },
             "metrics": {
+                "max_centipawn_loss_per_move": 1000,
                 "stockfish_depth": 10,
                 "stockfish_binary_path": None,
                 "stockfish_engine_options": {},
@@ -168,17 +238,26 @@ def test_run_cli_game_with_llm_config_normalization(monkeypatch, capsys):
                     "mistake": 300,
                 },
             },
+            "tournament": {
+                "match_name": "test_match",
+                "num_games": 1,
+                "parallel_games": 1,
+                "rate_limit_rpm": None,
+                "alternate_colors": True,
+                "display_summary": False,
+                "output_dir": "output",
+            },
             "players": {
                 "white": {
                     "kind": "llm",
                     "name": "Test LLM",
                     "color": "white",
-                    "max_move_retries": None,  # Should be normalized to 3
-                    "num_votes": None,  # Should be normalized to 1
+                    "max_move_retries": 3,  # Must be specified (no auto-normalization)
+                    "num_votes": 1,  # Must be specified (no auto-normalization)
                     "connector": {
                         "model": "gpt-4o-mini",
                         "temperature": 0.1,
-                        "max_num_tokens": 0.5,  # Fractional - should be resolved to 2048
+                        "max_num_tokens": 0.5,  # Fractional - should be resolved to 8192
                         "request_timeout_in_seconds": 60.0,
                         "max_api_request_retries": 2,
                         "provider": None,
@@ -196,18 +275,10 @@ def test_run_cli_game_with_llm_config_normalization(monkeypatch, capsys):
         }
     )
 
-    run_cli_game.__wrapped__(cfg)  # type: ignore[attr-defined]
+    run_tournament_cli.__wrapped__(cfg)  # type: ignore[attr-defined]
 
-    stdout = capsys.readouterr().out
-    assert "Outcome:" in stdout
-    assert "Termination:" in stdout
-
-    app_config = captured["app_config"]
-    assert app_config.game.max_num_moves == 5
-
-    # Verify LLM config normalization worked
-    white_player = app_config.players.white
+    white_player = captured["white_player_config"]
     assert white_player.kind == "llm"
-    assert white_player.max_move_retries == 3  # None should be normalized to 3
-    assert white_player.num_votes == 1  # None should be normalized to 1
+    assert white_player.max_move_retries == 3  # Passed through from config
+    assert white_player.num_votes == 1  # Passed through from config
     assert white_player.connector.max_num_tokens == 8192  # 0.5 * 16384 = 8192

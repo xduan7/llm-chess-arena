@@ -35,7 +35,7 @@ class LLMPlayer(BasePlayer):
         self,
         *,
         name: str | None = None,
-        color: Color,
+        player_color: Color,
         connector: LLMConnector,
         handler: BaseLLMMoveHandler,
         max_move_retries: int,
@@ -45,7 +45,7 @@ class LLMPlayer(BasePlayer):
 
         Args:
             name: Display name for the player. Defaults to connector.model.
-            color: Chess side this player controls.
+            player_color: Chess side this player controls.
             connector: LLM connector for API communication.
             handler: Handler for parsing and formatting LLM responses.
             max_move_retries: Maximum retries for invalid moves before resignation.
@@ -57,7 +57,7 @@ class LLMPlayer(BasePlayer):
         if num_votes < 1:
             raise ValueError(f"`num_votes` must be >= 1, got {num_votes}")
 
-        super().__init__(name or connector.model, color)
+        super().__init__(name or connector.model, player_color)
         self.connector = connector
         self.handler = handler
         self.max_move_retries = max_move_retries
@@ -88,6 +88,7 @@ class LLMPlayer(BasePlayer):
         self._last_decision_artifacts = None
         final_decision_process: dict[str, Any] | None = None
         candidate_decision: PlayerDecision | None = None
+        cumulative_thinking_time_in_sec = 0.0
 
         for retry_attempt in self._retry_controller.iter_attempts():
             self.last_move_attempts = retry_attempt.attempt_number
@@ -138,9 +139,10 @@ class LLMPlayer(BasePlayer):
                 latency_in_ms = int(
                     (call_end_time - call_start_time).total_seconds() * 1000
                 )
+                cumulative_thinking_time_in_sec += latency_in_ms / 1000.0
                 api_call_record["response"] = {
                     "timestamp": iso_timestamp(call_end_time),
-                    "latency_ms": latency_in_ms,
+                    "latency_in_ms": latency_in_ms,
                     "choices": [
                         {
                             "index": response_index,
@@ -192,7 +194,9 @@ class LLMPlayer(BasePlayer):
 
                 # Validate and normalize the move decision
                 if candidate_decision.action == "resign":
-                    normalized_decision = candidate_decision
+                    normalized_decision = candidate_decision.model_copy(
+                        update={"thinking_time_in_sec": cumulative_thinking_time_in_sec}
+                    )
                     normalized_uci = None
                 elif candidate_decision.action == "move":
                     if candidate_decision.attempted_move is None:
@@ -203,7 +207,10 @@ class LLMPlayer(BasePlayer):
                         candidate_decision.attempted_move, context.board_in_fen
                     )
                     normalized_decision = candidate_decision.model_copy(
-                        update={"attempted_move": normalized_uci}
+                        update={
+                            "attempted_move": normalized_uci,
+                            "thinking_time_in_sec": cumulative_thinking_time_in_sec,
+                        }
                     )
                 else:
                     raise NotImplementedError(
@@ -245,6 +252,9 @@ class LLMPlayer(BasePlayer):
                     str(network_error),
                 )
                 resignation_decision = self._retry_controller.create_resignation()
+                resignation_decision = resignation_decision.model_copy(
+                    update={"thinking_time_in_sec": cumulative_thinking_time_in_sec}
+                )
                 self.last_move_decision = resignation_decision
                 self._last_decision_artifacts = DecisionArtifacts(
                     normalized_uci=None,
@@ -332,7 +342,10 @@ class LLMPlayer(BasePlayer):
                         else "unknown"
                     ),
                 )
-                resignation_decision = PlayerDecision(action="resign")
+                resignation_decision = PlayerDecision(
+                    action="resign",
+                    thinking_time_in_sec=cumulative_thinking_time_in_sec,
+                )
                 self.last_move_decision = resignation_decision
                 self._last_decision_artifacts = DecisionArtifacts(
                     normalized_uci=None,
@@ -349,6 +362,9 @@ class LLMPlayer(BasePlayer):
             }
 
         resignation_decision = self._retry_controller.create_resignation()
+        resignation_decision = resignation_decision.model_copy(
+            update={"thinking_time_in_sec": cumulative_thinking_time_in_sec}
+        )
         self.last_move_decision = resignation_decision
         self._last_decision_artifacts = DecisionArtifacts(
             normalized_uci=None,
@@ -363,9 +379,7 @@ class LLMPlayer(BasePlayer):
             try:
                 self.connector.close()
                 logger.debug("LLM connector closed successfully")
-            except (
-                Exception
-            ) as connector_close_error:  # pragma: no cover - defensive logging
+            except Exception as connector_close_error:  # pragma: no cover
                 logger.warning("Error closing LLM connector: {}", connector_close_error)
 
     def get_usage_totals(self) -> UsageRecord:
@@ -432,5 +446,4 @@ class LLMPlayer(BasePlayer):
             "tie_broken": metadata.tie_broken,
         }
 
-    # Note: get_llm_performance_metrics() was removed to eliminate duplicate data storage.
     # LLM performance metrics are now calculated directly from game move records.

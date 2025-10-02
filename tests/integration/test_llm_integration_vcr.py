@@ -50,7 +50,7 @@ class TestLLMIntegrationVCR:
         player = LLMPlayer(
             connector=connector,
             handler=handler,
-            color="white",
+            player_color="white",
             name="OpenAI-VCR",
             max_move_retries=3,
             num_votes=1,
@@ -59,33 +59,28 @@ class TestLLMIntegrationVCR:
         board = chess.Board()
         decision = player(board)
 
-        # This will be reproducible across runs
         assert decision.action == "move"
         assert decision.attempted_move in ["e2e4", "d2d4", "g1f3", "b1c3"]
 
     @vcr_config.use_cassette("llm_retry_illegal_move.yaml")
     def test_llm_retry_on_illegal__with_vcr__then_recovers(self):
         """Test LLM retry logic with recorded responses."""
-        # Create a mock connector that returns illegal move first
         connector = LLMConnector(model="gpt-4o-mini", temperature=0.0)
         handler = GameArenaLLMMoveHandler()
 
         player = LLMPlayer(
             connector=connector,
             handler=handler,
-            color="white",
+            player_color="white",
             max_move_retries=5,  # Increased retries to handle stubborn models
             num_votes=1,
         )
 
-        # Use standard starting position - simpler for LLM to handle
         board = chess.Board()
 
         decision = player(board)
 
-        # Should eventually return a legal move
         assert decision.action == "move"
-        # Verify the move is legal
         move = chess.Move.from_uci(decision.attempted_move)
         assert move in board.legal_moves
 
@@ -101,7 +96,7 @@ class TestLLMIntegrationVCR:
         player = LLMPlayer(
             connector=connector,
             handler=handler,
-            color="white",
+            player_color="white",
             max_move_retries=3,
             num_votes=3,  # Request 3 samples
         )
@@ -121,7 +116,7 @@ class TestLLMIntegrationVCR:
         player = LLMPlayer(
             connector=connector,
             handler=handler,
-            color="white",
+            player_color="white",
             max_move_retries=3,
             num_votes=1,
         )
@@ -146,7 +141,7 @@ class TestLLMIntegrationVCR:
         player = LLMPlayer(
             connector=connector,
             handler=handler,
-            color="white",
+            player_color="white",
             max_move_retries=3,
             num_votes=1,
         )
@@ -181,7 +176,7 @@ class TestLLMErrorHandlingVCR:
         player = LLMPlayer(
             connector=connector,
             handler=handler,
-            color="white",
+            player_color="white",
             max_move_retries=3,
             num_votes=1,
         )
@@ -211,7 +206,7 @@ class TestLLMErrorHandlingVCR:
         player = LLMPlayer(
             connector=connector,
             handler=handler,
-            color="white",
+            player_color="white",
             max_move_retries=3,
             num_votes=1,
         )
@@ -219,7 +214,6 @@ class TestLLMErrorHandlingVCR:
         board = chess.Board()
         decision = player(board)
 
-        # Should eventually get a valid move despite potential malformed responses
         assert decision.action == "move"
         assert decision.attempted_move is not None
 
@@ -239,7 +233,7 @@ def llm_player_vcr(vcr_cassette_name):
         player = LLMPlayer(
             connector=connector,
             handler=handler,
-            color="white",
+            player_color="white",
             max_move_retries=3,
             num_votes=1,
         )
@@ -254,8 +248,14 @@ class TestLLMGamesVCR:
         from llm_chess_arena.player.random_player import RandomPlayer
         from llm_chess_arena.game import Game
 
-        random_player = RandomPlayer(color="black", seed=42)
-        game = Game(llm_player_vcr, random_player)
+        random_player = RandomPlayer(name="Black", player_color="black", seed=42)
+        game = Game(
+            llm_player_vcr,
+            random_player,
+            display_board=False,
+            display_summary=False,
+            enable_metrics=False,
+        )
 
         # Play up to 10 moves
         for _ in range(10):
@@ -276,21 +276,27 @@ class TestLLMGamesVCR:
         white = LLMPlayer(
             connector=connector1,
             handler=handler,
-            color="white",
+            player_color="white",
             max_move_retries=3,
             num_votes=1,
         )
         black = LLMPlayer(
             connector=connector2,
             handler=handler,
-            color="black",
+            player_color="black",
             max_move_retries=3,
             num_votes=1,
         )
 
         from llm_chess_arena.game import Game
 
-        game = Game(white, black)
+        game = Game(
+            white,
+            black,
+            display_board=False,
+            display_summary=False,
+            enable_metrics=False,
+        )
 
         # Play first 4 moves (2 per side)
         for _ in range(4):
@@ -299,3 +305,46 @@ class TestLLMGamesVCR:
             game.make_move()
 
         assert len(game.board.move_stack) >= 2
+
+    @vcr_config.use_cassette("llm_coherent_opening.yaml")
+    def test_llm_coherent_opening_sequence__with_vcr__then_plays_sensibly(self):
+        """Test that LLM plays coherent opening moves with VCR."""
+        connector = LLMConnector(
+            model="gpt-4o-mini",
+            temperature=0.3,
+            max_num_tokens=1000,
+            request_timeout_in_seconds=10.0,
+            max_api_request_retries=3,
+        )
+        handler = GameArenaLLMMoveHandler()
+        white_player = LLMPlayer(
+            connector=connector,
+            handler=handler,
+            player_color="white",
+            max_move_retries=5,
+            num_votes=1,
+        )
+
+        board = chess.Board()
+        white_moves = []
+
+        for _ in range(5):
+            decision = white_player(board)
+            assert decision.action == "move"
+
+            move = chess.Move.from_uci(decision.attempted_move)
+            assert move in board.legal_moves
+
+            white_moves.append(board.san(move))
+            board.push(move)
+
+            # Play first legal black move
+            if not board.is_game_over():
+                black_moves = list(board.legal_moves)
+                board.push(black_moves[0])
+
+        assert len(white_moves) == 5
+
+        # First move should be a common opening
+        common_openings = ["e4", "d4", "Nf3", "c4"]
+        assert white_moves[0] in common_openings

@@ -14,7 +14,7 @@ from llm_chess_arena.player.llm import (
     LLMPlayer,
 )
 
-if TYPE_CHECKING:  # pragma: no cover - import for typing only
+if TYPE_CHECKING:  # pragma: no cover
     from llm_chess_arena.config import (
         LLMConnectorConfig,
         LLMHandlerConfig,
@@ -23,6 +23,7 @@ if TYPE_CHECKING:  # pragma: no cover - import for typing only
         RandomPlayerConfig,
         StockfishPlayerConfig,
     )
+    from llm_chess_arena.utils import RateLimiter
 
 
 class PlayerFactory:
@@ -30,11 +31,14 @@ class PlayerFactory:
 
     @staticmethod
     @config_operation
-    def create_player(player_config: "PlayerConfig") -> BasePlayer:
+    def create_player(
+        player_config: "PlayerConfig", rate_limiter: "RateLimiter | None" = None
+    ) -> BasePlayer:
         """Create a player implementation from its configuration dataclass.
 
         Args:
             player_config: Player configuration containing kind and type-specific settings.
+            rate_limiter: Optional tournament rate limiter for API throttling (LLM players only).
 
         Returns:
             BasePlayer: Configured player instance ready for gameplay.
@@ -53,7 +57,7 @@ class PlayerFactory:
             )
         if kind == "llm":
             return PlayerFactory._create_llm_player(
-                cast("LLMPlayerConfig", player_config)
+                cast("LLMPlayerConfig", player_config), rate_limiter=rate_limiter
             )
         raise ValueError(f"Unsupported player kind: {kind}")
 
@@ -62,13 +66,15 @@ class PlayerFactory:
         random_player_config: "RandomPlayerConfig",
     ) -> RandomPlayer:
         """Create random player from configuration."""
+        if random_player_config.color is None:
+            raise ValueError("Random player configuration must have a color assigned")
         name = (
             random_player_config.name
             or f"Random {random_player_config.color.capitalize()}"
         )
         return RandomPlayer(
             name=name,
-            color=random_player_config.color,
+            player_color=random_player_config.color,
             seed=random_player_config.seed,
         )
 
@@ -77,6 +83,10 @@ class PlayerFactory:
         stockfish_player_config: "StockfishPlayerConfig",
     ) -> StockfishPlayer:
         """Create Stockfish player from configuration."""
+        if stockfish_player_config.color is None:
+            raise ValueError(
+                "Stockfish player configuration must have a color assigned"
+            )
         name = stockfish_player_config.name or "Stockfish"
         engine_limits = (
             dict(stockfish_player_config.engine_limits)
@@ -90,35 +100,44 @@ class PlayerFactory:
         )
         return StockfishPlayer(
             name=name,
-            color=stockfish_player_config.color,
+            player_color=stockfish_player_config.color,
             binary_path=stockfish_player_config.binary_path,
             engine_limits=engine_limits,
             engine_options=engine_options,
         )
 
     @staticmethod
-    def _create_llm_player(llm_player_config: "LLMPlayerConfig") -> LLMPlayer:
-        """Create LLM player from configuration."""
+    def _create_llm_player(
+        llm_player_config: "LLMPlayerConfig", rate_limiter: "RateLimiter | None" = None
+    ) -> LLMPlayer:
+        """Create LLM player from configuration.
+
+        Args:
+            llm_player_config: LLM player configuration.
+            rate_limiter: Optional tournament rate limiter for API throttling.
+
+        Returns:
+            LLMPlayer: Configured LLM player instance.
+        """
+        if llm_player_config.color is None:
+            raise ValueError("LLM player configuration must have a color assigned")
+
         connector_config = llm_player_config.connector
         if connector_config is None:
             raise ValueError("LLM player configuration requires connector settings")
 
-        connector = PlayerFactory._create_llm_connector(connector_config)
+        connector = PlayerFactory._create_llm_connector(
+            connector_config, rate_limiter=rate_limiter
+        )
         handler = PlayerFactory._create_llm_handler(llm_player_config.handler)
         name = llm_player_config.name or connector_config.model
 
-        if llm_player_config.max_move_retries is None:
-            raise ValueError(
-                "max_move_retries must be set by config normalization - check config pipeline"
-            )
-        if llm_player_config.num_votes is None:
-            raise ValueError(
-                "num_votes must be set by config normalization - check config pipeline"
-            )
+        assert llm_player_config.max_move_retries is not None
+        assert llm_player_config.num_votes is not None
 
         return LLMPlayer(
             name=name,
-            color=llm_player_config.color,
+            player_color=llm_player_config.color,
             connector=connector,
             handler=handler,
             max_move_retries=llm_player_config.max_move_retries,
@@ -128,8 +147,17 @@ class PlayerFactory:
     @staticmethod
     def _create_llm_connector(
         connector_config: "LLMConnectorConfig",
+        rate_limiter: "RateLimiter | None" = None,
     ) -> LLMConnector:
-        """Create LLM connector from configuration."""
+        """Create LLM connector from configuration.
+
+        Args:
+            connector_config: Connector configuration.
+            rate_limiter: Optional tournament rate limiter for API throttling.
+
+        Returns:
+            LLMConnector: Configured connector instance.
+        """
         if connector_config.model is None:
             raise ValueError("LLM connector requires a model to be specified")
 
@@ -153,6 +181,7 @@ class PlayerFactory:
             max_api_request_retries=connector_config.max_api_request_retries,
             provider=connector_config.provider,
             api_base=connector_config.api_base,
+            rate_limiter=rate_limiter,
         )
 
     @staticmethod

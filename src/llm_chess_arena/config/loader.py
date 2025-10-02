@@ -5,7 +5,7 @@ from __future__ import annotations
 import os
 import sys
 from pathlib import Path
-from typing import Mapping, Sequence
+from typing import Any, Sequence, cast
 
 from dotenv import find_dotenv, load_dotenv
 from hydra import compose, initialize_config_dir
@@ -16,22 +16,26 @@ from omegaconf import DictConfig, OmegaConf
 from llm_chess_arena.config.schema import (
     AppConfig,
     EnvConfig,
-    parse_env_config,
-    parse_game_config,
-    parse_metrics_config,
+    GameConfig,
+    MetricsConfig,
+    MoveQualityThresholdsConfig,
     parse_players_config,
 )
-from llm_chess_arena.factory import GameFactory
-from llm_chess_arena.game import Game
-from llm_chess_arena.utils import build_game_summary
 
 
 _ENV_LOADED = False
 
 
 def load_env(filename: str | None = None, override: bool = False) -> Path | None:
-    """Load environment variables from a dotenv file if present."""
+    """Load environment variables from a dotenv file if present.
 
+    Args:
+        filename: Path to the dotenv file. Defaults to ENV_FILE environment variable or '.env'.
+        override: Whether to override existing environment variables.
+
+    Returns:
+        Path to the loaded dotenv file, or None if no file was found or loaded.
+    """
     global _ENV_LOADED
 
     if _ENV_LOADED and not override:
@@ -53,15 +57,21 @@ def load_env(filename: str | None = None, override: bool = False) -> Path | None
 
 
 def configure_logging(level: str) -> None:
-    """Apply Loguru logging configuration for the application."""
+    """Apply Loguru logging configuration for the application.
 
+    Args:
+        level: Logging level (DEBUG, INFO, WARNING, ERROR, CRITICAL).
+    """
     logger.remove()
     logger.add(sys.stderr, level=level.upper())
 
 
 def apply_env_config(config: EnvConfig) -> None:
-    """Load environment settings and configure logging."""
+    """Load environment settings and configure logging.
 
+    Args:
+        config: Environment configuration specifying dotenv loading and log level.
+    """
     if config.load_dotenv:
         load_env(config.dotenv_path)
 
@@ -69,16 +79,37 @@ def apply_env_config(config: EnvConfig) -> None:
 
 
 def app_config_from_dictconfig(hydra_config: DictConfig) -> AppConfig:
-    """Create a structured configuration from a Hydra DictConfig."""
+    """Create structured config from Hydra DictConfig.
 
-    resolved_config = OmegaConf.to_container(hydra_config, resolve=True)
-    if not isinstance(resolved_config, Mapping):
-        raise ValueError("Expected mapping at root of configuration")
+    Args:
+        hydra_config: Composed Hydra configuration containing env, game, metrics, and players.
 
-    env_config = parse_env_config(resolved_config.get("env", {}))
-    game_config = parse_game_config(resolved_config.get("game", {}))
-    metrics_config = parse_metrics_config(resolved_config.get("metrics", {}))
-    players_config = parse_players_config(resolved_config.get("players", {}))
+    Returns:
+        Fully populated application configuration.
+    """
+    env_dict = cast(
+        dict[str, Any], OmegaConf.to_container(hydra_config.env, resolve=True)
+    )
+    game_dict = cast(
+        dict[str, Any], OmegaConf.to_container(hydra_config.game, resolve=True)
+    )
+    metrics_dict = cast(
+        dict[str, Any], OmegaConf.to_container(hydra_config.metrics, resolve=True)
+    )
+
+    env_config = EnvConfig(**env_dict)
+    game_config = GameConfig(**game_dict)
+
+    thresholds_dict = metrics_dict.pop("quality_thresholds", {})
+    quality_thresholds = MoveQualityThresholdsConfig(**thresholds_dict)
+    metrics_config = MetricsConfig(
+        quality_thresholds=quality_thresholds, **metrics_dict
+    )
+
+    players_dict = cast(
+        dict[str, Any], OmegaConf.to_container(hydra_config.players, resolve=True)
+    )
+    players_config = parse_players_config(players_dict)
 
     return AppConfig(
         env=env_config,
@@ -94,8 +125,20 @@ def load_app_config(
     *,
     config_path: str | None = None,
 ) -> AppConfig:
-    """Compose and validate the application configuration using Hydra."""
+    """Compose and validate the application configuration using Hydra.
 
+    Args:
+        config_name: Name of the Hydra configuration file to load.
+        overrides: List of Hydra override strings for parameter customization.
+        config_path: Path to configuration directory. Defaults to 'configs/' in current directory.
+
+    Returns:
+        Fully composed and validated application configuration.
+
+    Raises:
+        FileNotFoundError: If the configuration directory does not exist.
+        HydraException: If Hydra fails to compose the configuration.
+    """
     override_list = list(overrides or [])
 
     if config_path is not None:
@@ -119,35 +162,10 @@ def load_app_config(
     return app_config_from_dictconfig(hydra_config)
 
 
-def run_game_from_config(app_config: AppConfig) -> Game:
-    """Play a single chess game using the provided application configuration."""
-
-    game = GameFactory.create_game(app_config)
-    game.play(max_num_moves=app_config.game.max_num_moves)
-    return game
-
-
-def format_game_summary(game: Game) -> list[str]:
-    """Format a completed game's outcome into readable summary lines."""
-
-    if not game.finished:
-        return ["Game did not finish."]
-
-    if game._rendered_metrics_summary:
-        return []
-
-    game_summary = build_game_summary(game)
-    summary_lines = game_summary.to_cli_lines()
-
-    return summary_lines
-
-
 __all__ = [
     "app_config_from_dictconfig",
     "apply_env_config",
     "configure_logging",
-    "format_game_summary",
     "load_app_config",
     "load_env",
-    "run_game_from_config",
 ]

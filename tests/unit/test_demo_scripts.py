@@ -1,22 +1,22 @@
-"""Integration tests for demo script configurations.
+"""Unit tests for demo script Hydra configuration composition.
 
-These tests verify that the demo scripts can successfully compose their
-Hydra configurations without stubbing out the actual game components.
-This ensures the demo configurations work end-to-end.
+These tests verify that demo script configurations compose correctly and can
+instantiate game components. They mock Game.play to avoid running actual games,
+making them fast unit tests rather than slow integration tests.
 """
 
 from __future__ import annotations
 
+from pathlib import Path
 from unittest.mock import patch, MagicMock
 import pytest
 from hydra import compose, initialize
 from hydra.core.global_hydra import GlobalHydra
 
 from llm_chess_arena.config.schema import AppConfig
-from llm_chess_arena.config.loader import (
-    app_config_from_dictconfig,
-    run_game_from_config,
-)
+from llm_chess_arena.config.loader import app_config_from_dictconfig
+from llm_chess_arena.tournament.types import TournamentConfig
+from llm_chess_arena.tournament.executor import TournamentRunner
 
 
 class TestDemoScriptConfigurations:
@@ -25,8 +25,7 @@ class TestDemoScriptConfigurations:
     def setup_method(self) -> None:
         """Set up Hydra for each test."""
         GlobalHydra.instance().clear()
-        # This imports and registers the config schemas with Hydra
-        from llm_chess_arena.cli.main import run_cli_game  # noqa: F401
+        from llm_chess_arena.cli.main import run_tournament_cli  # noqa: F401
 
     def teardown_method(self) -> None:
         """Clean up Hydra after each test."""
@@ -46,8 +45,6 @@ class TestDemoScriptConfigurations:
                     "players@players.black=random",
                 ],
             )
-
-        # Convert to AppConfig
         app_config = app_config_from_dictconfig(cfg)
         assert isinstance(app_config, AppConfig)
         assert app_config.game.display_board is False
@@ -56,17 +53,31 @@ class TestDemoScriptConfigurations:
         assert app_config.players.white.kind == "random"
         assert app_config.players.black.kind == "random"
 
-        # Verify the configuration can be used to create actual game components
-        # Mock the game.play() method to avoid actually running a game
-        with patch("llm_chess_arena.game.Game.play"):
-            game = run_game_from_config(app_config)
+        tournament_config = TournamentConfig(
+            match_name="test_random",
+            num_games=1,
+            parallel_games=1,
+            alternate_colors=False,  # Don't swap colors for single game
+            output_dir=Path("/tmp/test_output"),
+            display_summary=False,
+        )
+        runner = TournamentRunner(
+            tournament_cfg=tournament_config,
+            game_cfg=app_config.game,
+            metrics_cfg=app_config.metrics,
+            white_player_cfg=app_config.players.white,
+            black_player_cfg=app_config.players.black,
+        )
 
-        # Verify game was created successfully
-        assert game is not None
-        assert hasattr(game, "white_player")
-        assert hasattr(game, "black_player")
-        assert game.white_player.name.startswith("Random")
-        assert game.black_player.name.startswith("Random")
+        with patch("llm_chess_arena.game.Game.play"):
+            result = runner.run()
+
+        assert result is not None
+        assert result.total_games == 1
+        assert len(result.games) == 1
+        game_result = result.games[0]
+        assert game_result.white_player_name.startswith("Random")
+        assert game_result.black_player_name.startswith("Random")
 
     def test_stockfish_vs_random_demo_config_composes(self) -> None:
         """Verify the Stockfish vs random demo configuration composes correctly."""
@@ -82,22 +93,36 @@ class TestDemoScriptConfigurations:
                     "players@players.black=random",
                 ],
             )
-
-        # Convert to AppConfig
         app_config = app_config_from_dictconfig(cfg)
         assert isinstance(app_config, AppConfig)
         assert app_config.players.white.kind == "stockfish"
         assert app_config.players.black.kind == "random"
 
-        # Verify the configuration can be used to create actual game components
-        # Mock the game.play() method to avoid actually running a game
-        with patch("llm_chess_arena.game.Game.play"):
-            game = run_game_from_config(app_config)
+        tournament_config = TournamentConfig(
+            match_name="test_stockfish",
+            num_games=1,
+            parallel_games=1,
+            alternate_colors=False,  # Don't swap colors for single game
+            output_dir=Path("/tmp/test_output"),
+            display_summary=False,
+        )
+        runner = TournamentRunner(
+            tournament_cfg=tournament_config,
+            game_cfg=app_config.game,
+            metrics_cfg=app_config.metrics,
+            white_player_cfg=app_config.players.white,
+            black_player_cfg=app_config.players.black,
+        )
 
-        # Verify game was created successfully
-        assert game is not None
-        assert "Stockfish" in game.white_player.name
-        assert game.black_player.name.startswith("Random")
+        with patch("llm_chess_arena.game.Game.play"):
+            result = runner.run()
+
+        assert result is not None
+        assert result.total_games == 1
+        assert len(result.games) == 1
+        game_result = result.games[0]
+        assert "Stockfish" in game_result.white_player_name
+        assert game_result.black_player_name.startswith("Random")
 
     def test_llm_vs_random_demo_config_composes(self) -> None:
         """Verify the LLM vs random demo configuration composes correctly."""
@@ -113,8 +138,6 @@ class TestDemoScriptConfigurations:
                     "players@players.black=random",
                 ],
             )
-
-        # Convert to AppConfig
         app_config = app_config_from_dictconfig(cfg)
         assert isinstance(app_config, AppConfig)
         assert app_config.players.white.kind == "llm"
@@ -122,14 +145,28 @@ class TestDemoScriptConfigurations:
         assert app_config.players.white.name == "GPT-4o Mini"
         assert app_config.players.black.kind == "random"
 
-        # Verify the configuration can be used to create actual game components
-        # Mock LLM calls and game.play() method to avoid actual API calls and gameplay
         mock_connector = MagicMock()
         mock_connector.model = "gpt-4o-mini"
         mock_connector.query.return_value = ["e2e4"]
         mock_connector.get_last_usage.return_value = None
         mock_connector.get_total_usage.return_value = MagicMock(
             prompt_tokens=0, completion_tokens=0, total_tokens=0, cost=0.0
+        )
+
+        tournament_config = TournamentConfig(
+            match_name="test_llm",
+            num_games=1,
+            parallel_games=1,
+            alternate_colors=False,  # Don't swap colors for single game
+            output_dir=Path("/tmp/test_output"),
+            display_summary=False,
+        )
+        runner = TournamentRunner(
+            tournament_cfg=tournament_config,
+            game_cfg=app_config.game,
+            metrics_cfg=app_config.metrics,
+            white_player_cfg=app_config.players.white,
+            black_player_cfg=app_config.players.black,
         )
 
         with (
@@ -139,12 +176,14 @@ class TestDemoScriptConfigurations:
             ),
             patch("llm_chess_arena.game.Game.play"),
         ):
-            game = run_game_from_config(app_config)
+            result = runner.run()
 
-        # Verify game was created successfully
-        assert game is not None
-        assert "GPT-4o Mini" in game.white_player.name
-        assert game.black_player.name.startswith("Random")
+        assert result is not None
+        assert result.total_games == 1
+        assert len(result.games) == 1
+        game_result = result.games[0]
+        assert "GPT-4o Mini" in game_result.white_player_name
+        assert game_result.black_player_name.startswith("Random")
 
     def test_llm_config_includes_gpt_4o_mini_token_limits(self) -> None:
         """Verify that gpt-4o-mini has proper token limits configured."""
@@ -158,7 +197,6 @@ class TestDemoScriptConfigurations:
                 ],
             )
 
-        # Verify the configuration resolves without errors
         app_config = app_config_from_dictconfig(cfg)
 
         # The LLM player should have proper token limits set

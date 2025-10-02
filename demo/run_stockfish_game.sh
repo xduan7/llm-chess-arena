@@ -5,11 +5,10 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
 export PYTHONPATH="${PYTHONPATH:-}:${ROOT_DIR}/src"
 
-OUTPUT_ROOT="${ROOT_DIR}/output/demo/stockfish_game"
-mkdir -p "${OUTPUT_ROOT}"
-
 python -m llm_chess_arena.cli.main \
-  "game.record_dir=${OUTPUT_ROOT}" \
+  tournament.output_dir="${ROOT_DIR}/output/demo" \
+  tournament.match_name="stockfish_game" \
+  tournament.num_games=1 \
   game.display_board=false \
   game.max_num_moves=120 \
   metrics.stockfish_depth=12 \

@@ -10,27 +10,29 @@ class TestRandomPlayerInitialization:
 
     def test_stores_provided_name_and_color_as_player_attributes(self):
         """Players should store supplied metadata unchanged."""
-        random_player_with_custom_name = RandomPlayer(name="Test", color="white")
+        random_player_with_custom_name = RandomPlayer(name="Test", player_color="white")
 
         assert random_player_with_custom_name.name == "Test"
         assert random_player_with_custom_name.color == "white"
 
     def test_accepts_both_white_and_black_as_valid_color_strings(self):
         """Validate both color literals are accepted."""
-        white_random_player = RandomPlayer(name="White", color="white")
-        black_random_player = RandomPlayer(name="Black", color="black")
+        white_random_player = RandomPlayer(name="White", player_color="white")
+        black_random_player = RandomPlayer(name="Black", player_color="black")
 
         assert white_random_player.color == "white"
         assert black_random_player.color == "black"
 
     def test_players_with_same_seed_generate_identical_moves_from_same_position(self):
         """Identical seeds should yield identical choices."""
-        player_with_seed_42_first = RandomPlayer(name="Player1", color="white", seed=42)
+        player_with_seed_42_first = RandomPlayer(
+            name="Player1", player_color="white", seed=42
+        )
         player_with_seed_42_second = RandomPlayer(
-            name="Player2", color="white", seed=42
+            name="Player2", player_color="white", seed=42
         )
         player_with_different_seed = RandomPlayer(
-            name="Player3", color="white", seed=99
+            name="Player3", player_color="white", seed=99
         )
 
         starting_position = chess.Board()
@@ -44,7 +46,7 @@ class TestRandomPlayerInitialization:
 
     def test_seed_defaults_to_none_when_not_explicitly_provided(self):
         """Players default to an unseeded RNG when not provided."""
-        unseeded_random_player = RandomPlayer(name="Test", color="white")
+        unseeded_random_player = RandomPlayer(name="Test", player_color="white")
 
         assert unseeded_random_player.seed is None
 
@@ -66,8 +68,8 @@ class TestRandomPlayerMoveGeneration:
 
     def test_two_players_with_identical_seeds_select_same_move(self):
         """Seeded players should select the same move on identical boards."""
-        first_seeded_player = RandomPlayer(name="Test1", color="white", seed=42)
-        second_seeded_player = RandomPlayer(name="Test2", color="white", seed=42)
+        first_seeded_player = RandomPlayer(name="Test1", player_color="white", seed=42)
+        second_seeded_player = RandomPlayer(name="Test2", player_color="white", seed=42)
         test_board = chess.Board()
 
         first_player_decision = first_seeded_player(test_board)
@@ -138,7 +140,7 @@ class TestRandomPlayerReproducibility:
         shared_seed_value = 12345
 
         first_player = RandomPlayer(
-            name="Player1", color="white", seed=shared_seed_value
+            name="Player1", player_color="white", seed=shared_seed_value
         )
         first_game_board = chess.Board()
         first_player_move_sequence = []
@@ -155,7 +157,7 @@ class TestRandomPlayerReproducibility:
                     first_game_board.push(list(first_game_board.legal_moves)[0])
 
         second_player = RandomPlayer(
-            name="Player2", color="white", seed=shared_seed_value
+            name="Player2", player_color="white", seed=shared_seed_value
         )
         second_game_board = chess.Board()
         second_player_move_sequence = []
@@ -179,8 +181,12 @@ class TestRandomPlayerReproducibility:
         """Different seeds should diverge in their move selections."""
         shared_starting_position = chess.Board()
 
-        player_with_seed_100 = RandomPlayer(name="Player1", color="white", seed=100)
-        player_with_seed_200 = RandomPlayer(name="Player2", color="white", seed=200)
+        player_with_seed_100 = RandomPlayer(
+            name="Player1", player_color="white", seed=100
+        )
+        player_with_seed_200 = RandomPlayer(
+            name="Player2", player_color="white", seed=200
+        )
 
         first_player_moves = [
             player_with_seed_100(shared_starting_position).attempted_move

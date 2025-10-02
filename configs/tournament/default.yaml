@@ -1,0 +1,27 @@
+# =============================================================================
+# Tournament Configuration - Default Settings
+# =============================================================================
+# Controls how many games to run and how they're executed.
+#
+# Single interactive game:
+#   num_games: 1
+#   (uses game.display_board and game.enable_metrics from game config)
+#
+# Multiple games (batch tournament):
+#   num_games: 20
+#   parallel_games: 4
+#   alternate_colors: true
+#
+# Rate Limiting:
+#   rate_limit_rpm: 60              # Total requests per minute
+#   parallel_games: 4               # Divides to 15 RPM per worker
+#
+#   Set to null to disable rate limiting (useful for local models)
+
+match_name: "default_match"      # Experiment name (creates output/match_name/)
+num_games: 1                      # Number of games (1 = single game, >1 = tournament)
+parallel_games: 1                 # Run games in parallel (1 = sequential)
+rate_limit_rpm: 60                # Requests per minute (divided across parallel workers, null=disabled)
+alternate_colors: true            # Swap colors for half the games (for fairness in tournaments)
+display_summary: true             # Display Rich tournament summary at end
+output_dir: "output"              # Base output directory

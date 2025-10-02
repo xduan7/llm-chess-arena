@@ -23,7 +23,6 @@ def legal_board_positions(draw):
     """Generate random but legal chess positions."""
     board = chess.Board()
 
-    # Make 0-40 random legal moves to get varied positions
     num_moves = draw(st.integers(0, 40))
     for _ in range(num_moves):
         if board.is_game_over():
@@ -55,14 +54,11 @@ class TestMoveParsingProperties:
         if not legal_moves:
             return  # Skip if no legal moves
 
-        # Pick a random legal move
         move = legal_moves[0]
         uci_str = move.uci()
 
-        # Parse it back
         parsed = parse_attempted_move_to_uci(uci_str, board.fen())
 
-        # Should match exactly
         assert parsed == uci_str
 
     @given(board=board_with_legal_move())
@@ -73,15 +69,12 @@ class TestMoveParsingProperties:
         if not legal_moves:
             return
 
-        # Pick a random legal move
         move = legal_moves[0]
         san_str = board.san(move)
         uci_str = move.uci()
 
-        # Parse SAN to UCI
         parsed = parse_attempted_move_to_uci(san_str, board.fen())
 
-        # Should match the UCI version
         assert parsed == uci_str
 
     @given(
@@ -98,10 +91,8 @@ class TestMoveParsingProperties:
         move = legal_moves[0]
         san_str = board.san(move)
 
-        # Add random whitespace
         messy_san = extra_spaces + san_str + extra_spaces
 
-        # Should still parse correctly
         try:
             parsed = parse_attempted_move_to_uci(messy_san, board.fen())
             assert parsed == move.uci()
@@ -170,10 +161,8 @@ class TestMoveParsingProperties:
         move = legal_moves[0]
         uci_str = move.uci()
 
-        # Parse once
         parsed_once = parse_attempted_move_to_uci(uci_str, board.fen())
 
-        # Parse again (should be idempotent)
         parsed_twice = parse_attempted_move_to_uci(parsed_once, board.fen())
 
         assert parsed_once == parsed_twice == uci_str
@@ -212,11 +201,9 @@ class ChessGameStateMachine(RuleBasedStateMachine):
         uci_before_move = move.uci()
         self.board.san(move)
 
-        # Make the move
         self.board.push(move)
         self.move_history.append(uci_before_move)
 
-        # Verify move was recorded correctly
         history = get_move_history_in_uci(self.board)
         assert history == self.move_history
 
@@ -240,7 +227,6 @@ class ChessGameStateMachine(RuleBasedStateMachine):
         assert test_board.fen() == self.board.fen()
 
 
-# Test the state machine
 TestChessGame = ChessGameStateMachine.TestCase
 
 
@@ -250,8 +236,6 @@ class TestPromotionMoveProperties:
     @given(file=st.sampled_from("abcdefgh"), promotion_piece=st.sampled_from("qrbn"))
     def test_white_pawn_promotion_parses_correctly(self, file, promotion_piece):
         """White pawn promotions should parse SAN and UCI forms equally."""
-        # Set up board with white pawn on 7th rank
-        # Create FEN with pawn at correct position
         file_index = ord(file) - ord("a")
         empty_before = str(file_index) if file_index > 0 else ""
         empty_after = str(7 - file_index) if file_index < 7 else ""
@@ -273,12 +257,10 @@ class TestPromotionMoveProperties:
         fen = f"8/{rank7}/8/8/8/8/8/8 w - - 0 1"
         chess.Board(fen)
 
-        # Test UCI format
         uci_move = f"{file}7{file}8{promotion_piece}"
         parsed = parse_attempted_move_to_uci(uci_move, fen)
         assert parsed == uci_move
 
-        # Test SAN format
         san_move = f"{file}8={promotion_piece.upper()}"
         parsed_san = parse_attempted_move_to_uci(san_move, fen)
         assert parsed_san == uci_move
@@ -286,8 +268,6 @@ class TestPromotionMoveProperties:
     @given(file=st.sampled_from("abcdefgh"), promotion_piece=st.sampled_from("qrbn"))
     def test_black_pawn_promotion_parses_correctly(self, file, promotion_piece):
         """Black pawn promotions should parse SAN and UCI forms equally."""
-        # Set up board with black pawn on 2nd rank
-        # Create FEN with pawn at correct position
         file_index = ord(file) - ord("a")
         if file == "a":
             rank2 = "p7"
@@ -298,7 +278,6 @@ class TestPromotionMoveProperties:
         fen = f"8/8/8/8/8/8/{rank2}/8 b - - 0 1"
         chess.Board(fen)
 
-        # Test UCI format
         uci_move = f"{file}2{file}1{promotion_piece}"
         parsed = parse_attempted_move_to_uci(uci_move, fen)
         assert parsed == uci_move
@@ -319,12 +298,10 @@ class TestCastlingProperties:
             kingside_uci = "e8g8"
             queenside_uci = "e8c8"
 
-        # Test various notations for kingside castling
         for notation in ["O-O", "0-0", "o-o"]:
             parsed = parse_attempted_move_to_uci(notation, fen)
             assert parsed == kingside_uci
 
-        # Test various notations for queenside castling
         for notation in ["O-O-O", "0-0-0", "o-o-o"]:
             parsed = parse_attempted_move_to_uci(notation, fen)
             assert parsed == queenside_uci

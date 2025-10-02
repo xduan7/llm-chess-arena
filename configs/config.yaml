@@ -34,6 +34,11 @@ defaults:
                                    # - Must be different from white for meaningful games
                                    # - Override: players.black=stockfish players.black.engine_limits.depth=10
 
+  # TOURNAMENT SETTINGS - Number of games and execution
+  - tournament: default             # Tournament configuration (num_games, parallel_games, etc.)
+                                   # - Override: tournament.num_games=20 for batch experiments
+                                   # - Override: tournament.parallel_games=4 for parallel execution
+
   # HYDRA FRAMEWORK - Experiment management
   - hydra: default                  # Hydra runtime configuration for experiments
                                    # - Enables parameter sweeps and multi-run experiments
@@ -48,6 +53,17 @@ defaults:
 
 # =============================================================================
 # COMMON OVERRIDE PATTERNS FOR EXPERIMENTS:
+# =============================================================================
+#
+# Single interactive game (default):
+#   python -m llm_chess_arena.cli.main
+#
+# Multiple games (tournament):
+#   python -m llm_chess_arena.cli.main tournament.num_games=20 game.display_board=false
+#
+# Parallel execution:
+#   python -m llm_chess_arena.cli.main tournament.num_games=100 tournament.parallel_games=4
+#
 # =============================================================================
 #
 # LLM vs LLM with different models:

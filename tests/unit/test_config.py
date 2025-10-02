@@ -11,9 +11,6 @@ from llm_chess_arena import config
 from llm_chess_arena.config import RandomPlayerConfig
 from llm_chess_arena.config.schema import _ensure_player_color
 from llm_chess_arena.config import loader
-from llm_chess_arena.game import Game
-from llm_chess_arena.player.base_player import BasePlayer
-from llm_chess_arena.types import PlayerDecision
 
 
 class TestLoadEnv:
@@ -34,14 +31,11 @@ class TestLoadEnv:
         env_file = tmp_path / ".env"
         env_file.write_text("TEST_VAR=test_value\nTEST_NUMBER=42")
 
-        # Ensure vars don't exist yet
         assert "TEST_VAR" not in os.environ
         assert "TEST_NUMBER" not in os.environ
 
-        # Load the env file
         loaded_path = config.load_env(str(env_file))
 
-        # Verify it was loaded
         assert loaded_path == env_file
         assert os.environ.get("TEST_VAR") == "test_value"
         assert os.environ.get("TEST_NUMBER") == "42"
@@ -97,10 +91,8 @@ class TestLoadEnv:
         env_file = tmp_path / "custom.env"
         env_file.write_text("TEST_FROM_CUSTOM=yes")
 
-        # Set ENV_FILE to point to our custom file
         monkeypatch.setenv("ENV_FILE", str(env_file))
 
-        # Call without filename
         loaded_path = config.load_env()
 
         assert loaded_path == env_file
@@ -147,10 +139,8 @@ TEST_QUOTES="quoted value"
         env_file = tmp_path / ".env"
         env_file.write_text("TEST_EXISTING=from_file")
 
-        # Set existing value
         os.environ["TEST_EXISTING"] = "from_environ"
 
-        # Load without override
         config.load_env(str(env_file), override=False)
 
         # Existing value should be preserved
@@ -163,13 +153,10 @@ TEST_QUOTES="quoted value"
         env_file = tmp_path / ".env"
         env_file.write_text("TEST_OVERRIDE=from_file")
 
-        # Set existing value
         os.environ["TEST_OVERRIDE"] = "from_environ"
 
-        # Load with override
         config.load_env(str(env_file), override=True)
 
-        # Should be overwritten
         assert os.environ.get("TEST_OVERRIDE") == "from_file"
 
 
@@ -200,63 +187,10 @@ GOOGLE_API_KEY=goog-test789
         )
 
         loader._ENV_LOADED = False
-        # Use override=True to overwrite any existing values
         config.load_env(str(env_file), override=True)
         assert os.environ.get("OPENAI_API_KEY") == "sk-test123"
         assert os.environ.get("ANTHROPIC_API_KEY") == "ant-test456"
         assert os.environ.get("GOOGLE_API_KEY") == "goog-test789"
-
-
-class CloseCountingPlayer(BasePlayer):
-    """Test helper that tracks how many times close() is invoked."""
-
-    def __init__(self, name: str, color: str) -> None:
-        """Initialize the stub player and reset close() counters."""
-        super().__init__(name=name, color=color)
-        self.close_calls = 0
-
-    def _make_decision(self, context) -> PlayerDecision:  # type: ignore[override]
-        """Always resign so the game loop terminates quickly in tests."""
-        return PlayerDecision(action="resign")
-
-    def close(self) -> None:  # noqa: D401
-        """Increment the counter to track cleanup calls."""
-        self.close_calls += 1
-
-
-def test_run_game_from_config_closes_players_once(monkeypatch):
-    """Ensure run_game_from_config relies on Game.play for cleanup."""
-
-    white_player = CloseCountingPlayer("White", "white")
-    black_player = CloseCountingPlayer("Black", "black")
-    game = Game(white_player, black_player, enable_metrics=False)
-
-    captured_config: dict[str, config.AppConfig] = {}
-
-    def fake_create_game(app_config: config.AppConfig) -> Game:
-        """Capture the config used to build a game and return the stub instance."""
-        captured_config["app_config"] = app_config
-        return game
-
-    monkeypatch.setattr(
-        "llm_chess_arena.factory.GameFactory.create_game", fake_create_game
-    )
-
-    app_config = config.AppConfig(
-        env=config.EnvConfig(load_dotenv=False),
-        game=config.GameConfig(enable_metrics=False, max_num_moves=1),
-        metrics=config.MetricsConfig(),
-        players=config.PlayersConfig(
-            white=config.RandomPlayerConfig(color="white", name="Random White"),
-            black=config.RandomPlayerConfig(color="black", name="Random Black"),
-        ),
-    )
-
-    config.run_game_from_config(app_config)
-
-    assert white_player.close_calls == 1
-    assert black_player.close_calls == 1
-    assert captured_config["app_config"].game.max_num_moves == 1
 
 
 class TestHydraConfig:
@@ -281,7 +215,7 @@ class TestHydraConfig:
     def test_load_app_config__when_overrides_supplied__then_applies_changes(self):
         """Hydra overrides should mutate the resulting AppConfig dataclasses."""
         overrides = [
-            "players@players.white=stockfish",
+            "players@players.white=stockfish/elo_2000",
             "+players.white.engine_limits.depth=16",
             "players@players.black=llm/default",
             "players.black.connector.model=gpt-4",
@@ -382,10 +316,12 @@ class TestHydraConfig:
                 },
                 "game": {
                     "display_board": True,
+                    "display_summary": False,
                     "enable_metrics": False,
                     "max_num_moves": 10,
                 },
                 "metrics": {
+                    "max_centipawn_loss_per_move": 1000,
                     "stockfish_depth": 12,
                     "stockfish_binary_path": "/tmp/stockfish",
                     "stockfish_engine_options": {"Threads": 4},
@@ -433,7 +369,6 @@ class TestHydraConfig:
         # Reset state
         loader._ENV_LOADED = False
 
-        # Load existing file
         config.load_env(str(env_file))
         mock_logger.debug.assert_called_with(
             "Loaded environment from: {}", str(env_file)
@@ -457,38 +392,30 @@ class TestEnsurePlayerColor:
         self,
     ):
         """Test that _ensure_player_color returns a new config instance with the color set."""
-        # Create original config with existing default color
         original_config = RandomPlayerConfig(
             kind="random",
             name="Test Player",
             seed=42,
         )
 
-        # Original config has default color "white"
-        assert original_config.color == "white"
+        assert original_config.color is None
 
-        # Apply different color using _ensure_player_color
         new_config = _ensure_player_color(original_config, "black")
 
-        # Verify original config remains unchanged (immutability)
-        assert original_config.color == "white"
+        assert original_config.color is None
 
-        # Verify new config has the new color set
         assert new_config.color == "black"
 
-        # Verify other attributes are preserved
         assert new_config.kind == "random"
         assert new_config.name == "Test Player"
         assert new_config.seed == 42
 
-        # Verify they are different objects
         assert new_config is not original_config
 
     def test_ensure_player_color__when_config_already_has_color__then_overrides_with_fallback(
         self,
     ):
         """Test that _ensure_player_color overrides existing color with fallback."""
-        # Create config with existing color
         original_config = RandomPlayerConfig(
             kind="random",
             name="Test Player",
@@ -496,14 +423,10 @@ class TestEnsurePlayerColor:
             seed=42,
         )
 
-        # Apply different color using _ensure_player_color
         new_config = _ensure_player_color(original_config, "white")
 
-        # Verify original config remains unchanged
         assert original_config.color == "black"
 
-        # Verify new config has the fallback color
         assert new_config.color == "white"
 
-        # Verify they are different objects
         assert new_config is not original_config

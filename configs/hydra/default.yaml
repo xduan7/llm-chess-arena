@@ -1,8 +1,8 @@
 run:
-  dir: ${oc.env:HYDRA_RUN_DIR,${hydra:runtime.cwd}}
+  dir: .  # Don't create outputs/ folder - stay in current directory
 sweep:
-  dir: ${oc.env:HYDRA_SWEEP_DIR,${hydra:runtime.cwd}}
+  dir: .
   subdir: ""
-output_subdir: null
+output_subdir: null  # Don't create .hydra/ subdirectory
 job:
   chdir: false

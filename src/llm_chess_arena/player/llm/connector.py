@@ -5,7 +5,7 @@ from __future__ import annotations
 import os
 import re
 from dataclasses import dataclass
-from typing import Any, Iterable
+from typing import Any, Iterable, TYPE_CHECKING
 
 from loguru import logger
 
@@ -13,7 +13,11 @@ import litellm
 from litellm import exceptions as litellm_exceptions
 
 from llm_chess_arena.core.policies import network_operation
+from llm_chess_arena.config.schema import ARGO_MODEL_CANONICAL_NAMES
 from llm_chess_arena.exceptions import LLMPermanentError, LLMEmptyResponseError
+
+if TYPE_CHECKING:
+    from llm_chess_arena.utils import RateLimiter
 
 litellm.suppress_debug_info = True
 
@@ -22,7 +26,6 @@ ARGO_MODEL_PREFIX = "argo:"
 ARGO_DUMMY_API_KEY = "sk-argo-placeholder"
 
 
-# Cross-provider robustness: silently ignore unsupported params when switching between
 # models (OpenAI, Anthropic, Gemini) rather than erroring. Research code needs flexibility.
 litellm.drop_params = True
 # LiteLLM's verbose attribute/method availability varies across installations
@@ -46,6 +49,7 @@ class LLMConnector:
         max_api_request_retries: int = 3,
         provider: str | None = None,
         api_base: str | None = None,
+        rate_limiter: RateLimiter | None = None,
     ) -> None:
         """Configure a LiteLLM-backed connector for querying language models.
 
@@ -57,6 +61,8 @@ class LLMConnector:
             max_api_request_retries: Maximum retries for transient failures.
             provider: Optional LiteLLM provider override (e.g., "anthropic").
             api_base: Optional custom API base URL for self-hosted endpoints.
+            rate_limiter: Optional shared rate limiter (typically tournament-level) for
+                coordinated throttling across multiple players/games. See RateLimiter protocol.
         """
         self.model = model
         self.temperature = temperature
@@ -66,6 +72,7 @@ class LLMConnector:
         self.provider = provider
         self.api_base = api_base.rstrip("/") if api_base else None
         self._default_request_parameters: dict[str, Any] = {}
+        self._rate_limiter = rate_limiter
 
         # Usage bookkeeping
         self._last_usage: UsageRecord | None = None
@@ -109,6 +116,30 @@ class LLMConnector:
             return f"{self.provider} ({self.model})"
         return self.model
 
+    def _get_provider_for_rate_limiting(self) -> str:
+        """Extract provider name for rate limiting.
+
+        Returns:
+            str: Provider name (e.g., "openai", "anthropic").
+        """
+        if self.provider:
+            return self.provider.lower()
+
+        # Infer from model name (e.g., "openai/gpt-4" -> "openai")
+        if "/" in self.model:
+            return self.model.split("/")[0].lower()
+
+        # Default heuristics for common model names
+        model_lower = self.model.lower()
+        if "gpt" in model_lower:
+            return "openai"
+        elif "claude" in model_lower:
+            return "anthropic"
+        elif "gemini" in model_lower or "palm" in model_lower:
+            return "google"
+
+        return "unknown"
+
     def _setup_argo(self) -> None:
         """Configure Argo-specific connector settings based on model alias."""
         parts = self.model.split(":", maxsplit=1)
@@ -116,11 +147,25 @@ class LLMConnector:
         if not alias:
             raise ValueError("Argo model alias missing after 'argo:'")
 
+        # Validate that the argo model is in the allowed list
+        full_model_name = f"{ARGO_MODEL_PREFIX}{alias}"
+        if full_model_name not in ARGO_MODEL_CANONICAL_NAMES:
+            available_models = sorted(
+                [
+                    model.replace(ARGO_MODEL_PREFIX, "")
+                    for model in ARGO_MODEL_CANONICAL_NAMES.keys()
+                ]
+            )
+            raise ValueError(
+                f"Unrecognized argo model: '{alias}'. "
+                f"Available argo models: {', '.join(available_models)}"
+            )
+
         api_base_url = self.api_base or os.getenv("ARGO_API_BASE")
         if not api_base_url or not api_base_url.strip():
             raise ValueError("Argo models require connector.api_base or ARGO_API_BASE")
         self.api_base = api_base_url.strip().rstrip("/")
-        self.model = f"{ARGO_MODEL_PREFIX}{alias}"
+        self.model = full_model_name
         if self.provider and self.provider.lower() != "openai":
             logger.warning(
                 "Ignoring provider {} for Argo model {}; using LiteLLM openai adapter",
@@ -188,6 +233,17 @@ class LLMConnector:
         max_attempts = self.max_api_request_retries + 1
         endpoint = self._get_endpoint_description()
 
+        # Acquire rate limit permit if limiter is configured
+        if self._rate_limiter is not None:
+            provider_name = self._get_provider_for_rate_limiting()
+            permit_granted = self._rate_limiter.acquire_permit(
+                provider_name, timeout_in_sec=self.request_timeout_in_seconds
+            )
+            if not permit_granted:
+                raise TimeoutError(
+                    f"Rate limiter timeout waiting for permit from {provider_name}"
+                )
+
         for attempt in range(1, max_attempts + 1):
             try:
                 response = litellm.completion(**completion_kwargs)
@@ -231,24 +287,31 @@ class LLMConnector:
                 litellm_exceptions.APIError,
                 litellm_exceptions.APIConnectionError,
             ) as transient_api_error:
-                status = getattr(transient_api_error, "status_code", "unknown")
+                status_code = getattr(transient_api_error, "status_code", 0)
+                if isinstance(status_code, str):
+                    try:
+                        status_code = int(status_code)
+                    except (ValueError, TypeError):
+                        status_code = 0
+
                 error_type = (
                     type(transient_api_error).__name__.replace("Error", "").lower()
                 )
+
                 logger.warning(
                     "Network attempt {}/{} to {} failed - {} ({})",
                     attempt,
                     max_attempts,
                     endpoint,
                     error_type,
-                    status,
+                    status_code or "unknown",
                 )
 
                 if attempt >= max_attempts:
                     raise ConnectionError(
-                        f"{error_type.replace('_', ' ').title()} ({status}) after {max_attempts} network attempts"
+                        f"{error_type.replace('_', ' ').title()} ({status_code or 'unknown'}) after {max_attempts} network attempts"
                     ) from transient_api_error
-            except Exception as unexpected_error:  # pragma: no cover - defensive guard
+            except Exception as unexpected_error:  # pragma: no cover
                 error_type = (
                     type(unexpected_error).__name__.replace("Error", "").lower()
                 )
@@ -264,9 +327,7 @@ class LLMConnector:
         """Return cleaned completion strings from the LiteLLM response payload."""
         try:
             choices: Iterable[Any] = response.choices
-        except (
-            AttributeError
-        ) as response_attribute_error:  # pragma: no cover - defensive guard
+        except AttributeError as response_attribute_error:  # pragma: no cover
             raise LLMEmptyResponseError(
                 "LLM response missing choices payload"
             ) from response_attribute_error
@@ -316,9 +377,7 @@ class LLMConnector:
         """Persist per-call usage data into last and cumulative trackers."""
         try:
             usage_record = self._extract_usage(response)
-        except (
-            Exception
-        ) as usage_extraction_error:  # pragma: no cover - defensive guard
+        except Exception as usage_extraction_error:  # pragma: no cover
             logger.debug(
                 "Could not read token usage from API response: {}",
                 usage_extraction_error,
@@ -373,7 +432,7 @@ class LLMConnector:
 
         try:
             return int(str(value))
-        except (TypeError, ValueError):  # pragma: no cover - safety net
+        except (TypeError, ValueError):  # pragma: no cover
             return 0
 
     @staticmethod
@@ -400,7 +459,7 @@ class LLMConnector:
 
         try:
             return float(str(cost_value))
-        except (TypeError, ValueError):  # pragma: no cover - safety net
+        except (TypeError, ValueError):  # pragma: no cover
             return 0.0
 
 
