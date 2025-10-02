@@ -27,7 +27,6 @@ def test_demo__should_complete_successfully__when_running_random_game():
         f"STDERR:\n{result.stderr}"
     )
 
-    # Check for tournament results table output
     assert "Tournament Results" in result.stdout
     assert "Total Games:" in result.stdout
     assert "W/D/L:" in result.stdout
@@ -52,7 +51,6 @@ def test_demo__should_complete_successfully__when_running_stockfish_game():
         f"STDERR:\n{result.stderr}"
     )
 
-    # Check for tournament results table output
     assert "Tournament Results" in result.stdout
 
 
@@ -82,6 +80,5 @@ def test_demo__should_complete_successfully__when_running_llm_game():
         f"STDERR:\n{result.stderr}"
     )
 
-    # Check for tournament results table output
     assert "Tournament Results" in result.stdout
     assert "GPT-4o Mini" in result.stdout  # Player name from demo script

@@ -33,7 +33,7 @@ def llm_player(mock_connector, handler):
     return LLMPlayer(
         connector=mock_connector,
         handler=handler,
-        color="white",
+        player_color="white",
         name="TestPlayer",
         max_move_retries=3,
         num_votes=1,
@@ -53,7 +53,7 @@ class TestLLMPlayerInitialization:
         configured_player = LLMPlayer(
             connector=test_connector,
             handler=game_arena_handler,
-            color="black",
+            player_color="black",
             name="CustomName",
             max_move_retries=5,
             num_votes=3,
@@ -75,7 +75,7 @@ class TestLLMPlayerInitialization:
             LLMPlayer(
                 connector=test_connector,
                 handler=game_arena_handler,
-                color="white",
+                player_color="white",
                 max_move_retries=3,
                 num_votes=0,
             )
@@ -84,7 +84,7 @@ class TestLLMPlayerInitialization:
             LLMPlayer(
                 connector=test_connector,
                 handler=game_arena_handler,
-                color="white",
+                player_color="white",
                 max_move_retries=3,
                 num_votes=-1,
             )
@@ -143,7 +143,7 @@ class TestLLMPlayerMoveGeneration:
         llm_player = LLMPlayer(
             connector=connector,
             handler=handler,
-            color="white",
+            player_color="white",
             name="UsageTester",
             max_move_retries=3,
             num_votes=1,
@@ -184,7 +184,7 @@ class TestLLMPlayerMoveGeneration:
         llm_player = LLMPlayer(
             connector=connector,
             handler=handler,
-            color="white",
+            player_color="white",
             name="ResetTester",
             max_move_retries=3,
             num_votes=1,
@@ -216,7 +216,7 @@ class TestLLMPlayerMoveGeneration:
         llm_player = LLMPlayer(
             connector=connector,
             handler=handler,
-            color="white",
+            player_color="white",
             name="EmptyResponseTester",
             max_move_retries=3,
             num_votes=1,
@@ -241,7 +241,7 @@ class TestLLMPlayerMoveGeneration:
         llm_player = LLMPlayer(
             connector=connector,
             handler=handler,
-            color="white",
+            player_color="white",
             name="ScopingTester",
             max_move_retries=3,
             num_votes=1,
@@ -254,7 +254,6 @@ class TestLLMPlayerMoveGeneration:
 
         decision = llm_player._vote_aggregator.aggregate_responses(["Final Answer: e4"])
 
-        # Verify the method completes successfully
         assert decision.action == "move"
         assert decision.attempted_move == "e4"
 
@@ -272,7 +271,7 @@ class TestLLMPlayerRetryLogic:
         player_with_limited_retries = LLMPlayer(
             connector=failing_connector,
             handler=game_arena_handler,
-            color="white",
+            player_color="white",
             max_move_retries=2,
             num_votes=1,
         )
@@ -281,7 +280,6 @@ class TestLLMPlayerRetryLogic:
         resignation_decision = player_with_limited_retries(starting_board)
         assert resignation_decision.action == "resign"
 
-        # Verify retry attempts: initial + 1 retry = 2 queries
         # (3rd response "also invalid" fails to parse and results in immediate resignation)
         assert failing_connector.query_count == 2
 
@@ -297,7 +295,7 @@ class TestLLMPlayerRetryLogic:
         player_with_retry_capability = LLMPlayer(
             connector=connector_with_retry_scenario,
             handler=game_arena_handler,
-            color="white",
+            player_color="white",
             max_move_retries=3,
             num_votes=1,
         )
@@ -322,7 +320,7 @@ class TestLLMPlayerRetryLogic:
         player_needing_retry = LLMPlayer(
             connector=connector_with_invalid_first_response,
             handler=game_arena_handler,
-            color="white",
+            player_color="white",
             max_move_retries=3,
             num_votes=1,
         )
@@ -355,7 +353,7 @@ class TestLLMPlayerRetryLogic:
         player_recovering_from_illegal = LLMPlayer(
             connector=connector_with_illegal_then_legal,
             handler=game_arena_handler,
-            color="white",
+            player_color="white",
             max_move_retries=3,
             num_votes=1,
         )
@@ -385,7 +383,7 @@ class TestLLMPlayerNetworkErrors:
         player_experiencing_timeout = LLMPlayer(
             connector=timeout_connector,
             handler=game_arena_handler,
-            color="white",
+            player_color="white",
             max_move_retries=3,
             num_votes=1,
         )
@@ -409,7 +407,7 @@ class TestLLMPlayerNetworkErrors:
         player_with_connection_issue = LLMPlayer(
             connector=connection_error_connector,
             handler=game_arena_handler,
-            color="black",
+            player_color="black",
             max_move_retries=3,
             num_votes=1,
         )
@@ -437,7 +435,7 @@ class TestLLMPlayerMajorityVoting:
         player_using_majority_vote = LLMPlayer(
             connector=voting_connector,
             handler=game_arena_handler,
-            color="white",
+            player_color="white",
             max_move_retries=3,
             num_votes=3,
         )
@@ -464,7 +462,7 @@ class TestLLMPlayerMajorityVoting:
         player_with_tied_votes = LLMPlayer(
             connector=tie_scenario_connector,
             handler=game_arena_handler,
-            color="white",
+            player_color="white",
             max_move_retries=3,
             num_votes=3,
         )
@@ -490,7 +488,7 @@ class TestLLMPlayerMajorityVoting:
         player_filtering_invalid_votes = LLMPlayer(
             connector=mixed_validity_connector,
             handler=game_arena_handler,
-            color="white",
+            player_color="white",
             max_move_retries=3,
             num_votes=3,
         )
@@ -514,7 +512,7 @@ class TestLLMPlayerMajorityVoting:
         player_recovering_from_all_invalid = LLMPlayer(
             connector=connector_needing_full_retry,
             handler=game_arena_handler,
-            color="white",
+            player_color="white",
             num_votes=3,
             max_move_retries=2,
         )
@@ -544,7 +542,7 @@ class TestLLMPlayerMajorityVoting:
         player_handling_notation_variance = LLMPlayer(
             connector=notation_mixing_connector,
             handler=game_arena_handler,
-            color="white",
+            player_color="white",
             max_move_retries=3,
             num_votes=3,
         )
@@ -566,7 +564,7 @@ class TestLLMPlayerMajorityVoting:
         player_with_voting_network_error = LLMPlayer(
             connector=error_during_voting_connector,
             handler=game_arena_handler,
-            color="white",
+            player_color="white",
             num_votes=3,
             max_move_retries=3,
         )
@@ -598,7 +596,7 @@ class TestLLMPlayerIntegration:
         white_player_in_game = LLMPlayer(
             connector=full_game_connector,
             handler=game_arena_handler,
-            color="white",
+            player_color="white",
             max_move_retries=3,
             num_votes=1,
         )
@@ -641,7 +639,7 @@ class TestLLMPlayerIntegration:
         player_without_custom_name = LLMPlayer(
             connector=test_connector,
             handler=game_arena_handler,
-            color="white",
+            player_color="white",
             max_move_retries=3,
             num_votes=1,
         )
@@ -658,7 +656,7 @@ class TestLLMPlayerIntegration:
         black_player = LLMPlayer(
             connector=black_perspective_connector,
             handler=game_arena_handler,
-            color="black",
+            player_color="black",
             max_move_retries=3,
             num_votes=1,
         )

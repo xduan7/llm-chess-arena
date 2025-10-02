@@ -11,8 +11,8 @@ class TestChessEdgeCases:
 
     def test_en_passant_capture(self):
         """Test that en passant captures work correctly in a game."""
-        white = RandomPlayer(name="White", color="white", seed=42)
-        black = RandomPlayer(name="Black", color="black", seed=43)
+        white = RandomPlayer(name="White", player_color="white", seed=42)
+        black = RandomPlayer(name="Black", player_color="black", seed=43)
         game = Game(
             white,
             black,
@@ -21,7 +21,6 @@ class TestChessEdgeCases:
             enable_metrics=False,
         )
 
-        # Set up position for en passant
         # White pawn on e5, black plays d7-d5
         game.board = chess.Board(
             "rnbqkb1r/ppp1pppp/5n2/3pP3/8/8/PPPP1PPP/RNBQKBNR w KQkq d6 0 3"
@@ -30,17 +29,15 @@ class TestChessEdgeCases:
         # Now white can capture en passant
         assert "e5d6" in [m.uci() for m in game.board.legal_moves]
 
-        # Make the en passant capture
         game.board.push_uci("e5d6")
 
-        # Verify the captured pawn is removed
         assert game.board.piece_at(chess.D5) is None  # Black pawn removed
         assert game.board.piece_at(chess.D6) is not None  # White pawn on d6
 
     def test_castling_kingside(self):
         """Test kingside castling mechanics."""
-        white = RandomPlayer(name="White", color="white")
-        black = RandomPlayer(name="Black", color="black")
+        white = RandomPlayer(name="White", player_color="white")
+        black = RandomPlayer(name="Black", player_color="black")
         game = Game(
             white,
             black,
@@ -52,13 +49,11 @@ class TestChessEdgeCases:
         # Clear path for kingside castling
         game.board = chess.Board("r3k2r/pppppppp/8/8/8/8/PPPPPPPP/R3K2R w KQkq - 0 1")
 
-        # Verify castling is legal
         assert "e1g1" in [m.uci() for m in game.board.legal_moves]
 
         # Perform castling
         game.board.push_uci("e1g1")
 
-        # Verify final positions
         assert game.board.piece_at(chess.G1).piece_type == chess.KING
         assert game.board.piece_at(chess.F1).piece_type == chess.ROOK
         assert game.board.piece_at(chess.E1) is None
@@ -66,8 +61,8 @@ class TestChessEdgeCases:
 
     def test_castling_queenside(self):
         """Test queenside castling mechanics."""
-        white = RandomPlayer(name="White", color="white")
-        black = RandomPlayer(name="Black", color="black")
+        white = RandomPlayer(name="White", player_color="white")
+        black = RandomPlayer(name="Black", player_color="black")
         game = Game(
             white,
             black,
@@ -79,13 +74,11 @@ class TestChessEdgeCases:
         # Clear path for queenside castling
         game.board = chess.Board("r3k2r/pppppppp/8/8/8/8/PPPPPPPP/R3K2R w KQkq - 0 1")
 
-        # Verify castling is legal
         assert "e1c1" in [m.uci() for m in game.board.legal_moves]
 
         # Perform castling
         game.board.push_uci("e1c1")
 
-        # Verify final positions
         assert game.board.piece_at(chess.C1).piece_type == chess.KING
         assert game.board.piece_at(chess.D1).piece_type == chess.ROOK
         assert game.board.piece_at(chess.E1) is None
@@ -93,8 +86,8 @@ class TestChessEdgeCases:
 
     def test_pawn_promotion(self):
         """Test pawn promotion to different pieces."""
-        white = RandomPlayer(name="White", color="white")
-        black = RandomPlayer(name="Black", color="black")
+        white = RandomPlayer(name="White", player_color="white")
+        black = RandomPlayer(name="Black", player_color="black")
         game = Game(
             white,
             black,
@@ -119,8 +112,8 @@ class TestChessEdgeCases:
 
     def test_stalemate_detection(self):
         """Test that stalemate is properly detected."""
-        white = RandomPlayer(name="White", color="white")
-        black = RandomPlayer(name="Black", color="black")
+        white = RandomPlayer(name="White", player_color="white")
+        black = RandomPlayer(name="Black", player_color="black")
         game = Game(
             white,
             black,
@@ -132,7 +125,6 @@ class TestChessEdgeCases:
         # Classic stalemate position
         game.board = chess.Board("7k/5Q2/6K1/8/8/8/8/8 b - - 0 1")
 
-        # Verify it's stalemate
         assert game.board.is_stalemate()
         assert game.board.is_game_over()
         assert not game.board.is_checkmate()
@@ -140,8 +132,8 @@ class TestChessEdgeCases:
 
     def test_insufficient_material_draw(self):
         """Test draw by insufficient material."""
-        white = RandomPlayer(name="White", color="white")
-        black = RandomPlayer(name="Black", color="black")
+        white = RandomPlayer(name="White", player_color="white")
+        black = RandomPlayer(name="Black", player_color="black")
         game = Game(
             white,
             black,
@@ -171,8 +163,8 @@ class TestChessEdgeCases:
 
     def test_threefold_repetition(self):
         """Test threefold repetition detection."""
-        white = RandomPlayer(name="White", color="white")
-        black = RandomPlayer(name="Black", color="black")
+        white = RandomPlayer(name="White", player_color="white")
+        black = RandomPlayer(name="Black", player_color="black")
         game = Game(
             white,
             black,
@@ -181,7 +173,6 @@ class TestChessEdgeCases:
             enable_metrics=False,
         )
 
-        # Create a position that will repeat
         moves = [
             "Nf3",
             "Nf6",  # Develop knights
@@ -198,13 +189,12 @@ class TestChessEdgeCases:
         for move in moves:
             game.board.push_san(move)
 
-        # Should be able to claim draw
         assert game.board.can_claim_threefold_repetition()
 
     def test_fifty_move_rule(self):
         """Test fifty-move rule detection."""
-        white = RandomPlayer(name="White", color="white")
-        black = RandomPlayer(name="Black", color="black")
+        white = RandomPlayer(name="White", player_color="white")
+        black = RandomPlayer(name="Black", player_color="black")
         game = Game(
             white,
             black,
@@ -213,13 +203,10 @@ class TestChessEdgeCases:
             enable_metrics=False,
         )
 
-        # Create a position with high halfmove clock (approaching 50-move rule)
         game.board = chess.Board("8/8/8/3k4/3K4/8/8/8 w - - 99 50")
 
-        # Make one more move to reach 100 half-moves (50 full moves)
         game.board.push_san("Kd3")
 
-        # Should be able to claim draw after 50 moves without pawn move or capture
         assert game.board.halfmove_clock == 100
         assert game.board.can_claim_fifty_moves()
 
@@ -229,8 +216,8 @@ class TestComplexPositions:
 
     def test_pinned_piece_cannot_move(self):
         """Test that pinned pieces have restricted movement."""
-        white = RandomPlayer(name="White", color="white")
-        black = RandomPlayer(name="Black", color="black")
+        white = RandomPlayer(name="White", player_color="white")
+        black = RandomPlayer(name="Black", player_color="black")
         game = Game(
             white,
             black,
@@ -261,8 +248,8 @@ class TestComplexPositions:
 
     def test_discovered_check(self):
         """Test discovered check scenario."""
-        white = RandomPlayer(name="White", color="white")
-        black = RandomPlayer(name="Black", color="black")
+        white = RandomPlayer(name="White", player_color="white")
+        black = RandomPlayer(name="Black", player_color="black")
         game = Game(
             white,
             black,
@@ -271,7 +258,6 @@ class TestComplexPositions:
             enable_metrics=False,
         )
 
-        # Set up discovered check position
         # White bishop on a1, white knight blocking, black king on h8
         game.board = chess.Board("7k/8/8/8/8/8/1N6/B7 w - - 0 1")
 

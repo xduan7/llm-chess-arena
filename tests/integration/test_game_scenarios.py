@@ -42,8 +42,12 @@ class TestRandomVsRandom:
             white_seed = game_idx
             black_seed = game_idx + 100
 
-            white_player = RandomPlayer(name="White", color="white", seed=white_seed)
-            black_player = RandomPlayer(name="Black", color="black", seed=black_seed)
+            white_player = RandomPlayer(
+                name="White", player_color="white", seed=white_seed
+            )
+            black_player = RandomPlayer(
+                name="Black", player_color="black", seed=black_seed
+            )
 
             game = Game(
                 white_player,
@@ -75,8 +79,12 @@ class TestRandomVsRandom:
             white_seed = game_idx * 2
             black_seed = game_idx * 2 + 1
 
-            white_player = RandomPlayer(name="White", color="white", seed=white_seed)
-            black_player = RandomPlayer(name="Black", color="black", seed=black_seed)
+            white_player = RandomPlayer(
+                name="White", player_color="white", seed=white_seed
+            )
+            black_player = RandomPlayer(
+                name="Black", player_color="black", seed=black_seed
+            )
 
             game = Game(
                 white_player,
@@ -149,8 +157,12 @@ class TestPlayerInteraction:
         self,
     ):
         """Check that recording players view alternating board states."""
-        white_recording_player = RecordingPlayer(name="White", color="white", seed=42)
-        black_recording_player = RecordingPlayer(name="Black", color="black", seed=43)
+        white_recording_player = RecordingPlayer(
+            name="White", player_color="white", seed=42
+        )
+        black_recording_player = RecordingPlayer(
+            name="Black", player_color="black", seed=43
+        )
         game = Game(
             white_recording_player,
             black_recording_player,
@@ -180,7 +192,7 @@ class TestPlayerInteraction:
     def test_game_propagates_player_exceptions(self, black_player):
         """Ensure runtime errors from players bubble up to the game loop."""
         faulty_white_player = FailingPlayer(
-            name="White", color="white", seed=42, fail_after_moves=2
+            name="White", player_color="white", seed=42, fail_after_moves=2
         )
         game = Game(
             faulty_white_player,

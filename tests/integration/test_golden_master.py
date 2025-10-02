@@ -8,11 +8,9 @@ from llm_chess_arena.player.random_player import RandomPlayer
 
 def test_random_game_golden_master() -> None:
     """Fixed-seed random game should retain opening sequence."""
-    # Create players with fixed seeds for deterministic behavior
-    white_player = RandomPlayer(name="White", color="white", seed=12345)
-    black_player = RandomPlayer(name="Black", color="black", seed=67890)
+    white_player = RandomPlayer(name="White", player_color="white", seed=12345)
+    black_player = RandomPlayer(name="Black", player_color="black", seed=67890)
 
-    # Create and play game
     game = Game(
         white_player=white_player,
         black_player=black_player,

@@ -107,17 +107,16 @@ class TestParallelExecution:
             )
 
         runner = TournamentRunner(
-            tournament_config=parallel_tournament_config,
-            game_config=game_config,
-            metrics_config=metrics_config,
-            white_player_config=white,
-            black_player_config=black,
+            tournament_cfg=parallel_tournament_config,
+            game_cfg=game_config,
+            metrics_cfg=metrics_config,
+            white_player_cfg=white,
+            black_player_cfg=black,
         )
 
         with patch.object(runner, "_run_single_game", side_effect=track_game_execution):
             runner.run()
 
-        # Verify games actually ran in parallel by checking overlapping time windows
         assert len(execution_times) == 4
         game_1_start, game_1_end = execution_times[1]
         game_2_start, game_2_end = execution_times[2]
@@ -158,8 +157,8 @@ class TestParallelExecution:
         mock_summary.termination = "checkmate"
         mock_summary.white_player.cost = 0.01
         mock_summary.black_player.cost = 0.01
-        mock_summary.white_player.thinking_time_in_seconds = 1.0
-        mock_summary.black_player.thinking_time_in_seconds = 1.0
+        mock_summary.white_player.thinking_time_in_sec = 1.0
+        mock_summary.black_player.thinking_time_in_sec = 1.0
         mock_build_summary.return_value = mock_summary
 
         # Mock players
@@ -172,14 +171,13 @@ class TestParallelExecution:
         mock_game_class.return_value = mock_game_instance
 
         runner = TournamentRunner(
-            tournament_config=parallel_tournament_config,
-            game_config=game_config,
-            metrics_config=metrics_config,
-            white_player_config=white,
-            black_player_config=black,
+            tournament_cfg=parallel_tournament_config,
+            game_cfg=game_config,
+            metrics_cfg=metrics_config,
+            white_player_cfg=white,
+            black_player_cfg=black,
         )
 
-        # Verify rate limiter was created and divided by parallel workers
         assert runner.rate_limiter is not None
         assert isinstance(runner.rate_limiter, TokenBucketRateLimiter)
 
@@ -202,11 +200,11 @@ class TestParallelExecution:
         )
 
         runner = TournamentRunner(
-            tournament_config=parallel_tournament_config,
-            game_config=game_config,
-            metrics_config=metrics_config,
-            white_player_config=white,
-            black_player_config=black,
+            tournament_cfg=parallel_tournament_config,
+            game_cfg=game_config,
+            metrics_cfg=metrics_config,
+            white_player_cfg=white,
+            black_player_cfg=black,
         )
 
         with patch("llm_chess_arena.tournament.executor.Game") as mock_game_class:
@@ -215,7 +213,6 @@ class TestParallelExecution:
 
             runner.run()
 
-            # Verify all Game instances were created with display_summary=False
             assert mock_game_class.call_count == 4
             for call in mock_game_class.call_args_list:
                 kwargs = call[1]
@@ -236,12 +233,12 @@ class TestParallelExecution:
         }
 
         runner = TournamentRunner(
-            tournament_config=parallel_tournament_config,
-            game_config=game_config,
-            metrics_config=metrics_config,
-            white_player_config=white,
-            black_player_config=black,
-            hydra_config=hydra_config,
+            tournament_cfg=parallel_tournament_config,
+            game_cfg=game_config,
+            metrics_cfg=metrics_config,
+            white_player_cfg=white,
+            black_player_cfg=black,
+            hydra_cfg=hydra_config,
         )
 
         with patch("llm_chess_arena.tournament.executor.Game") as mock_game_class:
@@ -250,11 +247,10 @@ class TestParallelExecution:
 
             runner.run()
 
-            # Verify all Game instances received the hydra_config
             assert mock_game_class.call_count == 4
             for call in mock_game_class.call_args_list:
                 kwargs = call[1]
-                assert kwargs["hydra_config"] == hydra_config
+                assert kwargs["hydra_cfg"] == hydra_config
 
     @patch("llm_chess_arena.tournament.executor.Game")
     @patch("llm_chess_arena.tournament.executor.PlayerFactory")
@@ -279,8 +275,8 @@ class TestParallelExecution:
         mock_summary.termination = "checkmate"
         mock_summary.white_player.cost = 0.01
         mock_summary.black_player.cost = 0.01
-        mock_summary.white_player.thinking_time_in_seconds = 1.0
-        mock_summary.black_player.thinking_time_in_seconds = 1.0
+        mock_summary.white_player.thinking_time_in_sec = 1.0
+        mock_summary.black_player.thinking_time_in_sec = 1.0
         mock_build_summary.return_value = mock_summary
 
         # Mock players
@@ -293,15 +289,14 @@ class TestParallelExecution:
         mock_game_class.return_value = mock_game_instance
 
         runner = TournamentRunner(
-            tournament_config=parallel_tournament_config,
-            game_config=game_config,
-            metrics_config=metrics_config,
-            white_player_config=white,
-            black_player_config=black,
+            tournament_cfg=parallel_tournament_config,
+            game_cfg=game_config,
+            metrics_cfg=metrics_config,
+            white_player_cfg=white,
+            black_player_cfg=black,
         )
 
         result = runner.run()
 
-        # Verify all games completed without conflicts
         assert result.total_games == 4
         assert len(result.games) == 4

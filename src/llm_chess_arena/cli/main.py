@@ -12,7 +12,6 @@ from llm_chess_arena.tournament.types import TournamentConfig
 from llm_chess_arena.tournament.executor import TournamentRunner
 from llm_chess_arena.tournament.export import ResultsExporter
 from llm_chess_arena.renderer import display_tournament_summary
-from llm_chess_arena.utils import is_stockfish_available
 
 
 HYDRA_CONFIG_DIR = str(Path(__file__).resolve().parents[3] / "configs")
@@ -27,12 +26,6 @@ def run_tournament_cli(hydra_config: DictConfig) -> None:
     """
     app_config = app_config_from_dictconfig(hydra_config)
     apply_env_config(app_config.env)
-
-    if app_config.game.enable_metrics and not is_stockfish_available():
-        raise RuntimeError(
-            "Stockfish not found in PATH but game.enable_metrics=true. "
-            "Either install Stockfish or set game.enable_metrics=false to run without move evaluation."
-        )
 
     config_dict = OmegaConf.to_container(hydra_config, resolve=True)
     if not isinstance(config_dict, dict):
@@ -53,12 +46,12 @@ def run_tournament_cli(hydra_config: DictConfig) -> None:
     )
 
     runner = TournamentRunner(
-        tournament_config=tournament_config,
-        game_config=app_config.game,
-        metrics_config=app_config.metrics,
-        white_player_config=app_config.players.white,
-        black_player_config=app_config.players.black,
-        hydra_config=config_dict,
+        tournament_cfg=tournament_config,
+        game_cfg=app_config.game,
+        metrics_cfg=app_config.metrics,
+        white_player_cfg=app_config.players.white,
+        black_player_cfg=app_config.players.black,
+        hydra_cfg=config_dict,
     )
 
     result = runner.run()
@@ -76,13 +69,15 @@ def run_tournament_cli(hydra_config: DictConfig) -> None:
             player1_wins=result.player1_wins,
             player2_wins=result.player2_wins,
             draws=result.draws,
-            duration_seconds=result.duration_seconds,
+            duration_in_sec=result.duration_in_sec,
             total_cost=result.total_cost,
             avg_game_length=result.avg_game_length,
             player1_avg_centipawn_loss=result.player1_avg_centipawn_loss,
             player2_avg_centipawn_loss=result.player2_avg_centipawn_loss,
-            player1_avg_thinking_time=result.player1_avg_thinking_time,
-            player2_avg_thinking_time=result.player2_avg_thinking_time,
+            player1_total_thinking_time_in_sec=result.player1_total_thinking_time_in_sec,
+            player2_total_thinking_time_in_sec=result.player2_total_thinking_time_in_sec,
+            player1_avg_thinking_time_per_move_in_sec=result.player1_avg_thinking_time_per_move_in_sec,
+            player2_avg_thinking_time_per_move_in_sec=result.player2_avg_thinking_time_per_move_in_sec,
             player1_quality_counts=result.player1_quality_counts,
             player2_quality_counts=result.player2_quality_counts,
         )

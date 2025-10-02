@@ -53,8 +53,8 @@ class ResultsExporter:
             "total_moves",
             "white_centipawn_loss",
             "black_centipawn_loss",
-            "white_thinking_time",
-            "black_thinking_time",
+            "white_thinking_time_in_sec",
+            "black_thinking_time_in_sec",
             "white_cost",
             "black_cost",
             # Move quality counts for white player
@@ -99,8 +99,8 @@ class ResultsExporter:
                         if game.black_centipawn_loss is not None
                         else ""
                     ),
-                    "white_thinking_time": game.white_thinking_time,
-                    "black_thinking_time": game.black_thinking_time,
+                    "white_thinking_time_in_sec": game.white_thinking_time_in_sec,
+                    "black_thinking_time_in_sec": game.black_thinking_time_in_sec,
                     "white_cost": game.white_cost,
                     "black_cost": game.black_cost,
                     # White player move quality counts

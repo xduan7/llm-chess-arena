@@ -46,7 +46,7 @@ class TestLLMPlayerBehaviorSnapshots:
         )
 
         player = LLMPlayer(
-            color="white",
+            player_color="white",
             connector=connector,
             handler=GameArenaLLMMoveHandler(),
             max_move_retries=2,
@@ -77,7 +77,7 @@ class TestLLMPlayerBehaviorSnapshots:
         )
 
         player = LLMPlayer(
-            color="white",
+            player_color="white",
             connector=connector,
             handler=GameArenaLLMMoveHandler(),
             max_move_retries=3,
@@ -106,7 +106,7 @@ class TestLLMPlayerBehaviorSnapshots:
         )
 
         player = LLMPlayer(
-            color="white",
+            player_color="white",
             connector=connector,
             handler=GameArenaLLMMoveHandler(),
             max_move_retries=2,
@@ -167,11 +167,11 @@ def test_end_to_end_game_with_metrics() -> None:
         output_dir=Path("/tmp/test_output"),
     )
     runner = TournamentRunner(
-        tournament_config=tournament_config,
-        game_config=app_config.game,
-        metrics_config=app_config.metrics,
-        white_player_config=app_config.players.white,
-        black_player_config=app_config.players.black,
+        tournament_cfg=tournament_config,
+        game_cfg=app_config.game,
+        metrics_cfg=app_config.metrics,
+        white_player_cfg=app_config.players.white,
+        black_player_cfg=app_config.players.black,
     )
     result = runner.run()
     assert result.total_games == 1
@@ -196,11 +196,11 @@ def test_end_to_end_game_with_metrics() -> None:
         output_dir=Path("/tmp/test_output"),
     )
     runner_no_metrics = TournamentRunner(
-        tournament_config=tournament_config_no_metrics,
-        game_config=app_config_no_metrics.game,
-        metrics_config=app_config_no_metrics.metrics,
-        white_player_config=app_config_no_metrics.players.white,
-        black_player_config=app_config_no_metrics.players.black,
+        tournament_cfg=tournament_config_no_metrics,
+        game_cfg=app_config_no_metrics.game,
+        metrics_cfg=app_config_no_metrics.metrics,
+        white_player_cfg=app_config_no_metrics.players.white,
+        black_player_cfg=app_config_no_metrics.players.black,
     )
     result_no_metrics = runner_no_metrics.run()
     assert result_no_metrics.total_games == 1

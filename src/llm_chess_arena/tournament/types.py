@@ -40,7 +40,6 @@ class TournamentConfig:
                 f"Color distribution will be imbalanced."
             )
 
-        # Ensure output_dir is a Path
         if isinstance(self.output_dir, str):
             object.__setattr__(self, "output_dir", Path(self.output_dir))
 
@@ -57,15 +56,14 @@ class GameResult:
     termination_reason: str
     white_centipawn_loss: float | None = None
     black_centipawn_loss: float | None = None
-    white_thinking_time: float = 0.0
-    black_thinking_time: float = 0.0
+    white_thinking_time_in_sec: float = 0.0
+    black_thinking_time_in_sec: float = 0.0
     white_cost: float = 0.0
     black_cost: float = 0.0
     white_quality_counts: dict[str, int] = field(default_factory=dict)
     black_quality_counts: dict[str, int] = field(default_factory=dict)
     timestamp: datetime = field(default_factory=lambda: datetime.now())
 
-    # File paths
     pgn_path: Path | None = None
     json_path: Path | None = None
 
@@ -91,8 +89,12 @@ class TournamentResult:
     avg_game_length: float = 0.0
     player1_avg_centipawn_loss: float | None = None
     player2_avg_centipawn_loss: float | None = None
-    player1_avg_thinking_time: float = 0.0
-    player2_avg_thinking_time: float = 0.0
+    player1_total_thinking_time_in_sec: float = 0.0
+    player2_total_thinking_time_in_sec: float = 0.0
+    player1_avg_thinking_time_per_game_in_sec: float = 0.0  # For backward compatibility
+    player2_avg_thinking_time_per_game_in_sec: float = 0.0  # For backward compatibility
+    player1_avg_thinking_time_per_move_in_sec: float = 0.0
+    player2_avg_thinking_time_per_move_in_sec: float = 0.0
     player1_quality_counts: dict[str, int] = field(default_factory=dict)
     player2_quality_counts: dict[str, int] = field(default_factory=dict)
 
@@ -100,7 +102,7 @@ class TournamentResult:
     games: list[GameResult] = field(default_factory=list)
 
     @property
-    def duration_seconds(self) -> float | None:
+    def duration_in_sec(self) -> float | None:
         """Tournament duration in seconds."""
         if self.end_time is None:
             return None
@@ -157,7 +159,7 @@ class TournamentResult:
             "player2": self.player2_name,
             "start_time": self.start_time.isoformat(),
             "end_time": self.end_time.isoformat() if self.end_time else None,
-            "duration_seconds": self.duration_seconds,
+            "duration_in_sec": self.duration_in_sec,
             "total_games": self.total_games,
             "results": {
                 "player1_wins": self.player1_wins,
@@ -174,8 +176,16 @@ class TournamentResult:
             "avg_metrics": {
                 "player1_centipawn_loss": self.player1_avg_centipawn_loss,
                 "player2_centipawn_loss": self.player2_avg_centipawn_loss,
-                "player1_thinking_time": self.player1_avg_thinking_time,
-                "player2_thinking_time": self.player2_avg_thinking_time,
+                "player1_thinking_time": self.player1_avg_thinking_time_per_game_in_sec,
+                "player2_thinking_time": self.player2_avg_thinking_time_per_game_in_sec,
+            },
+            "thinking_time": {
+                "player1_total": self.player1_total_thinking_time_in_sec,
+                "player2_total": self.player2_total_thinking_time_in_sec,
+                "player1_avg_per_game": self.player1_avg_thinking_time_per_game_in_sec,
+                "player2_avg_per_game": self.player2_avg_thinking_time_per_game_in_sec,
+                "player1_avg_per_move": self.player1_avg_thinking_time_per_move_in_sec,
+                "player2_avg_per_move": self.player2_avg_thinking_time_per_move_in_sec,
             },
             "move_quality": {
                 "player1_counts": self.player1_quality_counts,

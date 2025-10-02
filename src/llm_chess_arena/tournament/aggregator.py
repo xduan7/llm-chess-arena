@@ -30,7 +30,6 @@ def aggregate_tournament_results(
     Returns:
         TournamentResult: Aggregated tournament results.
     """
-    # Track stats by player name
     player_stats: dict[str, dict[str, Any]] = {
         player1_name: {
             "wins": 0,
@@ -53,7 +52,6 @@ def aggregate_tournament_results(
     total_cost = 0.0
     total_moves = 0
 
-    # Aggregate by player name
     for game in results:
         total_cost += game.white_cost + game.black_cost
         total_moves += game.total_moves
@@ -62,7 +60,6 @@ def aggregate_tournament_results(
         # Failed games are still counted in total_games and costs
         is_completed_game = game.result in ("1-0", "0-1", "1/2-1/2")
 
-        # Track stats for white player in this game
         white_name = game.white_player_name
         if white_name in player_stats:
             if is_completed_game:
@@ -75,15 +72,15 @@ def aggregate_tournament_results(
 
             if game.white_centipawn_loss is not None:
                 player_stats[white_name]["cp_losses"].append(game.white_centipawn_loss)
-            player_stats[white_name]["thinking_times"].append(game.white_thinking_time)
+            player_stats[white_name]["thinking_times"].append(
+                game.white_thinking_time_in_sec
+            )
 
-            # Aggregate quality counts
             for quality, count in game.white_quality_counts.items():
                 player_stats[white_name]["quality_counts"][quality] = (
                     player_stats[white_name]["quality_counts"].get(quality, 0) + count
                 )
 
-        # Track stats for black player in this game
         black_name = game.black_player_name
         if black_name in player_stats:
             if is_completed_game:
@@ -96,15 +93,15 @@ def aggregate_tournament_results(
 
             if game.black_centipawn_loss is not None:
                 player_stats[black_name]["cp_losses"].append(game.black_centipawn_loss)
-            player_stats[black_name]["thinking_times"].append(game.black_thinking_time)
+            player_stats[black_name]["thinking_times"].append(
+                game.black_thinking_time_in_sec
+            )
 
-            # Aggregate quality counts
             for quality, count in game.black_quality_counts.items():
                 player_stats[black_name]["quality_counts"][quality] = (
                     player_stats[black_name]["quality_counts"].get(quality, 0) + count
                 )
 
-    # Calculate averages
     player1_stats = player_stats[player1_name]
     player2_stats = player_stats[player2_name]
 
@@ -119,15 +116,30 @@ def aggregate_tournament_results(
         else None
     )
 
-    player1_avg_thinking = (
-        sum(player1_stats["thinking_times"]) / len(player1_stats["thinking_times"])
+    # Calculate thinking time metrics
+    player1_total_thinking = sum(player1_stats["thinking_times"])
+    player2_total_thinking = sum(player2_stats["thinking_times"])
+
+    player1_avg_thinking_per_game = (
+        player1_total_thinking / len(player1_stats["thinking_times"])
         if player1_stats["thinking_times"]
         else 0.0
     )
-    player2_avg_thinking = (
-        sum(player2_stats["thinking_times"]) / len(player2_stats["thinking_times"])
+    player2_avg_thinking_per_game = (
+        player2_total_thinking / len(player2_stats["thinking_times"])
         if player2_stats["thinking_times"]
         else 0.0
+    )
+
+    # Count total moves made by each player across all games
+    player1_total_moves = sum(player1_stats["quality_counts"].values())
+    player2_total_moves = sum(player2_stats["quality_counts"].values())
+
+    player1_avg_thinking_per_move = (
+        player1_total_thinking / player1_total_moves if player1_total_moves > 0 else 0.0
+    )
+    player2_avg_thinking_per_move = (
+        player2_total_thinking / player2_total_moves if player2_total_moves > 0 else 0.0
     )
 
     return TournamentResult(
@@ -144,8 +156,12 @@ def aggregate_tournament_results(
         avg_game_length=total_moves / len(results) if results else 0.0,
         player1_avg_centipawn_loss=player1_avg_cp_loss,
         player2_avg_centipawn_loss=player2_avg_cp_loss,
-        player1_avg_thinking_time=player1_avg_thinking,
-        player2_avg_thinking_time=player2_avg_thinking,
+        player1_total_thinking_time_in_sec=player1_total_thinking,
+        player2_total_thinking_time_in_sec=player2_total_thinking,
+        player1_avg_thinking_time_per_game_in_sec=player1_avg_thinking_per_game,
+        player2_avg_thinking_time_per_game_in_sec=player2_avg_thinking_per_game,
+        player1_avg_thinking_time_per_move_in_sec=player1_avg_thinking_per_move,
+        player2_avg_thinking_time_per_move_in_sec=player2_avg_thinking_per_move,
         player1_quality_counts=player1_stats["quality_counts"],
         player2_quality_counts=player2_stats["quality_counts"],
         games=results,

@@ -20,7 +20,6 @@ from llm_chess_arena.config.schema import (
     MetricsConfig,
     MoveQualityThresholdsConfig,
     parse_players_config,
-    register_configs,
 )
 
 
@@ -28,8 +27,15 @@ _ENV_LOADED = False
 
 
 def load_env(filename: str | None = None, override: bool = False) -> Path | None:
-    """Load environment variables from a dotenv file if present."""
+    """Load environment variables from a dotenv file if present.
 
+    Args:
+        filename: Path to the dotenv file. Defaults to ENV_FILE environment variable or '.env'.
+        override: Whether to override existing environment variables.
+
+    Returns:
+        Path to the loaded dotenv file, or None if no file was found or loaded.
+    """
     global _ENV_LOADED
 
     if _ENV_LOADED and not override:
@@ -51,15 +57,21 @@ def load_env(filename: str | None = None, override: bool = False) -> Path | None
 
 
 def configure_logging(level: str) -> None:
-    """Apply Loguru logging configuration for the application."""
+    """Apply Loguru logging configuration for the application.
 
+    Args:
+        level: Logging level (DEBUG, INFO, WARNING, ERROR, CRITICAL).
+    """
     logger.remove()
     logger.add(sys.stderr, level=level.upper())
 
 
 def apply_env_config(config: EnvConfig) -> None:
-    """Load environment settings and configure logging."""
+    """Load environment settings and configure logging.
 
+    Args:
+        config: Environment configuration specifying dotenv loading and log level.
+    """
     if config.load_dotenv:
         load_env(config.dotenv_path)
 
@@ -69,8 +81,11 @@ def apply_env_config(config: EnvConfig) -> None:
 def app_config_from_dictconfig(hydra_config: DictConfig) -> AppConfig:
     """Create structured config from Hydra DictConfig.
 
-    Converts DictConfig to dicts and instantiates dataclasses directly.
-    This replaces trivial parse_* wrappers while preserving player validation logic.
+    Args:
+        hydra_config: Composed Hydra configuration containing env, game, metrics, and players.
+
+    Returns:
+        Fully populated application configuration.
     """
     env_dict = cast(
         dict[str, Any], OmegaConf.to_container(hydra_config.env, resolve=True)
@@ -110,10 +125,20 @@ def load_app_config(
     *,
     config_path: str | None = None,
 ) -> AppConfig:
-    """Compose and validate the application configuration using Hydra."""
+    """Compose and validate the application configuration using Hydra.
 
-    register_configs()
+    Args:
+        config_name: Name of the Hydra configuration file to load.
+        overrides: List of Hydra override strings for parameter customization.
+        config_path: Path to configuration directory. Defaults to 'configs/' in current directory.
 
+    Returns:
+        Fully composed and validated application configuration.
+
+    Raises:
+        FileNotFoundError: If the configuration directory does not exist.
+        HydraException: If Hydra fails to compose the configuration.
+    """
     override_list = list(overrides or [])
 
     if config_path is not None:

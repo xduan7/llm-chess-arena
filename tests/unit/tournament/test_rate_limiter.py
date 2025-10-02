@@ -22,7 +22,7 @@ class TestTokenBucketRateLimiter:
         limiter = TokenBucketRateLimiter(requests_per_minute=60)
 
         start = time.time()
-        result = limiter.acquire_permit("openai", timeout_seconds=5.0)
+        result = limiter.acquire_permit("openai", timeout_in_sec=5.0)
         duration = time.time() - start
 
         assert result is True
@@ -33,8 +33,8 @@ class TestTokenBucketRateLimiter:
         limiter = TokenBucketRateLimiter(requests_per_minute=60)  # 1 per second
 
         start = time.time()
-        result1 = limiter.acquire_permit("openai", timeout_seconds=5.0)  # Instant
-        result2 = limiter.acquire_permit("openai", timeout_seconds=5.0)  # Wait ~1s
+        result1 = limiter.acquire_permit("openai", timeout_in_sec=5.0)  # Instant
+        result2 = limiter.acquire_permit("openai", timeout_in_sec=5.0)  # Wait ~1s
         duration = time.time() - start
 
         assert result1 is True
@@ -45,10 +45,10 @@ class TestTokenBucketRateLimiter:
         """Test that timeout returns False."""
         limiter = TokenBucketRateLimiter(requests_per_minute=10)  # 1 per 6 seconds
 
-        limiter.acquire_permit("openai", timeout_seconds=1.0)  # Use token
+        limiter.acquire_permit("openai", timeout_in_sec=1.0)  # Use token
 
         # Try to acquire with short timeout (not enough time to refill)
-        result = limiter.acquire_permit("openai", timeout_seconds=0.5)
+        result = limiter.acquire_permit("openai", timeout_in_sec=0.5)
 
         assert result is False
 
@@ -59,11 +59,10 @@ class TestTokenBucketRateLimiter:
         limiter = TokenBucketRateLimiter(requests_per_minute=60)  # 1 per second
 
         start = time.time()
-        limiter.acquire_permit("openai", timeout_seconds=5.0)  # Uses the slot
-        limiter.acquire_permit("anthropic", timeout_seconds=5.0)  # Must wait ~1s
+        limiter.acquire_permit("openai", timeout_in_sec=5.0)  # Uses the slot
+        limiter.acquire_permit("anthropic", timeout_in_sec=5.0)  # Must wait ~1s
         duration = time.time() - start
 
-        # Should take at least 0.9 seconds (global limit shared)
         assert duration >= 0.9
 
     def test_report_rate_limit_error__given_error__then_ignored(self) -> None:
@@ -73,6 +72,5 @@ class TestTokenBucketRateLimiter:
         # Report rate limit error - should be ignored
         limiter.report_rate_limit_error("openai", 1.0)
 
-        # Should still be able to acquire immediately
-        result = limiter.acquire_permit("openai", timeout_seconds=0.1)
+        result = limiter.acquire_permit("openai", timeout_in_sec=0.1)
         assert result is True

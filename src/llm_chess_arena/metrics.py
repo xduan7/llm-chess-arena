@@ -156,9 +156,7 @@ class StockfishMetricsEvaluator:
             binary_path: Optional explicit Stockfish binary path.
             engine_options: Stockfish UCI options.
             thresholds: Move quality thresholds.
-            max_centipawn_loss: Cap for centipawn loss per move (prevents mate scores from skewing ACPL).
-            engine_options: Optional UCI engine options.
-            thresholds: Optional thresholds used when classifying move quality.
+            max_centipawn_loss: Cap for centipawn loss per move to prevent mate positions from skewing ACPL.
         """
         self.depth = depth
         self.binary_path = find_stockfish_binary(binary_path)
@@ -242,7 +240,7 @@ class StockfishMetricsEvaluator:
             return
         try:
             self._engine.quit()
-        except Exception as engine_close_error:  # pragma: no cover - defensive cleanup
+        except Exception as engine_close_error:  # pragma: no cover
             logger.warning(
                 "Error while closing Stockfish metrics engine: {}", engine_close_error
             )
@@ -331,6 +329,7 @@ class MetricsTracker:
         engine_options: Mapping[str, Any] | None = None,
         thresholds: MoveQualityThresholds | None = None,
         max_centipawn_loss: int | None = None,
+        require_stockfish: bool = True,
     ) -> "MetricsTracker":
         """Construct a tracker backed by a Stockfish-powered evaluator.
 
@@ -340,10 +339,15 @@ class MetricsTracker:
             engine_options: Optional UCI options passed to Stockfish.
             thresholds: Optional override for move quality thresholds.
             max_centipawn_loss: Cap for centipawn loss per move (prevents mate scores from skewing ACPL).
+            require_stockfish: If True (default), raises an exception when Stockfish is unavailable.
+                If False, returns a disabled tracker that logs warnings.
 
         Returns:
-            MetricsTracker: Tracker instance that evaluates moves with Stockfish
-            when the engine is available; otherwise metrics collection is disabled.
+            MetricsTracker: Tracker instance with Stockfish evaluator, or disabled tracker
+            if require_stockfish=False and Stockfish is unavailable.
+
+        Raises:
+            RuntimeError: If require_stockfish=True and Stockfish cannot be initialized.
         """
         try:
             evaluator: MoveMetricsEvaluator | None = StockfishMetricsEvaluator(
@@ -358,6 +362,13 @@ class MetricsTracker:
             chess.engine.EngineError,
             OSError,
         ) as stockfish_initialization_error:
+            if require_stockfish:
+                raise RuntimeError(
+                    "Stockfish not found but metrics are required. "
+                    "Either install Stockfish or disable metrics. "
+                    "Install: brew install stockfish (macOS) or apt install stockfish (Ubuntu)"
+                ) from stockfish_initialization_error
+
             logger.warning(
                 "Stockfish unavailable - metrics evaluation disabled. "
                 "Set STOCKFISH_BINARY_PATH or install Stockfish to enable metrics."
@@ -398,7 +409,7 @@ class MetricsTracker:
 
         try:
             move_metrics = self._evaluator.evaluate_move(board_before_move, move)
-        except Exception as evaluation_error:  # pragma: no cover - defensive fallback
+        except Exception as evaluation_error:  # pragma: no cover
             logger.warning(
                 "Disabling metrics after evaluator error: {}", evaluation_error
             )
@@ -439,11 +450,11 @@ class MetricsTracker:
         Returns:
             dict[Color, MetricsSummary]: Summary metrics keyed by player color.
         """
-        summary_by_color: dict[Color, MetricsSummary] = {}
+        summary_by_player_color: dict[Color, MetricsSummary] = {}
         for player_color, player_metrics in self._metrics_by_player_color.items():
             moves_evaluated = len(player_metrics)
             if moves_evaluated == 0:
-                summary_by_color[player_color] = MetricsSummary(
+                summary_by_player_color[player_color] = MetricsSummary(
                     moves_evaluated=0,
                     average_centipawn_loss=None,
                     best_move_hit_rate=None,
@@ -458,13 +469,13 @@ class MetricsTracker:
             best_move_hits = sum(1 for metric in player_metrics if metric.best_move_hit)
             best_move_hit_rate = best_move_hits / moves_evaluated
             quality_counts = Counter(metric.quality for metric in player_metrics)
-            summary_by_color[player_color] = MetricsSummary(
+            summary_by_player_color[player_color] = MetricsSummary(
                 moves_evaluated=moves_evaluated,
                 average_centipawn_loss=average_centipawn_loss,
                 best_move_hit_rate=best_move_hit_rate,
                 quality_counts=dict(quality_counts),
             )
-        return summary_by_color
+        return summary_by_player_color
 
     def get_ordered_move_qualities(
         self, move_stack: list[Any]

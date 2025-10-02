@@ -22,9 +22,9 @@ from tests.conftest import (
 class AlwaysResignPlayer(BasePlayer):
     """Player that immediately resigns."""
 
-    def __init__(self, name: str, color: str) -> None:
+    def __init__(self, name: str, player_color: str) -> None:
         """Store identifying metadata for the stub player."""
-        super().__init__(name=name, color=color)
+        super().__init__(name=name, player_color=player_color)
 
     def _make_decision(
         self, context: PlayerDecisionContext
@@ -107,7 +107,7 @@ class TestGameFlow:
     ):
         """Illegal moves from players propagate as IllegalMoveError."""
         illegal_move_player = IllegalMovePlayer(
-            name="Illegal", color="white", illegal_move_uci="b1e4"
+            name="Illegal", player_color="white", illegal_move_uci="b1e4"
         )
         game = Game(
             illegal_move_player,
@@ -396,7 +396,6 @@ class TestGameHistory:
 
         game.play()
 
-        # Check both PGN and JSON files are created
         pgn_path = record_dir / "test_game.pgn"
         json_path = record_dir / "test_game.json"
 
@@ -414,7 +413,7 @@ class TestGameHistory:
         """Abortive games should not emit record files."""
         white_player = FailingPlayer(
             name="Failing",
-            color="white",
+            player_color="white",
             fail_after_moves=1,
             seed=1,
         )
