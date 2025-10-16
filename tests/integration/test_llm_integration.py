@@ -53,7 +53,7 @@ def test_llm_player_generates_legal_opening_move_from_starting_position(
     white_llm_player = LLMPlayer(
         connector=deterministic_llm_connector,
         handler=game_arena_handler,
-        player_color="white",
+        color="white",
         max_move_retries=3,
         num_votes=1,
     )

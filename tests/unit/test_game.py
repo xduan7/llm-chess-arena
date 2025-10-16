@@ -107,7 +107,7 @@ class TestGameFlow:
     ):
         """Illegal moves from players propagate as IllegalMoveError."""
         illegal_move_player = IllegalMovePlayer(
-            name="Illegal", player_color="white", illegal_move_uci="b1e4"
+            name="Illegal", color="white", illegal_move_uci="b1e4"
         )
         game = Game(
             illegal_move_player,
@@ -268,7 +268,7 @@ class RecordingEvaluator:
         player_color = "white" if board.turn == chess.WHITE else "black"
         self.calls.append((player_color, board.fen(), move.uci()))
         return MoveMetrics(
-            color=player_color,
+            player_color=player_color,
             move_in_uci=move.uci(),
             best_move_in_uci=move.uci(),
             centipawn_loss=1.0,

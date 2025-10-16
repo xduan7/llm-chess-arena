@@ -31,7 +31,7 @@ def tournament_config() -> TournamentConfig:
         rate_limit_rpm=None,  # No rate limiting in tests
         alternate_colors=True,
         display_summary=False,
-        output_dir=Path("test_output"),
+        output_dir=Path("/tmp/test_output"),
     )
 
 

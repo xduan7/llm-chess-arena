@@ -9,7 +9,7 @@ from typing import Any, Mapping
 import litellm
 from loguru import logger
 
-from llm_chess_arena.types import Color
+from llm_chess_arena.types import PlayerColor
 
 
 @dataclass(slots=True, frozen=True)
@@ -59,7 +59,7 @@ class PlayerConfigBase:
     """Base configuration shared by all player implementations."""
 
     kind: str
-    color: Color | None = None
+    color: PlayerColor | None = None
     name: str | None = None
 
 
@@ -441,7 +441,7 @@ def normalize_llm_player_cfg(
 
 
 def _ensure_player_color(
-    player_cfg: PlayerConfig, default_player_color: Color
+    player_cfg: PlayerConfig, default_player_color: PlayerColor
 ) -> PlayerConfig:
     """Ensure each player configuration declares a color.
 
@@ -456,7 +456,7 @@ def _ensure_player_color(
 
 
 def parse_player_cfg(
-    raw_cfg: Mapping[str, Any], fallback_player_color: Color
+    raw_cfg: Mapping[str, Any], fallback_player_color: PlayerColor
 ) -> PlayerConfig:
     """Convert raw player configuration mapping into strongly typed player configuration.
 

@@ -30,7 +30,7 @@ from llm_chess_arena.game import Game  # noqa: E402
 from llm_chess_arena.player.base_player import BasePlayer  # noqa: E402
 from llm_chess_arena.player.random_player import RandomPlayer  # noqa: E402
 from llm_chess_arena.types import (  # noqa: E402
-    Color,
+    PlayerColor,
     PlayerDecision,
     PlayerDecisionContext,
 )
@@ -40,13 +40,13 @@ from llm_chess_arena.types import (  # noqa: E402
 @pytest.fixture
 def white_player():
     """Standard white RandomPlayer for testing."""
-    return RandomPlayer(name="White", player_color="white", seed=42)
+    return RandomPlayer(name="White", color="white", seed=42)
 
 
 @pytest.fixture
 def black_player():
     """Standard black RandomPlayer for testing."""
-    return RandomPlayer(name="Black", player_color="black", seed=43)
+    return RandomPlayer(name="Black", color="black", seed=43)
 
 
 @pytest.fixture
@@ -81,9 +81,9 @@ def common_positions():
 class ScriptedPlayer(BasePlayer):
     """Player that plays a predetermined sequence of moves."""
 
-    def __init__(self, name: str, player_color: Color, move_sequence: Sequence[str]):
+    def __init__(self, name: str, color: PlayerColor, move_sequence: Sequence[str]):
         """Store identifying information and the scripted SAN sequence."""
-        super().__init__(name, player_color)
+        super().__init__(name, color)
         self.move_sequence = list(move_sequence)
         self.current_move_index = 0
 
@@ -142,11 +142,11 @@ class IllegalMovePlayer(BasePlayer):
     def __init__(
         self,
         name: str,
-        player_color: Color,
+        color: PlayerColor,
         illegal_move_uci: str = "b1e4",
     ) -> None:
         """Persist the illegal move that should always be attempted."""
-        super().__init__(name, player_color)
+        super().__init__(name, color)
         self.illegal_move_uci = illegal_move_uci
 
     def _make_decision(self, context: PlayerDecisionContext) -> PlayerDecision:
@@ -181,9 +181,9 @@ def setup_game_from_fen(
 ) -> Game:
     """Create a game whose board starts from the provided FEN."""
     if white_player is None:
-        white_player = RandomPlayer(name="White", player_color="white")
+        white_player = RandomPlayer(name="White", color="white")
     if black_player is None:
-        black_player = RandomPlayer(name="Black", player_color="black")
+        black_player = RandomPlayer(name="Black", color="black")
     game = Game(
         white_player,
         black_player,

@@ -9,7 +9,7 @@ from llm_chess_arena.player.base_player import BasePlayer
 from llm_chess_arena.player.llm.llm_connector import LLMConnector
 from llm_chess_arena.player.llm.llm_move_handler import BaseLLMMoveHandler
 from llm_chess_arena.utils import parse_attempted_move_to_uci
-from llm_chess_arena.types import PlayerDecisionContext, PlayerDecision, Color
+from llm_chess_arena.types import PlayerDecisionContext, PlayerDecision, PlayerColor
 from llm_chess_arena.exceptions import (
     InvalidMoveError,
     IllegalMoveError,
@@ -29,7 +29,7 @@ class LLMPlayer(BasePlayer):
         self,
         *,
         name: str | None = None,
-        color: Color,
+        color: PlayerColor,
         connector: LLMConnector,
         handler: BaseLLMMoveHandler,
         max_move_retries: int = 3,

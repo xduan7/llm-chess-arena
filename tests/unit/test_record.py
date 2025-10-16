@@ -207,8 +207,8 @@ class TestGameRecordIntegration:
         mock_record_iso.return_value = fixed_timestamp
         mock_game_iso.return_value = fixed_timestamp
 
-        white_player = RandomPlayer(name="Random White", player_color="white")
-        black_player = RandomPlayer(name="Random Black", player_color="black")
+        white_player = RandomPlayer(name="Random White", color="white")
+        black_player = RandomPlayer(name="Random Black", color="black")
 
         record_dir = tmp_path / "records"
         hydra_config = {

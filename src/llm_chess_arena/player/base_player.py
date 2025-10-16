@@ -5,14 +5,14 @@ from typing import Any
 
 import chess
 
-from llm_chess_arena.types import PlayerDecisionContext, PlayerDecision, Color
+from llm_chess_arena.types import PlayerDecisionContext, PlayerDecision, PlayerColor
 from llm_chess_arena.utils import get_legal_moves_in_uci, get_move_history_in_uci
 
 
 class BasePlayer(ABC):
     """Abstract base class that standardizes player decision flow."""
 
-    def __init__(self, name: str, color: Color) -> None:
+    def __init__(self, name: str, color: PlayerColor) -> None:
         """Initialize shared player metadata.
 
         Args:

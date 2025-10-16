@@ -5,7 +5,7 @@ from typing import Literal
 from typing_extensions import Self
 from pydantic import BaseModel, Field, ConfigDict, field_validator, model_validator
 
-Color = Literal["white", "black"]
+PlayerColor = Literal["white", "black"]
 # Currently supported actions
 PlayerAction = Literal["move", "resign"]
 
@@ -17,7 +17,7 @@ class PlayerDecisionContext(BaseModel):
     """
 
     board_in_fen: str
-    player_color: Color
+    player_color: PlayerColor
     legal_moves_in_uci: list[str]
     move_history_in_uci: list[str] = Field(default_factory=list)
     time_remaining_in_sec: float | None = None

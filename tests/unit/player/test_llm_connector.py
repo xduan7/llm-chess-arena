@@ -89,7 +89,9 @@ class TestLLMConnectorWithMockResponse:
                 max_api_request_retries=1,
             )
 
-            with pytest.raises(ConnectionError, match="Timeout .* after 2 network attempts"):
+            with pytest.raises(
+                ConnectionError, match="Timeout .* after 2 network attempts"
+            ):
                 connector.query("Test prompt")
 
     def test_query_wraps_unexpected_exceptions_as_connection_error(self):

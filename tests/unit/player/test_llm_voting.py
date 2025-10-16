@@ -28,7 +28,7 @@ class TestLLMVotingEdgeCases:
         player = LLMPlayer(
             connector=connector,
             handler=handler,
-            player_color="white",
+            color="white",
             num_votes=3,
             max_move_retries=1,
         )
@@ -54,7 +54,7 @@ class TestLLMVotingEdgeCases:
         player = LLMPlayer(
             connector=connector,
             handler=handler,
-            player_color="white",
+            color="white",
             num_votes=5,
             max_move_retries=1,
         )
@@ -81,7 +81,7 @@ class TestLLMVotingEdgeCases:
         player = LLMPlayer(
             connector=connector,
             handler=handler,
-            player_color="white",
+            color="white",
             num_votes=5,
             max_move_retries=1,
         )
@@ -108,7 +108,7 @@ class TestLLMVotingEdgeCases:
         player = LLMPlayer(
             connector=connector,
             handler=handler,
-            player_color="white",
+            color="white",
             num_votes=5,
             max_move_retries=1,
         )
@@ -139,7 +139,7 @@ class TestLLMVotingEdgeCases:
         player = LLMPlayer(
             connector=connector,
             handler=handler,
-            player_color="white",
+            color="white",
             num_votes=5,
             max_move_retries=1,
         )
@@ -186,7 +186,7 @@ class TestLLMVotingEdgeCases:
         player = LLMPlayer(
             connector=connector,
             handler=handler,
-            player_color="white",
+            color="white",
             num_votes=3,
             max_move_retries=2,
         )
@@ -214,7 +214,7 @@ class TestLLMVotingEdgeCases:
         player = LLMPlayer(
             connector=connector,
             handler=handler,
-            player_color="white",
+            color="white",
             num_votes=5,
             max_move_retries=1,
         )
@@ -239,7 +239,7 @@ class TestLLMVotingEdgeCases:
         player = LLMPlayer(
             connector=connector,
             handler=handler,
-            player_color="white",
+            color="white",
             num_votes=3,
             max_move_retries=2,
         )
@@ -272,7 +272,7 @@ class TestLLMVotingEdgeCases:
         player = LLMPlayer(
             connector=connector,
             handler=handler,
-            player_color="white",
+            color="white",
             num_votes=3,
             max_move_retries=2,
         )
@@ -296,7 +296,7 @@ class TestLLMVotingEdgeCases:
         player = LLMPlayer(
             connector=connector,
             handler=handler,
-            player_color="white",
+            color="white",
             num_votes=3,
             max_move_retries=1,
         )
@@ -315,7 +315,7 @@ class TestLLMVotingEdgeCases:
         player = LLMPlayer(
             connector=connector,
             handler=handler,
-            player_color="white",
+            color="white",
             num_votes=1,
             max_move_retries=1,
         )
@@ -347,7 +347,7 @@ class TestVotingPerformance:
         player = LLMPlayer(
             connector=connector,
             handler=handler,
-            player_color="white",
+            color="white",
             num_votes=5,
             max_move_retries=1,
         )
@@ -367,7 +367,7 @@ class TestVotingPerformance:
         player = LLMPlayer(
             connector=connector,
             handler=handler,
-            player_color="white",
+            color="white",
             num_votes=100,
             max_move_retries=1,
         )

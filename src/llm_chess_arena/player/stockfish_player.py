@@ -10,7 +10,7 @@ from loguru import logger
 
 from llm_chess_arena.player.base_player import BasePlayer
 from llm_chess_arena.utils import find_stockfish_binary, initialize_stockfish_engine
-from llm_chess_arena.types import Color, PlayerDecisionContext, PlayerDecision
+from llm_chess_arena.types import PlayerColor, PlayerDecisionContext, PlayerDecision
 
 # Default depth prevents infinite analysis when limits not specified
 DEFAULT_ENGINE_LIMITS: dict[str, Any] = {"depth": 10}
@@ -28,7 +28,7 @@ class StockfishPlayer(BasePlayer):
         self,
         *,
         name: str,
-        color: Color,
+        color: PlayerColor,
         binary_path: str | None = None,
         engine_limits: Mapping[str, Any] | None = None,
         engine_options: Mapping[str, Any] | None = None,

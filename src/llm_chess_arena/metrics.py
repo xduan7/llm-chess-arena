@@ -13,7 +13,7 @@ from loguru import logger
 
 from llm_chess_arena.core.policies import metrics_operation
 from llm_chess_arena.utils import find_stockfish_binary, initialize_stockfish_engine
-from llm_chess_arena.types import Color
+from llm_chess_arena.types import PlayerColor
 
 MATE_SCORE = 100_000
 ZERO_LOSS_EPSILON = 1e-6
@@ -97,7 +97,7 @@ def classify_move_quality(
 class MoveMetrics:
     """Evaluation metrics for a single move."""
 
-    player_color: Color
+    player_color: PlayerColor
     move_in_uci: str
     best_move_in_uci: str
     centipawn_loss: float
@@ -182,7 +182,7 @@ class StockfishMetricsEvaluator:
         engine = self._ensure_engine()
 
         board_for_engine = board.copy(stack=False)
-        player_color: Color = (
+        player_color: PlayerColor = (
             "white" if board_for_engine.turn == chess.WHITE else "black"
         )
         player_turn_color = chess.WHITE if player_color == "white" else chess.BLACK
@@ -309,7 +309,7 @@ class MetricsTracker:
             evaluator: Move metrics evaluator or ``None`` to disable evaluation.
         """
         self._evaluator = evaluator
-        self._metrics_by_player_color: dict[Color, list[MoveMetrics]] = {
+        self._metrics_by_player_color: dict[PlayerColor, list[MoveMetrics]] = {
             "white": [],
             "black": [],
         }
@@ -444,13 +444,13 @@ class MetricsTracker:
         )
         return move_metrics
 
-    def summarize(self) -> dict[Color, MetricsSummary]:
+    def summarize(self) -> dict[PlayerColor, MetricsSummary]:
         """Aggregate metrics for each player color.
 
         Returns:
-            dict[Color, MetricsSummary]: Summary metrics keyed by player color.
+            dict[PlayerColor, MetricsSummary]: Summary metrics keyed by player color.
         """
-        summary_by_player_color: dict[Color, MetricsSummary] = {}
+        summary_by_player_color: dict[PlayerColor, MetricsSummary] = {}
         for player_color, player_metrics in self._metrics_by_player_color.items():
             moves_evaluated = len(player_metrics)
             if moves_evaluated == 0:

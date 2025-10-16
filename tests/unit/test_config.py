@@ -9,7 +9,7 @@ from omegaconf import OmegaConf
 
 from llm_chess_arena import config
 from llm_chess_arena.config import RandomPlayerConfig
-from llm_chess_arena.config.schema import _ensure_color
+from llm_chess_arena.config.schema import _ensure_player_color
 from llm_chess_arena.config import loader
 
 
@@ -400,7 +400,7 @@ class TestEnsurePlayerColor:
 
         assert original_config.color is None
 
-        new_config = _ensure_color(original_config, "black")
+        new_config = _ensure_player_color(original_config, "black")
 
         assert original_config.color is None
 
@@ -423,7 +423,7 @@ class TestEnsurePlayerColor:
             seed=42,
         )
 
-        new_config = _ensure_color(original_config, "white")
+        new_config = _ensure_player_color(original_config, "white")
 
         assert original_config.color == "black"
 

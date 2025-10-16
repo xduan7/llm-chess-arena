@@ -25,7 +25,7 @@ from llm_chess_arena.player.llm.types import (
 )
 from llm_chess_arena.utils import parse_attempted_move_to_uci
 from llm_chess_arena.record import iso_timestamp
-from llm_chess_arena.types import Color, PlayerDecision, PlayerDecisionContext
+from llm_chess_arena.types import PlayerColor, PlayerDecision, PlayerDecisionContext
 
 
 class LLMPlayer(BasePlayer):
@@ -35,7 +35,7 @@ class LLMPlayer(BasePlayer):
         self,
         *,
         name: str | None = None,
-        color: Color,
+        color: PlayerColor,
         connector: LLMConnector,
         handler: BaseLLMMoveHandler,
         max_move_retries: int,

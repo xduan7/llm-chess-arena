@@ -3,7 +3,7 @@
 import random
 
 from llm_chess_arena.player.base_player import BasePlayer
-from llm_chess_arena.types import Color, PlayerDecisionContext, PlayerDecision
+from llm_chess_arena.types import PlayerColor, PlayerDecisionContext, PlayerDecision
 
 
 class RandomPlayer(BasePlayer):
@@ -13,7 +13,7 @@ class RandomPlayer(BasePlayer):
         self,
         *,
         name: str,
-        color: Color,
+        color: PlayerColor,
         seed: int | None = None,
     ) -> None:
         """Configure a random-move chess player.
