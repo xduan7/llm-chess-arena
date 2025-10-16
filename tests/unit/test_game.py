@@ -24,7 +24,7 @@ class AlwaysResignPlayer(BasePlayer):
 
     def __init__(self, name: str, player_color: str) -> None:
         """Store identifying metadata for the stub player."""
-        super().__init__(name=name, player_color=player_color)
+        super().__init__(name=name, color=player_color)
 
     def _make_decision(
         self, context: PlayerDecisionContext
@@ -268,7 +268,7 @@ class RecordingEvaluator:
         player_color = "white" if board.turn == chess.WHITE else "black"
         self.calls.append((player_color, board.fen(), move.uci()))
         return MoveMetrics(
-            player_color=player_color,
+            color=player_color,
             move_in_uci=move.uci(),
             best_move_in_uci=move.uci(),
             centipawn_loss=1.0,
@@ -413,7 +413,7 @@ class TestGameHistory:
         """Abortive games should not emit record files."""
         white_player = FailingPlayer(
             name="Failing",
-            player_color="white",
+            color="white",
             fail_after_moves=1,
             seed=1,
         )

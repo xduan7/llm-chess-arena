@@ -35,8 +35,10 @@ connector:
                                       # - Too short: Frequent timeout errors
                                       # - Too long: Delayed error detection
 
-  max_api_request_retries: 3    # Same as default - reasoning models still have network issues
-                               # May need higher for very expensive models to avoid wasted costs
+  max_api_request_retries: 10   # Higher retries for expensive reasoning models
+                               # - Uses exponential backoff: 1m, 2m, 4m, 8m, 16m (capped)
+                               # - Critical for reasoning models due to high cost per request
+                               # - Prevents wasting expensive API calls on transient failures
 
   provider: null                # Usually "openai" for o1/o3 models
                                # Set explicitly if using custom endpoints

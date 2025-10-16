@@ -46,7 +46,7 @@ class TestLLMPlayerBehaviorSnapshots:
         )
 
         player = LLMPlayer(
-            player_color="white",
+            color="white",
             connector=connector,
             handler=GameArenaLLMMoveHandler(),
             max_move_retries=2,
@@ -77,7 +77,7 @@ class TestLLMPlayerBehaviorSnapshots:
         )
 
         player = LLMPlayer(
-            player_color="white",
+            color="white",
             connector=connector,
             handler=GameArenaLLMMoveHandler(),
             max_move_retries=3,
@@ -106,7 +106,7 @@ class TestLLMPlayerBehaviorSnapshots:
         )
 
         player = LLMPlayer(
-            player_color="white",
+            color="white",
             connector=connector,
             handler=GameArenaLLMMoveHandler(),
             max_move_retries=2,
