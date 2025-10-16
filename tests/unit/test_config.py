@@ -200,7 +200,7 @@ class TestHydraConfig:
         self,
     ):
         """Default composition should surface expected player/metric settings."""
-        cfg = config.load_app_config()
+        cfg = config.load_app_cfg()
 
         assert cfg.game.display_board is True
         assert cfg.players.white.kind == "random"
@@ -223,7 +223,7 @@ class TestHydraConfig:
             "metrics.stockfish_depth=18",
             "metrics.quality_thresholds.mistake=250",
         ]
-        cfg = config.load_app_config(overrides=overrides)
+        cfg = config.load_app_cfg(overrides=overrides)
 
         assert cfg.players.white.kind == "stockfish"
         assert cfg.players.white.engine_limits["depth"] == 16
@@ -244,7 +244,7 @@ class TestHydraConfig:
             "players@players.black=random",
         ]
 
-        app_config = config.load_app_config(overrides=overrides)
+        app_config = config.load_app_cfg(overrides=overrides)
 
         default_player_settings = OmegaConf.load(
             Path(__file__).resolve().parents[2]
@@ -293,7 +293,7 @@ class TestHydraConfig:
             "players@players.white=stockfish/elo_1320",
             "players@players.black=stockfish/elo_2800",
         ]
-        cfg = config.load_app_config(overrides=overrides)
+        cfg = config.load_app_cfg(overrides=overrides)
 
         assert cfg.players.white.engine_options == {
             "UCI_LimitStrength": True,
@@ -349,7 +349,7 @@ class TestHydraConfig:
             }
         )
 
-        app_cfg = config.app_config_from_dictconfig(dict_cfg)
+        app_cfg = config.app_cfg_from_dictconfig(dict_cfg)
 
         assert app_cfg.env.log_level == "DEBUG"
         assert app_cfg.game.display_board is True

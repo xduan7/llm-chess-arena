@@ -13,17 +13,17 @@ class RandomPlayer(BasePlayer):
         self,
         *,
         name: str,
-        player_color: Color,
+        color: Color,
         seed: int | None = None,
     ) -> None:
         """Configure a random-move chess player.
 
         Args:
             name: Human-readable identifier shown in logs and UIs.
-            player_color: Chess side controlled by the player.
+            color: Chess side controlled by the player.
             seed: Optional RNG seed for reproducible move sequences.
         """
-        super().__init__(name, player_color)
+        super().__init__(name, color)
         self.seed = seed
         self.random_generator = random.Random(seed)
 

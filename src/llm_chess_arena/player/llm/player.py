@@ -35,7 +35,7 @@ class LLMPlayer(BasePlayer):
         self,
         *,
         name: str | None = None,
-        player_color: Color,
+        color: Color,
         connector: LLMConnector,
         handler: BaseLLMMoveHandler,
         max_move_retries: int,
@@ -45,7 +45,7 @@ class LLMPlayer(BasePlayer):
 
         Args:
             name: Display name for the player. Defaults to connector.model.
-            player_color: Chess side this player controls.
+            color: Chess side this player controls.
             connector: LLM connector for API communication.
             handler: Handler for parsing and formatting LLM responses.
             max_move_retries: Maximum retries for invalid moves before resignation.
@@ -57,7 +57,7 @@ class LLMPlayer(BasePlayer):
         if num_votes < 1:
             raise ValueError(f"`num_votes` must be >= 1, got {num_votes}")
 
-        super().__init__(name or connector.model, player_color)
+        super().__init__(name or connector.model, color)
         self.connector = connector
         self.handler = handler
         self.max_move_retries = max_move_retries

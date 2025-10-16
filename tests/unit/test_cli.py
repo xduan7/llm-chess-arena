@@ -60,9 +60,7 @@ def test_run_tournament_cli_smoke(monkeypatch, capsys):
 
     captured: dict[str, object] = {}
 
-    monkeypatch.setattr(
-        "llm_chess_arena.cli.main.apply_env_config", lambda env_cfg: None
-    )
+    monkeypatch.setattr("llm_chess_arena.cli.main.apply_env_cfg", lambda env_cfg: None)
 
     mock_result = TournamentResult(
         match_name="test_match",
@@ -166,9 +164,7 @@ def test_run_tournament_cli_with_llm_config_normalization(monkeypatch, capsys):
 
     captured: dict[str, object] = {}
 
-    monkeypatch.setattr(
-        "llm_chess_arena.cli.main.apply_env_config", lambda env_cfg: None
-    )
+    monkeypatch.setattr("llm_chess_arena.cli.main.apply_env_cfg", lambda env_cfg: None)
 
     mock_result = TournamentResult(
         match_name="test_match",

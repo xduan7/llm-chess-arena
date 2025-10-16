@@ -28,7 +28,7 @@ class StockfishPlayer(BasePlayer):
         self,
         *,
         name: str,
-        player_color: Color,
+        color: Color,
         binary_path: str | None = None,
         engine_limits: Mapping[str, Any] | None = None,
         engine_options: Mapping[str, Any] | None = None,
@@ -37,7 +37,7 @@ class StockfishPlayer(BasePlayer):
 
         Args:
             name: Display name shown in logs and summaries.
-            player_color: Chess side this player controls.
+            color: Chess side this player controls.
             binary_path: Explicit path or None to auto-detect.
             engine_limits: Search constraints such as depth or time.
             engine_options: UCI configuration such as threads or skill level.
@@ -45,7 +45,7 @@ class StockfishPlayer(BasePlayer):
         Raises:
             FileNotFoundError: If Stockfish cannot be located.
         """
-        super().__init__(name, player_color)
+        super().__init__(name, color)
 
         self.engine: chess.engine.SimpleEngine | None = None
         self.binary_path = find_stockfish_binary(binary_path)
