@@ -46,26 +46,56 @@ The new Hydra configuration system enables composable experiments. Use the CLI e
 
 ```bash
 # Default random vs random
-python -m llm_chess_arena.cli.play
+python -m llm_chess_arena.cli.main
 
 # Stockfish vs GPT-4
-python -m llm_chess_arena.cli.play \
+python -m llm_chess_arena.cli.main \
   players@players.white=stockfish/elo_2800 \
   players@players.black=llm/gpt4
 
 # Override individual parameters
-python -m llm_chess_arena.cli.play \
+python -m llm_chess_arena.cli.main \
   players.white.engine_limits.depth=18 \
   players.black.connector.temperature=0.2
 
 # Parameter sweep across temperatures
-python -m llm_chess_arena.cli.play --multirun \
+python -m llm_chess_arena.cli.main --multirun \
   players@players.black=llm/gpt4 \
   players.black.connector.temperature=0.2,0.6,0.9
 ```
 
 Hydra configs live under `configs/` with groups for `game/`, `players/`, and `metrics/`. Stockfish presets cover ELO 1320/1600/2000/2400/2800 (e.g. `players@players.white=stockfish/elo_2000`); mix and match these or author new YAML files to capture research settings.
 Move-quality thresholds are configurable via `configs/metrics/default.yaml`, and metrics are always enabled by default.
+
+### Resume Interrupted Games
+
+Games interrupted by network errors can be resumed from their saved state:
+
+```bash
+# Resume a single game
+python -m llm_chess_arena.cli.resume tournament_dir=/path/to/tournament
+
+# Validate tournament without resuming
+python -m llm_chess_arena.cli.resume tournament_dir=/path validate_only=true
+
+# Force unlock if another resume process appears stale
+python -m llm_chess_arena.cli.resume tournament_dir=/path force_unlock=true
+```
+
+The resume command automatically:
+- Detects games with network errors (timeout, connection failures)
+- Recreates players from the per-game configuration saved in each `game.json`
+- Continues games from their interruption point (metrics settings included)
+- Archives the pristine interrupted records as `game.json.original`
+- Regenerates tournament statistics, rewriting `results.json`/`results.csv`
+  (the pre-resume aggregates are kept as `results.json.original`)
+
+If a resume run is interrupted again, the extended game state is saved and the
+game stays resumable - rerun the command to continue. Interrupted games are
+recorded with result `Unfinished` and are excluded from win/draw statistics
+until they complete.
+
+Only games marked as resumable (network errors) can be resumed. Games that ended due to illegal moves, resignations, or other permanent errors cannot be resumed.
 
 
 ---

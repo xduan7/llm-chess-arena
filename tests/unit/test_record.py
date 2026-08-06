@@ -133,12 +133,12 @@ class TestRecordWriter:
                 },
             },
         ]
-        outcome = None  # Draw
+        outcome = None  # Interrupted game without a result
 
         summary = RecordWriter._calculate_summary(moves, outcome)
 
-        assert summary["result"] == "1/2-1/2"
-        assert summary["termination"] == "unknown"
+        assert summary["result"] == "Unfinished"
+        assert summary["termination"] == "unfinished"
         assert summary["total_moves"] == 1
         assert "white" in summary["players"]
         assert summary["players"]["white"]["thinking_time_in_sec"] == 2.5

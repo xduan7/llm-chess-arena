@@ -401,8 +401,12 @@ class TestLLMConnectorConfiguration:
 
 
 @pytest.mark.live
+@pytest.mark.skipif(
+    not os.getenv("LLM_LIVE_TESTS"),
+    reason="Live API smoke tests are opt-in: set LLM_LIVE_TESTS=1 to run",
+)
 class TestLLMConnectorRealAPI:
-    """Live API smoke tests guarded by API keys."""
+    """Live API smoke tests, opt-in via LLM_LIVE_TESTS plus provider keys."""
 
     @pytest.mark.skipif(
         not os.getenv("OPENAI_API_KEY"), reason="OpenAI API key not set"
@@ -410,7 +414,7 @@ class TestLLMConnectorRealAPI:
     def test_openai_api_connection_returns_valid_response(self):
         """Verify OpenAI connectivity when credentials are available."""
         openai_connector = LLMConnector(
-            model="gpt-3.5-turbo",
+            model="gpt-4o-mini",
             temperature=0.0,
             max_num_tokens=10,
             request_timeout_in_seconds=10.0,
@@ -432,7 +436,7 @@ class TestLLMConnectorRealAPI:
     def test_anthropic_api_connection_returns_valid_response(self):
         """Verify Anthropic connectivity when credentials are available."""
         anthropic_connector = LLMConnector(
-            model="claude-3-haiku-20240307",
+            model="claude-haiku-4-5",
             temperature=0.0,
             max_num_tokens=10,
             request_timeout_in_seconds=10.0,
@@ -454,7 +458,7 @@ class TestLLMConnectorRealAPI:
     def test_google_gemini_api_connection_returns_valid_response(self):
         """Verify Gemini connectivity when credentials are available."""
         gemini_connector = LLMConnector(
-            model="gemini/gemini-2.0-flash-exp",
+            model="gemini/gemini-2.5-flash",
             temperature=0.0,
             max_num_tokens=10,
             request_timeout_in_seconds=10.0,
@@ -473,11 +477,11 @@ class TestLLMConnectorRealAPI:
     def test_llm_generates_valid_chess_opening_move(self):
         """Live LLM should return a plausible opening move when available."""
         if os.getenv("OPENAI_API_KEY"):
-            selected_model = "gpt-3.5-turbo"
+            selected_model = "gpt-4o-mini"
         elif os.getenv("ANTHROPIC_API_KEY"):
-            selected_model = "claude-3-haiku-20240307"
+            selected_model = "claude-haiku-4-5"
         elif os.getenv("GOOGLE_API_KEY"):
-            selected_model = "gemini/gemini-2.0-flash-exp"
+            selected_model = "gemini/gemini-2.5-flash"
         else:
             pytest.skip("No API keys available")
 
@@ -507,11 +511,11 @@ class TestLLMConnectorRealAPI:
     def test_system_prompt_influences_llm_response(self):
         """System prompts should steer live responses when credentials exist."""
         if os.getenv("OPENAI_API_KEY"):
-            selected_model = "gpt-3.5-turbo"
+            selected_model = "gpt-4o-mini"
         elif os.getenv("ANTHROPIC_API_KEY"):
-            selected_model = "claude-3-haiku-20240307"
+            selected_model = "claude-haiku-4-5"
         elif os.getenv("GOOGLE_API_KEY"):
-            selected_model = "gemini/gemini-2.0-flash-exp"
+            selected_model = "gemini/gemini-2.5-flash"
         else:
             pytest.skip("No API keys available")
 

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Any, cast
 
 from hydra import main
 from omegaconf import DictConfig, OmegaConf
@@ -27,9 +28,10 @@ def run_tournament_cli(hydra_cfg: DictConfig) -> None:
     app_cfg = app_cfg_from_dictconfig(hydra_cfg)
     apply_env_cfg(app_cfg.env)
 
-    cfg_dict = OmegaConf.to_container(hydra_cfg, resolve=True)
-    if not isinstance(cfg_dict, dict):
+    raw_cfg_container = OmegaConf.to_container(hydra_cfg, resolve=True)
+    if not isinstance(raw_cfg_container, dict):
         raise ValueError("Expected dict at root of configuration")
+    cfg_dict = cast("dict[str, Any]", raw_cfg_container)
 
     tournament_dict = cfg_dict.get("tournament", {})
     if not isinstance(tournament_dict, dict):

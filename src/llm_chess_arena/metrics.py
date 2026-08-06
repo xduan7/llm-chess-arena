@@ -416,10 +416,10 @@ class MetricsTracker:
             if self._evaluator is not None:
                 try:
                     self._evaluator.close()
-                except Exception as close_error:  # pragma: no cover
+                except Exception as evaluator_close_error:  # pragma: no cover
                     logger.debug(
                         "Error while closing evaluator after failure: {}",
-                        close_error,
+                        evaluator_close_error,
                     )
             self._evaluator = None
             self._metrics_disabled_notice_logged = True

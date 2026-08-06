@@ -1,0 +1,29 @@
+# Configuration for tournament resume command
+#
+# Usage:
+#   python -m llm_chess_arena.cli.resume tournament_dir=/path/to/match
+#   python -m llm_chess_arena.cli.resume tournament_dir=/path force_unlock=true
+#   python -m llm_chess_arena.cli.resume tournament_dir=/path validate_only=true
+
+# Tournament directory to resume (required, override on command line)
+tournament_dir: ???
+
+# Override stale lock protection (default: false)
+force_unlock: false
+
+# Only validate without resuming (default: false)
+validate_only: false
+
+# Hydra runtime configuration
+defaults:
+  - _self_
+  - override hydra/job_logging: colorlog
+  - override hydra/hydra_logging: colorlog
+
+hydra:
+  run:
+    dir: .  # Don't create output subdirectories
+  output_subdir: null  # Don't create .hydra directory
+  job:
+    name: resume_tournament
+    chdir: false  # Don't change working directory

@@ -164,6 +164,9 @@ class GameArenaLLMMoveHandler(BaseLLMMoveHandler):
 
     prompt_template = GAME_ARENA_PROMPT_TEMPLATE
     retry_prompt_templates = {
+        # ParseMoveError (no move found) and InvalidMoveError (bad notation)
+        # share the "not parsable" retry wording
+        "ParseMoveError": GAME_ARENA_INVALID_MOVE_TEMPLATE,
         "InvalidMoveError": GAME_ARENA_INVALID_MOVE_TEMPLATE,
         "IllegalMoveError": GAME_ARENA_ILLEGAL_MOVE_TEMPLATE,
         "AmbiguousMoveError": GAME_ARENA_AMBIGUOUS_MOVE_TEMPLATE,

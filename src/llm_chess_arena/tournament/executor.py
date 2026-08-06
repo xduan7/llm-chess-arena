@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from dataclasses import asdict, replace
 from datetime import datetime, UTC
 from typing import TYPE_CHECKING, Any
 
@@ -262,8 +263,6 @@ class TournamentRunner:
         Returns:
             Results from the completed game.
         """
-        from dataclasses import replace
-
         # Schedule swaps player configs for color alternation but doesn't update the color field
         white_player_cfg = replace(white_player_cfg, color="white")
         black_player_cfg = replace(black_player_cfg, color="black")
@@ -288,6 +287,17 @@ class TournamentRunner:
         if self.game_cfg.enable_metrics:
             metrics_tracker = MetricsFactory.create_metrics_tracker(self.metrics_cfg)
 
+        # Snapshot the per-game player configs into the stored hydra config:
+        # the global config's players section does not reflect color
+        # alternation, and resume recreates players from this snapshot.
+        game_hydra_cfg = {
+            **self.hydra_cfg,
+            "players": {
+                "white": asdict(white_player_cfg),
+                "black": asdict(black_player_cfg),
+            },
+        }
+
         game = Game(
             white_player=white_player,
             black_player=black_player,
@@ -297,7 +307,7 @@ class TournamentRunner:
             metrics_tracker=metrics_tracker,
             record_dir=record_dir,
             record_name=record_name,
-            hydra_cfg=self.hydra_cfg,
+            hydra_cfg=game_hydra_cfg,
         )
 
         game.play(max_num_moves=self.game_cfg.max_num_moves)

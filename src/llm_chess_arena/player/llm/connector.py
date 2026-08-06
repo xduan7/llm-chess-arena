@@ -222,7 +222,9 @@ class LLMConnector:
             "timeout": self.request_timeout_in_seconds,
             "max_retries": 0,  # Handle retries ourselves for better logging
             "n": n,
-            "provider": self.provider,
+            # LiteLLM's override parameter is custom_llm_provider; a bare
+            # "provider" kwarg is silently dropped by drop_params
+            "custom_llm_provider": self.provider,
             "api_base": self.api_base,
             **kwargs,
             **self._default_request_parameters,

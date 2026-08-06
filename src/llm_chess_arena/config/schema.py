@@ -272,7 +272,12 @@ def _get_cached_model_info(model: str) -> Mapping[str, Any]:
         Dictionary of model metadata from LiteLLM.
     """
     if model not in _MODEL_METADATA_CACHE:
-        _MODEL_METADATA_CACHE[model] = litellm.get_model_info(model)
+        # litellm does not re-export get_model_info in its type stubs; resolve
+        # it dynamically like the connector does for other litellm attributes
+        get_model_info = getattr(litellm, "get_model_info", None)
+        if not callable(get_model_info):
+            raise RuntimeError("litellm.get_model_info is unavailable")
+        _MODEL_METADATA_CACHE[model] = get_model_info(model)
     return _MODEL_METADATA_CACHE[model]
 
 

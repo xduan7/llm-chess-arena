@@ -280,8 +280,9 @@ class TestLLMPlayerRetryLogic:
         resignation_decision = player_with_limited_retries(starting_board)
         assert resignation_decision.action == "resign"
 
-        # (3rd response "also invalid" fails to parse and results in immediate resignation)
-        assert failing_connector.query_count == 2
+        # Unparseable responses now consume the retry budget instead of
+        # resigning immediately: max_move_retries=2 allows 3 total attempts.
+        assert failing_connector.query_count == 3
 
     def test_player_successfully_recovers_on_second_attempt_after_initial_invalid_move(
         self,
@@ -372,10 +373,10 @@ class TestLLMPlayerRetryLogic:
 
 
 class TestLLMPlayerNetworkErrors:
-    """Network failure handling for immediate resignation scenarios."""
+    """Network failures propagate so the game can be saved as resumable."""
 
-    def test_network_timeout_error_resigns_immediately(self):
-        """TimeoutError should trigger an immediate resignation."""
+    def test_network_timeout_error_propagates(self):
+        """TimeoutError should propagate instead of turning into a resignation."""
         timeout_connector = MockLLMConnector()
         timeout_connector.query = Mock(side_effect=TimeoutError("API timeout"))
         game_arena_handler = GameArenaLLMMoveHandler()
@@ -389,15 +390,14 @@ class TestLLMPlayerNetworkErrors:
         )
 
         starting_board = chess.Board()
-        decision = player_experiencing_timeout(starting_board)
-
-        assert decision.action == "resign"
+        with pytest.raises(TimeoutError, match="API timeout"):
+            player_experiencing_timeout(starting_board)
 
         # Connector already exhausted its own retries; player should not loop further.
         assert timeout_connector.query.call_count == 1
 
-    def test_connection_error_resigns_immediately(self):
-        """ConnectionError should also trigger an immediate resignation."""
+    def test_connection_error_propagates(self):
+        """ConnectionError should also propagate for game-level resume handling."""
         connection_error_connector = MockLLMConnector()
         connection_error_connector.query = Mock(
             side_effect=ConnectionError("Network unavailable")
@@ -413,12 +413,35 @@ class TestLLMPlayerNetworkErrors:
         )
 
         mid_game_board = chess.Board()
-        decision = player_with_connection_issue(mid_game_board)
+        with pytest.raises(ConnectionError, match="Network unavailable"):
+            player_with_connection_issue(mid_game_board)
 
-        assert decision.action == "resign"
-
-        # Only the initial attempt should occur before resignation.
+        # Only the initial attempt should occur before the error propagates.
         assert connection_error_connector.query.call_count == 1
+
+    def test_network_error_records_decision_artifacts(self):
+        """Artifacts should capture the network failure before propagation."""
+        failing_connector = MockLLMConnector()
+        failing_connector.query = Mock(side_effect=ConnectionError("API down"))
+
+        player = LLMPlayer(
+            connector=failing_connector,
+            handler=GameArenaLLMMoveHandler(),
+            color="white",
+            max_move_retries=1,
+            num_votes=1,
+        )
+
+        with pytest.raises(ConnectionError):
+            player(chess.Board())
+
+        artifacts = player.get_last_decision_artifacts()
+        assert artifacts is not None
+        assert artifacts.decision_process["network_errors"]
+        assert (
+            artifacts.decision_process["network_errors"][0]["error_message"]
+            == "API down"
+        )
 
 
 class TestLLMPlayerMajorityVoting:
@@ -553,8 +576,8 @@ class TestLLMPlayerMajorityVoting:
         assert normalized_notation_decision.action == "move"
         assert normalized_notation_decision.attempted_move == "e2e4"
 
-    def test_network_error_during_voting_resigns_immediately(self):
-        """Network errors during voting should cause an immediate resignation."""
+    def test_network_error_during_voting_propagates(self):
+        """Network errors during voting should propagate for resume handling."""
         error_during_voting_connector = MockLLMConnector()
         error_during_voting_connector.query = Mock(
             side_effect=ConnectionError("API down")
@@ -570,9 +593,9 @@ class TestLLMPlayerMajorityVoting:
         )
 
         starting_board = chess.Board()
-        decision = player_with_voting_network_error(starting_board)
+        with pytest.raises(ConnectionError, match="API down"):
+            player_with_voting_network_error(starting_board)
 
-        assert decision.action == "resign"
         assert player_with_voting_network_error.last_move_attempts == 1
         assert error_during_voting_connector.query.call_count == 1
 

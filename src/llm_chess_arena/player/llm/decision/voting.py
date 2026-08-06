@@ -31,11 +31,13 @@ class VoteAggregator:
             responses: Collection of LLM response texts to aggregate.
 
         Returns:
-            PlayerDecision: The decision selected by majority vote, or a debug
-            decision if all responses fail to parse.
+            VoteAggregation: The decision selected by majority vote.
 
         Raises:
             LLMEmptyResponseError: If no responses are provided.
+            ParseMoveError: If every response fails to parse; the raised error
+                carries the raw responses on ``responses_text`` so retry prompts
+                can include them.
         """
         response_texts = list(responses)
         if not response_texts:
@@ -43,7 +45,7 @@ class VoteAggregator:
 
         decisions = self._parse_responses(response_texts)
         if not decisions:
-            return self._build_debug_decision(response_texts)
+            raise self._build_total_parse_failure(response_texts)
 
         decision_tuples = [
             (decision.action, decision.attempted_move) for decision in decisions
@@ -159,8 +161,12 @@ class VoteAggregator:
             tie_broken=tie_broken,
         )
 
-    def _build_debug_decision(self, responses: list[str]) -> VoteAggregation:
-        """Create a synthetic decision containing all raw responses."""
+    def _build_total_parse_failure(self, responses: list[str]) -> ParseMoveError:
+        """Build a ParseMoveError describing a batch where nothing parsed.
+
+        Raising (rather than resigning) lets the player spend its move-retry
+        budget on a fresh prompt that includes the unparseable responses.
+        """
         logger.error(
             "All {} LLM responses failed to parse - logging all responses for debugging",
             len(responses),
@@ -179,10 +185,8 @@ class VoteAggregator:
                 for response_index, response_text in enumerate(responses)
             ]
         )
-        decision = PlayerDecision(
-            action="resign",
-            attempted_move=None,
-            reason=f"All {len(responses)} LLM responses failed to parse",
-            response=combined_responses,
+        parse_error = ParseMoveError(
+            f"All {len(responses)} LLM responses failed to parse"
         )
-        return VoteAggregation(decision=decision, metadata=None)
+        parse_error.responses_text = combined_responses  # type: ignore[attr-defined]
+        return parse_error

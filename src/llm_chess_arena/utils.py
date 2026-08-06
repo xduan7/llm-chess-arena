@@ -269,7 +269,7 @@ class GameSummary:
     """Comprehensive game summary with outcome and player statistics."""
 
     # Basic outcome info
-    result: str  # "1-0", "0-1", "1/2-1/2"
+    result: str  # "1-0", "0-1", "1/2-1/2", or "Unfinished" for interrupted games
     termination: str  # "checkmate", "stalemate", etc.
     total_moves: int
     winner_name: str | None
@@ -325,6 +325,8 @@ class GameSummary:
             "total_moves": self.total_moves,
             "winner": self.winner_name,
             "winner_color": winner_color_string,
+            "white_player": self.white_player.name,
+            "black_player": self.black_player.name,
             "players": {},
         }
 
@@ -345,6 +347,8 @@ class GameSummary:
                 player_export_data["tokens_completion"] = (
                     player_summary.tokens_completion
                 )
+            if player_summary.cost > 0:
+                player_export_data["cost"] = player_summary.cost
 
             if player_export_data:
                 game_export_data["players"][player_summary.color] = player_export_data
@@ -469,8 +473,10 @@ def _extract_game_outcome_info(
     Returns:
         Tuple of (result, termination, winner_name, winner_color)
     """
-    result = "1/2-1/2"  # Default to draw
-    termination = "unknown"
+    # No outcome means the game was interrupted (e.g., network error) - it must
+    # not be reported as a draw, and "Unfinished" marks the record as resumable.
+    result = "Unfinished"
+    termination = "unfinished"
     winner_name = None
     winner_color = None
 
@@ -589,15 +595,20 @@ def build_game_summary(
     Returns:
         GameSummary: Comprehensive summary for CLI, JSON, and logging.
     """
+    # Plain names (not str(player), which appends the color suffix) so summary
+    # names line up with tournament aggregation keyed by player name
+    white_player_name = getattr(game.white_player, "name", str(game.white_player))
+    black_player_name = getattr(game.black_player, "name", str(game.black_player))
+
     result, termination, winner_name, winner_color = _extract_game_outcome_info(
         game.outcome,
-        str(game.white_player),
-        str(game.black_player),
+        white_player_name,
+        black_player_name,
     )
     total_moves = len(game.board.move_stack)
 
-    white_player_summary = PlayerSummary(name=str(game.white_player), color="white")
-    black_player_summary = PlayerSummary(name=str(game.black_player), color="black")
+    white_player_summary = PlayerSummary(name=white_player_name, color="white")
+    black_player_summary = PlayerSummary(name=black_player_name, color="black")
 
     if move_records:
         _process_moves_data(
