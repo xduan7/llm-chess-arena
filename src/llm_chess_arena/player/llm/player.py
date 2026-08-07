@@ -12,6 +12,7 @@ from llm_chess_arena.exceptions import (
     InvalidMoveError,
     LLMPermanentError,
     LLMEmptyResponseError,
+    ParseMoveError,
 )
 from llm_chess_arena.player.base_player import BasePlayer
 from llm_chess_arena.player.llm.connector import LLMConnector, UsageRecord
@@ -25,7 +26,7 @@ from llm_chess_arena.player.llm.types import (
 )
 from llm_chess_arena.utils import parse_attempted_move_to_uci
 from llm_chess_arena.record import iso_timestamp
-from llm_chess_arena.types import Color, PlayerDecision, PlayerDecisionContext
+from llm_chess_arena.types import PlayerColor, PlayerDecision, PlayerDecisionContext
 
 
 class LLMPlayer(BasePlayer):
@@ -35,7 +36,7 @@ class LLMPlayer(BasePlayer):
         self,
         *,
         name: str | None = None,
-        player_color: Color,
+        color: PlayerColor,
         connector: LLMConnector,
         handler: BaseLLMMoveHandler,
         max_move_retries: int,
@@ -45,7 +46,7 @@ class LLMPlayer(BasePlayer):
 
         Args:
             name: Display name for the player. Defaults to connector.model.
-            player_color: Chess side this player controls.
+            color: Chess side this player controls.
             connector: LLM connector for API communication.
             handler: Handler for parsing and formatting LLM responses.
             max_move_retries: Maximum retries for invalid moves before resignation.
@@ -57,7 +58,7 @@ class LLMPlayer(BasePlayer):
         if num_votes < 1:
             raise ValueError(f"`num_votes` must be >= 1, got {num_votes}")
 
-        super().__init__(name or connector.model, player_color)
+        super().__init__(name or connector.model, color)
         self.connector = connector
         self.handler = handler
         self.max_move_retries = max_move_retries
@@ -92,6 +93,8 @@ class LLMPlayer(BasePlayer):
 
         for retry_attempt in self._retry_controller.iter_attempts():
             self.last_move_attempts = retry_attempt.attempt_number
+            # Reset so error handlers never report a stale prior-attempt decision
+            candidate_decision = None
 
             if retry_attempt.attempt_number > 1:
                 logger.info(
@@ -247,22 +250,22 @@ class LLMPlayer(BasePlayer):
                     }
                 )
                 logger.warning(
-                    "{} resigned due to network failure: {}",
+                    "LLM player {} network failure after connector retries: {} - "
+                    "propagating so the game can be saved as resumable",
                     self.name,
                     str(network_error),
                 )
-                resignation_decision = self._retry_controller.create_resignation()
-                resignation_decision = resignation_decision.model_copy(
-                    update={"thinking_time_in_sec": cumulative_thinking_time_in_sec}
-                )
-                self.last_move_decision = resignation_decision
                 self._last_decision_artifacts = DecisionArtifacts(
                     normalized_uci=None,
                     vote_metadata=None,
                     decision_process=llm_decision_process,
                 )
-                return resignation_decision
+                # The connector already exhausted its own retry/backoff budget;
+                # re-raise so Game.play() records a resumable interruption
+                # instead of treating the outage as a resignation.
+                raise
             except (
+                ParseMoveError,
                 InvalidMoveError,
                 IllegalMoveError,
                 AmbiguousMoveError,
@@ -283,6 +286,41 @@ class LLMPlayer(BasePlayer):
                     )
 
                     if not retry_attempt.is_final_attempt:
+                        continue
+                elif isinstance(move_error, ParseMoveError):
+                    # No response in the batch contained a recognizable move, so
+                    # there is no candidate decision - retry with the raw
+                    # responses as context instead of resigning outright.
+                    llm_decision_process["move_errors"].append(
+                        {
+                            "attempt": retry_attempt.attempt_number,
+                            "attempted_move_in_uci": None,
+                            "error_type": "ParseMoveError",
+                            "error_message": str(move_error),
+                        }
+                    )
+
+                    retry_status = (
+                        "Retrying with unparseable responses as context"
+                        if not retry_attempt.is_final_attempt
+                        else "No retries left"
+                    )
+                    logger.warning(
+                        "LLM player {} attempt {} produced no parseable move: {}. {}",
+                        self.name,
+                        retry_attempt.attempt_number,
+                        move_error,
+                        retry_status,
+                    )
+
+                    if not retry_attempt.is_final_attempt:
+                        prompt_session.build_retry_prompt(
+                            exception_name="ParseMoveError",
+                            last_response=getattr(
+                                move_error, "responses_text", str(move_error)
+                            ),
+                            last_attempted_move=None,
+                        )
                         continue
                 else:
                     attempted_move = (

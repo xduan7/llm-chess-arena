@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import os
 import re
+import time
 from dataclasses import dataclass
 from typing import Any, Iterable, TYPE_CHECKING
 
@@ -43,10 +44,10 @@ class LLMConnector:
     def __init__(
         self,
         model: str,
-        temperature: float = 0.7,
-        max_num_tokens: int | None = None,
-        request_timeout_in_seconds: float = 30.0,
-        max_api_request_retries: int = 3,
+        temperature: float,
+        max_num_tokens: int | None,
+        request_timeout_in_seconds: float,
+        max_api_request_retries: int,
         provider: str | None = None,
         api_base: str | None = None,
         rate_limiter: RateLimiter | None = None,
@@ -221,7 +222,9 @@ class LLMConnector:
             "timeout": self.request_timeout_in_seconds,
             "max_retries": 0,  # Handle retries ourselves for better logging
             "n": n,
-            "provider": self.provider,
+            # LiteLLM's override parameter is custom_llm_provider; a bare
+            # "provider" kwarg is silently dropped by drop_params
+            "custom_llm_provider": self.provider,
             "api_base": self.api_base,
             **kwargs,
             **self._default_request_parameters,
@@ -260,13 +263,6 @@ class LLMConnector:
             except LLMEmptyResponseError:
                 # Let empty response errors bubble up to player for move retries
                 raise
-            except litellm_exceptions.Timeout as timeout_error:
-                logger.warning(
-                    "Request timed out after {}s", self.request_timeout_in_seconds
-                )
-                raise TimeoutError(
-                    f"Request timed out after {self.request_timeout_in_seconds}s"
-                ) from timeout_error
             except (
                 litellm_exceptions.AuthenticationError,
                 litellm_exceptions.InvalidRequestError,
@@ -281,12 +277,14 @@ class LLMConnector:
                     f"LLM API request invalid: {permanent_api_error}"
                 ) from permanent_api_error
             except (
+                litellm_exceptions.Timeout,
                 litellm_exceptions.RateLimitError,
                 litellm_exceptions.ServiceUnavailableError,
                 litellm_exceptions.InternalServerError,
                 litellm_exceptions.APIError,
                 litellm_exceptions.APIConnectionError,
             ) as transient_api_error:
+                # Extract status code and error type for logging
                 status_code = getattr(transient_api_error, "status_code", 0)
                 if isinstance(status_code, str):
                     try:
@@ -311,6 +309,18 @@ class LLMConnector:
                     raise ConnectionError(
                         f"{error_type.replace('_', ' ').title()} ({status_code or 'unknown'}) after {max_attempts} network attempts"
                     ) from transient_api_error
+
+                # Exponential backoff with minute-based delays (1m, 2m, 4m, 8m, 16m cap)
+                if attempt < max_attempts:
+                    backoff_minutes = min(2 ** (attempt - 1), 16)
+                    backoff_seconds = backoff_minutes * 60
+                    logger.info(
+                        "Retrying {} in {} minute(s)...",
+                        endpoint,
+                        backoff_minutes,
+                    )
+                    time.sleep(backoff_seconds)
+
             except Exception as unexpected_error:  # pragma: no cover
                 error_type = (
                     type(unexpected_error).__name__.replace("Error", "").lower()

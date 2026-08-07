@@ -14,7 +14,7 @@ from hydra import compose, initialize
 from hydra.core.global_hydra import GlobalHydra
 
 from llm_chess_arena.config.schema import AppConfig
-from llm_chess_arena.config.loader import app_config_from_dictconfig
+from llm_chess_arena.config.loader import app_cfg_from_dictconfig
 from llm_chess_arena.tournament.types import TournamentConfig
 from llm_chess_arena.tournament.executor import TournamentRunner
 
@@ -45,7 +45,7 @@ class TestDemoScriptConfigurations:
                     "players@players.black=random",
                 ],
             )
-        app_config = app_config_from_dictconfig(cfg)
+        app_config = app_cfg_from_dictconfig(cfg)
         assert isinstance(app_config, AppConfig)
         assert app_config.game.display_board is False
         assert app_config.game.enable_metrics is False
@@ -93,7 +93,7 @@ class TestDemoScriptConfigurations:
                     "players@players.black=random",
                 ],
             )
-        app_config = app_config_from_dictconfig(cfg)
+        app_config = app_cfg_from_dictconfig(cfg)
         assert isinstance(app_config, AppConfig)
         assert app_config.players.white.kind == "stockfish"
         assert app_config.players.black.kind == "random"
@@ -138,7 +138,7 @@ class TestDemoScriptConfigurations:
                     "players@players.black=random",
                 ],
             )
-        app_config = app_config_from_dictconfig(cfg)
+        app_config = app_cfg_from_dictconfig(cfg)
         assert isinstance(app_config, AppConfig)
         assert app_config.players.white.kind == "llm"
         assert app_config.players.white.connector.model == "gpt-4o-mini"
@@ -197,7 +197,7 @@ class TestDemoScriptConfigurations:
                 ],
             )
 
-        app_config = app_config_from_dictconfig(cfg)
+        app_config = app_cfg_from_dictconfig(cfg)
 
         # The LLM player should have proper token limits set
         assert app_config.players.white.connector.max_num_tokens is not None

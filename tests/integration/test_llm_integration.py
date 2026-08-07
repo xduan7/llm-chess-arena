@@ -18,11 +18,11 @@ pytestmark = pytest.mark.live
 def get_first_available_llm_model() -> str:
     """Return the first LLM model with credentials configured or skip the test."""
     if os.getenv("OPENAI_API_KEY"):
-        return "gpt-3.5-turbo"
+        return "gpt-4o-mini"
     elif os.getenv("ANTHROPIC_API_KEY"):
-        return "claude-3-haiku-20240307"
+        return "claude-haiku-4-5"
     elif os.getenv("GOOGLE_API_KEY"):
-        return "gemini/gemini-2.0-flash-exp"
+        return "gemini/gemini-2.5-flash"
     else:
         pytest.skip("No API keys available")
 
@@ -30,9 +30,9 @@ def get_first_available_llm_model() -> str:
 @pytest.mark.parametrize(
     "llm_model_name,required_env_var",
     [
-        ("gpt-3.5-turbo", "OPENAI_API_KEY"),
-        ("claude-3-haiku-20240307", "ANTHROPIC_API_KEY"),
-        ("gemini/gemini-2.0-flash-exp", "GOOGLE_API_KEY"),
+        ("gpt-4o-mini", "OPENAI_API_KEY"),
+        ("claude-haiku-4-5", "ANTHROPIC_API_KEY"),
+        ("gemini/gemini-2.5-flash", "GOOGLE_API_KEY"),
     ],
 )
 def test_llm_player_generates_legal_opening_move_from_starting_position(
@@ -53,7 +53,7 @@ def test_llm_player_generates_legal_opening_move_from_starting_position(
     white_llm_player = LLMPlayer(
         connector=deterministic_llm_connector,
         handler=game_arena_handler,
-        player_color="white",
+        color="white",
         max_move_retries=3,
         num_votes=1,
     )

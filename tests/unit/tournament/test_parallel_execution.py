@@ -250,7 +250,20 @@ class TestParallelExecution:
             assert mock_game_class.call_count == 4
             for call in mock_game_class.call_args_list:
                 kwargs = call[1]
-                assert kwargs["hydra_cfg"] == hydra_config
+                passed_hydra_cfg = kwargs["hydra_cfg"]
+                # Non-player sections pass through unchanged
+                assert passed_hydra_cfg["game"] == hydra_config["game"]
+                # The players section is replaced with the per-game snapshot
+                # (full configs with colors resolved for this specific game)
+                per_game_players = passed_hydra_cfg["players"]
+                assert per_game_players["white"]["kind"] == "random"
+                assert per_game_players["black"]["kind"] == "random"
+                assert per_game_players["white"]["color"] == "white"
+                assert per_game_players["black"]["color"] == "black"
+                assert {
+                    per_game_players["white"]["seed"],
+                    per_game_players["black"]["seed"],
+                } == {12345, 67890}
 
     @patch("llm_chess_arena.tournament.executor.Game")
     @patch("llm_chess_arena.tournament.executor.PlayerFactory")

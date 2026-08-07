@@ -11,8 +11,8 @@ class TestChessEdgeCases:
 
     def test_en_passant_capture(self):
         """Test that en passant captures work correctly in a game."""
-        white = RandomPlayer(name="White", player_color="white", seed=42)
-        black = RandomPlayer(name="Black", player_color="black", seed=43)
+        white = RandomPlayer(name="White", color="white", seed=42)
+        black = RandomPlayer(name="Black", color="black", seed=43)
         game = Game(
             white,
             black,
@@ -36,8 +36,8 @@ class TestChessEdgeCases:
 
     def test_castling_kingside(self):
         """Test kingside castling mechanics."""
-        white = RandomPlayer(name="White", player_color="white")
-        black = RandomPlayer(name="Black", player_color="black")
+        white = RandomPlayer(name="White", color="white")
+        black = RandomPlayer(name="Black", color="black")
         game = Game(
             white,
             black,
@@ -61,8 +61,8 @@ class TestChessEdgeCases:
 
     def test_castling_queenside(self):
         """Test queenside castling mechanics."""
-        white = RandomPlayer(name="White", player_color="white")
-        black = RandomPlayer(name="Black", player_color="black")
+        white = RandomPlayer(name="White", color="white")
+        black = RandomPlayer(name="Black", color="black")
         game = Game(
             white,
             black,
@@ -86,8 +86,8 @@ class TestChessEdgeCases:
 
     def test_pawn_promotion(self):
         """Test pawn promotion to different pieces."""
-        white = RandomPlayer(name="White", player_color="white")
-        black = RandomPlayer(name="Black", player_color="black")
+        white = RandomPlayer(name="White", color="white")
+        black = RandomPlayer(name="Black", color="black")
         game = Game(
             white,
             black,
@@ -112,8 +112,8 @@ class TestChessEdgeCases:
 
     def test_stalemate_detection(self):
         """Test that stalemate is properly detected."""
-        white = RandomPlayer(name="White", player_color="white")
-        black = RandomPlayer(name="Black", player_color="black")
+        white = RandomPlayer(name="White", color="white")
+        black = RandomPlayer(name="Black", color="black")
         game = Game(
             white,
             black,
@@ -132,8 +132,8 @@ class TestChessEdgeCases:
 
     def test_insufficient_material_draw(self):
         """Test draw by insufficient material."""
-        white = RandomPlayer(name="White", player_color="white")
-        black = RandomPlayer(name="Black", player_color="black")
+        white = RandomPlayer(name="White", color="white")
+        black = RandomPlayer(name="Black", color="black")
         game = Game(
             white,
             black,
@@ -163,8 +163,8 @@ class TestChessEdgeCases:
 
     def test_threefold_repetition(self):
         """Test threefold repetition detection."""
-        white = RandomPlayer(name="White", player_color="white")
-        black = RandomPlayer(name="Black", player_color="black")
+        white = RandomPlayer(name="White", color="white")
+        black = RandomPlayer(name="Black", color="black")
         game = Game(
             white,
             black,
@@ -193,8 +193,8 @@ class TestChessEdgeCases:
 
     def test_fifty_move_rule(self):
         """Test fifty-move rule detection."""
-        white = RandomPlayer(name="White", player_color="white")
-        black = RandomPlayer(name="Black", player_color="black")
+        white = RandomPlayer(name="White", color="white")
+        black = RandomPlayer(name="Black", color="black")
         game = Game(
             white,
             black,
@@ -216,8 +216,8 @@ class TestComplexPositions:
 
     def test_pinned_piece_cannot_move(self):
         """Test that pinned pieces have restricted movement."""
-        white = RandomPlayer(name="White", player_color="white")
-        black = RandomPlayer(name="Black", player_color="black")
+        white = RandomPlayer(name="White", color="white")
+        black = RandomPlayer(name="Black", color="black")
         game = Game(
             white,
             black,
@@ -248,8 +248,8 @@ class TestComplexPositions:
 
     def test_discovered_check(self):
         """Test discovered check scenario."""
-        white = RandomPlayer(name="White", player_color="white")
-        black = RandomPlayer(name="Black", player_color="black")
+        white = RandomPlayer(name="White", color="white")
+        black = RandomPlayer(name="Black", color="black")
         game = Game(
             white,
             black,

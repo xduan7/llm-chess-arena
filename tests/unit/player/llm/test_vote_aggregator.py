@@ -74,19 +74,21 @@ def test_parse_failures_skipped(aggregator: VoteAggregator, handler: Mock) -> No
     assert result.decision.attempted_move == "e4"
 
 
-def test_all_responses_fail_returns_debug(
+def test_all_responses_fail_raises_parse_error(
     aggregator: VoteAggregator, handler: Mock
 ) -> None:
-    """If every response fails, fall back to resignation decision."""
+    """If every response fails, raise ParseMoveError so the player can retry."""
     handler.parse_decision_from_response.side_effect = ParseMoveError("bad")
 
-    result = aggregator.aggregate_responses(["fail1", "fail2"])
+    with pytest.raises(
+        ParseMoveError, match="All 2 LLM responses failed to parse"
+    ) as exc_info:
+        aggregator.aggregate_responses(["fail1", "fail2"])
 
-    assert result.decision.action == "resign"
-    assert result.decision.attempted_move is None
-    assert result.decision.reason == "All 2 LLM responses failed to parse"
-    assert "Response 1/2" in result.decision.response
-    assert result.metadata is None
+    # Raw responses ride along for retry-prompt context
+    assert "Response 1/2" in exc_info.value.responses_text
+    assert "fail1" in exc_info.value.responses_text
+    assert "fail2" in exc_info.value.responses_text
 
 
 def test_empty_responses_raise_connection_error(aggregator: VoteAggregator) -> None:

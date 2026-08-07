@@ -30,6 +30,8 @@ class TestLLMConnectorWithMockResponse:
                 model="gpt-3.5-turbo",
                 temperature=0.7,
                 max_num_tokens=150,
+                request_timeout_in_seconds=30.0,
+                max_api_request_retries=3,
             )
 
             response = connector.query("What's your move?")
@@ -52,7 +54,13 @@ class TestLLMConnectorWithMockResponse:
                 choices=[Mock(message=Mock(content="Response"))]
             )
 
-            connector = LLMConnector(model="claude-3-haiku")
+            connector = LLMConnector(
+                model="claude-3-haiku",
+                temperature=0.7,
+                max_num_tokens=150,
+                request_timeout_in_seconds=30.0,
+                max_api_request_retries=3,
+            )
 
             connector.query("User prompt", system_prompt="You are a chess expert")
 
@@ -67,19 +75,23 @@ class TestLLMConnectorWithMockResponse:
             assert messages[1] == {"role": "user", "content": "User prompt"}
 
     def test_query_converts_litellm_timeout_to_standard_timeout_error(self):
-        """LiteLLM timeouts should map to TimeoutError for callers."""
-        with patch("litellm.completion") as mock_completion:
+        """LiteLLM timeouts should retry and then raise ConnectionError."""
+        with patch("litellm.completion") as mock_completion, patch("time.sleep"):
             mock_completion.side_effect = litellm.Timeout(
                 message="Request timed out", model="gpt-4", llm_provider="openai"
             )
 
             connector = LLMConnector(
                 model="gpt-4",
+                temperature=0.7,
+                max_num_tokens=150,
                 request_timeout_in_seconds=5.0,
                 max_api_request_retries=1,
             )
 
-            with pytest.raises(TimeoutError, match="Request timed out after 5.0s"):
+            with pytest.raises(
+                ConnectionError, match="Timeout .* after 2 network attempts"
+            ):
                 connector.query("Test prompt")
 
     def test_query_wraps_unexpected_exceptions_as_connection_error(self):
@@ -89,6 +101,9 @@ class TestLLMConnectorWithMockResponse:
 
             connector = LLMConnector(
                 model="gpt-3.5-turbo",
+                temperature=0.7,
+                max_num_tokens=150,
+                request_timeout_in_seconds=30.0,
                 max_api_request_retries=1,
             )
 
@@ -104,7 +119,13 @@ class TestLLMConnectorWithMockResponse:
         with patch(
             "litellm.completion", return_value=empty_response
         ) as mock_completion:
-            connector = LLMConnector(model="gpt-3.5-turbo", max_api_request_retries=2)
+            connector = LLMConnector(
+                model="gpt-3.5-turbo",
+                temperature=0.7,
+                max_num_tokens=150,
+                request_timeout_in_seconds=30.0,
+                max_api_request_retries=2,
+            )
 
             with pytest.raises(
                 LLMEmptyResponseError, match="check max_num_tokens setting"
@@ -120,7 +141,13 @@ class TestLLMConnectorWithMockResponse:
         with patch(
             "litellm.completion", return_value=empty_response
         ) as mock_completion:
-            connector = LLMConnector(model="gpt-3.5-turbo", max_api_request_retries=1)
+            connector = LLMConnector(
+                model="gpt-3.5-turbo",
+                temperature=0.7,
+                max_num_tokens=150,
+                request_timeout_in_seconds=30.0,
+                max_api_request_retries=1,
+            )
 
             with pytest.raises(
                 LLMEmptyResponseError, match="check max_num_tokens setting"
@@ -142,6 +169,9 @@ class TestLLMConnectorRetryLogic:
 
             connector = LLMConnector(
                 model="gpt-3.5-turbo",
+                temperature=0.7,
+                max_num_tokens=150,
+                request_timeout_in_seconds=30.0,
                 max_api_request_retries=5,
             )
 
@@ -157,6 +187,9 @@ class TestLLMConnectorRetryLogic:
 
             connector = LLMConnector(
                 model="gpt-3.5-turbo",
+                temperature=0.7,
+                max_num_tokens=150,
+                request_timeout_in_seconds=30.0,
                 max_api_request_retries=2,
             )
 
@@ -190,7 +223,13 @@ class TestLLMConnectorRetryLogic:
             mock_completion.side_effect = [first_response, second_response]
             mock_completion_cost.side_effect = [0.0123, 0.0456]
 
-            connector = LLMConnector(model="gpt-4o")
+            connector = LLMConnector(
+                model="gpt-4o",
+                temperature=0.7,
+                max_num_tokens=150,
+                request_timeout_in_seconds=30.0,
+                max_api_request_retries=3,
+            )
 
             connector.query("Test prompt")
             first_usage = connector.get_last_usage()
@@ -232,7 +271,13 @@ class TestLLMConnectorRetryLogic:
             mock_completion.return_value = response
             mock_completion_cost.return_value = 0.01
 
-            connector = LLMConnector(model="gpt-4")
+            connector = LLMConnector(
+                model="gpt-4",
+                temperature=0.7,
+                max_num_tokens=150,
+                request_timeout_in_seconds=30.0,
+                max_api_request_retries=3,
+            )
 
             connector.query("Prompt")
             assert connector.get_last_usage() is not None
@@ -254,13 +299,25 @@ class TestLLMConnectorArgo:
         """Connector must raise when no Argo base is configured."""
         monkeypatch.delenv("ARGO_API_BASE", raising=False)
         with pytest.raises(ValueError):
-            LLMConnector(model="argo:claude-3-opus-20240229")
+            LLMConnector(
+                model="argo:claude-3-opus-20240229",
+                temperature=0.7,
+                max_num_tokens=150,
+                request_timeout_in_seconds=30.0,
+                max_api_request_retries=3,
+            )
 
     def test_requires_non_empty_alias(self, monkeypatch):
         """Connector should reject Argo models without an alias."""
         monkeypatch.setenv("ARGO_API_BASE", "https://argo.example.com/v1")
         with pytest.raises(ValueError):
-            LLMConnector(model="argo:")
+            LLMConnector(
+                model="argo:",
+                temperature=0.7,
+                max_num_tokens=150,
+                request_timeout_in_seconds=30.0,
+                max_api_request_retries=3,
+            )
 
     def test_normalizes_model_and_api_key(self, monkeypatch):
         """Connector should retain Argo model id and inject placeholder API key."""
@@ -269,7 +326,13 @@ class TestLLMConnectorArgo:
             mock_completion.return_value = Mock(
                 choices=[Mock(message=Mock(content="Move"))]
             )
-            connector = LLMConnector(model="argo:gpt-5-mini")
+            connector = LLMConnector(
+                model="argo:gpt-5-mini",
+                temperature=0.7,
+                max_num_tokens=150,
+                request_timeout_in_seconds=30.0,
+                max_api_request_retries=3,
+            )
             connector.query("Play a move")
         call = mock_completion.call_args.kwargs
         assert call["model"] == "argo:gpt-5-mini"
@@ -284,7 +347,13 @@ class TestLLMConnectorArgo:
             mock_completion.return_value = Mock(
                 choices=[Mock(message=Mock(content="Move"))]
             )
-            connector = LLMConnector(model="argo:gpt-4")
+            connector = LLMConnector(
+                model="argo:gpt-4",
+                temperature=0.7,
+                max_num_tokens=150,
+                request_timeout_in_seconds=30.0,
+                max_api_request_retries=3,
+            )
             # Try to override critical Argo parameters via kwargs
             connector.query(
                 "Play a move",
@@ -332,8 +401,12 @@ class TestLLMConnectorConfiguration:
 
 
 @pytest.mark.live
+@pytest.mark.skipif(
+    not os.getenv("LLM_LIVE_TESTS"),
+    reason="Live API smoke tests are opt-in: set LLM_LIVE_TESTS=1 to run",
+)
 class TestLLMConnectorRealAPI:
-    """Live API smoke tests guarded by API keys."""
+    """Live API smoke tests, opt-in via LLM_LIVE_TESTS plus provider keys."""
 
     @pytest.mark.skipif(
         not os.getenv("OPENAI_API_KEY"), reason="OpenAI API key not set"
@@ -341,10 +414,11 @@ class TestLLMConnectorRealAPI:
     def test_openai_api_connection_returns_valid_response(self):
         """Verify OpenAI connectivity when credentials are available."""
         openai_connector = LLMConnector(
-            model="gpt-3.5-turbo",
+            model="gpt-4o-mini",
             temperature=0.0,
             max_num_tokens=10,
             request_timeout_in_seconds=10.0,
+            max_api_request_retries=3,
         )
 
         llm_response = openai_connector.query(
@@ -362,10 +436,11 @@ class TestLLMConnectorRealAPI:
     def test_anthropic_api_connection_returns_valid_response(self):
         """Verify Anthropic connectivity when credentials are available."""
         anthropic_connector = LLMConnector(
-            model="claude-3-haiku-20240307",
+            model="claude-haiku-4-5",
             temperature=0.0,
             max_num_tokens=10,
             request_timeout_in_seconds=10.0,
+            max_api_request_retries=3,
         )
 
         llm_response = anthropic_connector.query(
@@ -383,10 +458,11 @@ class TestLLMConnectorRealAPI:
     def test_google_gemini_api_connection_returns_valid_response(self):
         """Verify Gemini connectivity when credentials are available."""
         gemini_connector = LLMConnector(
-            model="gemini/gemini-2.0-flash-exp",
+            model="gemini/gemini-2.5-flash",
             temperature=0.0,
             max_num_tokens=10,
             request_timeout_in_seconds=10.0,
+            max_api_request_retries=3,
         )
 
         llm_response = gemini_connector.query(
@@ -401,11 +477,11 @@ class TestLLMConnectorRealAPI:
     def test_llm_generates_valid_chess_opening_move(self):
         """Live LLM should return a plausible opening move when available."""
         if os.getenv("OPENAI_API_KEY"):
-            selected_model = "gpt-3.5-turbo"
+            selected_model = "gpt-4o-mini"
         elif os.getenv("ANTHROPIC_API_KEY"):
-            selected_model = "claude-3-haiku-20240307"
+            selected_model = "claude-haiku-4-5"
         elif os.getenv("GOOGLE_API_KEY"):
-            selected_model = "gemini/gemini-2.0-flash-exp"
+            selected_model = "gemini/gemini-2.5-flash"
         else:
             pytest.skip("No API keys available")
 
@@ -414,6 +490,7 @@ class TestLLMConnectorRealAPI:
             temperature=0.0,
             max_num_tokens=20,
             request_timeout_in_seconds=10.0,
+            max_api_request_retries=3,
         )
 
         chess_move_prompt = "You are playing chess. The board is at the starting position. What is a good opening move? Reply with just the move in standard chess notation (e.g., 'e4')."
@@ -434,11 +511,11 @@ class TestLLMConnectorRealAPI:
     def test_system_prompt_influences_llm_response(self):
         """System prompts should steer live responses when credentials exist."""
         if os.getenv("OPENAI_API_KEY"):
-            selected_model = "gpt-3.5-turbo"
+            selected_model = "gpt-4o-mini"
         elif os.getenv("ANTHROPIC_API_KEY"):
-            selected_model = "claude-3-haiku-20240307"
+            selected_model = "claude-haiku-4-5"
         elif os.getenv("GOOGLE_API_KEY"):
-            selected_model = "gemini/gemini-2.0-flash-exp"
+            selected_model = "gemini/gemini-2.5-flash"
         else:
             pytest.skip("No API keys available")
 
@@ -447,6 +524,7 @@ class TestLLMConnectorRealAPI:
             temperature=0.0,
             max_num_tokens=10,
             request_timeout_in_seconds=10.0,
+            max_api_request_retries=3,
         )
 
         llm_response_with_system_context = chess_themed_connector.query(

@@ -89,19 +89,29 @@ Follow this 6-step workflow for EVERY task:
 src/
 └── llm_chess_arena/
     ├── __init__.py
-    ├── config.py
+    ├── cli/
+    │   ├── main.py             # Hydra CLI: run games/tournaments
+    │   └── resume.py           # Hydra CLI: resume interrupted tournaments
+    ├── config/
+    │   ├── loader.py           # Hydra composition & env setup
+    │   └── schema.py           # Dataclass config schemas & normalization
     ├── core/
-    │   ├── __init__.py
     │   └── policies.py         # Centralized error-handling decorators
     ├── exceptions.py
-    ├── factory/              # Object construction helpers
-    │   ├── __init__.py
-    │   ├── game_factory.py
+    ├── factory/                # Object construction helpers
     │   ├── metrics_factory.py
     │   └── player_factory.py
-    ├── game.py
-    ├── metrics.py            # Stockfish-based move evaluation
-    ├── renderer.py           # Rich terminal board visualization
+    ├── game.py                 # Game loop, recording, resume-from-record
+    ├── metrics.py              # Stockfish-based move evaluation
+    ├── record.py               # Game record collection & JSON serialization
+    ├── renderer.py             # Rich terminal board visualization
+    ├── tournament/
+    │   ├── aggregator.py       # Pure aggregation of game results
+    │   ├── executor.py         # TournamentRunner (sequential/parallel)
+    │   ├── export.py           # results.json / results.csv export
+    │   ├── loader.py           # Tournament state loading & resumability checks
+    │   ├── resume.py           # TournamentResumer with locking & archival
+    │   └── types.py            # TournamentConfig, GameResult, TournamentResult
     ├── types.py
     ├── utils.py
     └── player/
@@ -109,44 +119,34 @@ src/
         ├── random_player.py
         ├── stockfish_player.py
         └── llm/
-            ├── __init__.py
             ├── connector.py       # LiteLLM wrapper for testing isolation
             ├── player.py          # Orchestrates prompting, voting, retries
+            ├── types.py           # Vote/decision artifact dataclasses
             ├── prompting/
-            │   ├── __init__.py
             │   ├── handlers.py    # Move parsing and templating
             │   └── session.py     # Prompt generation & retry context
             └── decision/
-                ├── __init__.py
-                ├── aggregator.py  # Majority voting with tie-breaking
-                ├── parser.py      # Move validation & normalization
-                └── retry.py       # Retry budgeting & resignation helpers
+                ├── retry.py       # Retry budgeting & resignation helpers
+                └── voting.py      # Majority voting with tie-breaking
 
 configs/
-├── config.yaml
-├── env/
-│   └── default.yaml
-├── game/
-│   └── classical.yaml
+├── config.yaml               # Hydra composition root
+├── resume.yaml               # Config for the resume CLI
+├── env/default.yaml
+├── game/default.yaml
+├── hydra/default.yaml
 ├── metrics/
-│   └── default.yaml
+│   ├── default.yaml
+│   ├── high.yaml
+│   └── ultra.yaml
 ├── players/
 │   ├── random.yaml
-│   ├── stockfish.yaml
 │   ├── stockfish/
-│   │   ├── elo_2800.yaml
-│   │   ├── elo_2400.yaml
-│   │   ├── elo_2000.yaml
-│   │   ├── elo_1800.yaml
-│   │   ├── elo_1600.yaml
-│   │   ├── elo_1400.yaml
-│   │   └── elo_1200.yaml
+│   │   ├── elo_1320.yaml ... elo_2800.yaml
 │   └── llm/
-│       ├── gpt4.yaml
-│       ├── claude.yaml
-│       └── gemini.yaml
-└── hydra/
-    └── default.yaml
+│       ├── default.yaml
+│       └── reasoning.yaml
+└── tournament/default.yaml
 
 demo/
 ├── run_random_game.sh
@@ -154,57 +154,13 @@ demo/
 └── run_llm_game.sh
 
 tests/
-├── __init__.py
 ├── conftest.py
 ├── test_demos.py
-├── fixtures/
-│   └── mock_llm_connector.py
-├── unit/
-│   ├── test_config.py
-│   ├── factory/
-│   │   ├── test_game_factory.py
-│   │   ├── test_metrics_factory.py
-│   │   └── test_player_factory.py
-│   ├── test_game.py
-│   ├── test_metrics.py
-│   ├── test_types.py
-│   ├── test_utils.py
-│   ├── test_utils_property.py  # Property-based tests with Hypothesis
-│   └── player/
-│       ├── test_base_player.py
-│       ├── test_random_player.py
-│       ├── test_stockfish_player.py
-│       ├── test_llm_connector.py
-│       ├── test_llm_player.py
-│       ├── test_llm_move_handler.py
-│       ├── test_llm_voting.py
-│       └── llm/
-│           ├── test_move_parser.py
-│           ├── test_prompt_session.py
-│           ├── test_retry_controller.py
-│           └── test_vote_aggregator.py
-└── integration/
-    ├── test_chess_edge_cases.py
-    ├── test_game_scenarios.py
-    ├── test_golden_master.py
-    ├── test_llm_integration.py       # Environment-gated real API tests
-    ├── test_llm_integration_vcr.py   # VCR-based tests with recordings
-    ├── test_llm_player_refactored.py
-    ├── test_llm_player_snapshots.py
-    └── cassettes/                     # VCR HTTP recordings for testing
-        ├── llm_complex_position.yaml
-        ├── llm_endgame_position.yaml
-        ├── llm_majority_voting.yaml
-        └── [other VCR recordings...]
-
-.env                 # Local environment (gitignored)
-.env.example         # Template for API keys
-.pre-commit-config.yaml
-pyproject.toml
-README.md
-AGENTS.md
-CLAUDE.md -> AGENTS.md    # Symlink to AGENTS.md
-LICENSE
+├── fixtures/mock_llm_connector.py
+├── unit/                      # Per-module unit tests (game, record, config,
+│                              # metrics, players, tournament, resume, ...)
+└── integration/               # Golden master, VCR recordings, snapshots,
+                               # env-gated live API tests, end-to-end resume
 ```
 
 ### Key Design Decisions
@@ -228,7 +184,7 @@ LICENSE
    - Future: Hydra for configuration composition to allow flexible experimentation
 
 5. **Componentized LLM Player Architecture**:
-   - LLM player logic decomposed into dedicated collaborators (`PromptSession`, `VoteAggregator`, `MoveParser`, `RetryController`).
+   - LLM player logic decomposed into dedicated collaborators (`PromptSession`, `VoteAggregator`, `RetryController`).
    - Prompting utilities live under `player.llm.prompting`, while decision-making utilities reside in `player.llm.decision` for clearer navigation.
    - Each component has focused responsibilities and targeted unit tests.
    - Public API of `LLMPlayer` remains unchanged for backwards compatibility.
@@ -261,8 +217,8 @@ LICENSE
 
 11. **Hydra Configuration System**:
     - **Structured schema**: Dataclass-backed config parsing in `config.py` with runtime helpers colocated in `config.py` to instantiate players and metrics safely.
-    - **Composable YAML groups**: Presets in `configs/` for game modes, players (including LLM connectors and Stockfish ELO tiers (1320/1600/2000/2400/2800) (1320/1600/2000/2400/2800)), metrics defaults (with configurable thresholds), and Hydra runtime settings.
-    - **Unified execution**: Hydra CLI runner (`python -m llm_chess_arena.cli.play`) and demo wrappers share the same configuration pipeline with override support.
+    - **Composable YAML groups**: Presets in `configs/` for game modes, players (including LLM connectors and Stockfish ELO tiers (1320/1400/1600/2000/2400/2800)), metrics defaults (with configurable thresholds), and Hydra runtime settings.
+    - **Unified execution**: Hydra CLI runner (`python -m llm_chess_arena.cli.main`) and demo wrappers share the same configuration pipeline with override support.
     - **Sweep readiness**: Supports Hydra multirun parameter sweeps and reproducible output directories.
 
 ---
@@ -308,6 +264,11 @@ LICENSE
   - Why: Enable massive batch experimentation and parameter sweeps essential for research
   - How: Replace current config.py, create yaml configs for players/games, CLI integration
   - Scope: Transform from single-game tool to research platform
+
+- [ ] ** Opening move diversity of LLM players**
+  - Why: Tests whether LLMs can generate a variety of reasonable moves or just converge to a few safe options
+  - How: Measure entropy of move distributions across many games from same position
+  - Scope: Could reveal fundamental limitations in LLM strategic flexibility
 
 - [ ] **Opening-specific in-context learning experiment**
   - Why: Tests whether LLMs genuinely learn strategic patterns vs statistical mimicry - core question about in-context learning mechanisms

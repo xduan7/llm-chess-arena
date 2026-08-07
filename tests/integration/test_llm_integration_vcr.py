@@ -45,12 +45,14 @@ class TestLLMIntegrationVCR:
             model="gpt-4o-mini",
             temperature=0.0,  # Deterministic
             max_num_tokens=500,
+            request_timeout_in_seconds=30.0,
+            max_api_request_retries=3,
         )
         handler = GameArenaLLMMoveHandler()
         player = LLMPlayer(
             connector=connector,
             handler=handler,
-            player_color="white",
+            color="white",
             name="OpenAI-VCR",
             max_move_retries=3,
             num_votes=1,
@@ -65,13 +67,19 @@ class TestLLMIntegrationVCR:
     @vcr_config.use_cassette("llm_retry_illegal_move.yaml")
     def test_llm_retry_on_illegal__with_vcr__then_recovers(self):
         """Test LLM retry logic with recorded responses."""
-        connector = LLMConnector(model="gpt-4o-mini", temperature=0.0)
+        connector = LLMConnector(
+            model="gpt-4o-mini",
+            temperature=0.0,
+            max_num_tokens=500,
+            request_timeout_in_seconds=30.0,
+            max_api_request_retries=3,
+        )
         handler = GameArenaLLMMoveHandler()
 
         player = LLMPlayer(
             connector=connector,
             handler=handler,
-            player_color="white",
+            color="white",
             max_move_retries=5,  # Increased retries to handle stubborn models
             num_votes=1,
         )
@@ -90,13 +98,16 @@ class TestLLMIntegrationVCR:
         connector = LLMConnector(
             model="gpt-4o-mini",
             temperature=0.7,  # Higher temp for variety
+            max_num_tokens=500,
+            request_timeout_in_seconds=30.0,
+            max_api_request_retries=3,
         )
         handler = GameArenaLLMMoveHandler()
 
         player = LLMPlayer(
             connector=connector,
             handler=handler,
-            player_color="white",
+            color="white",
             max_move_retries=3,
             num_votes=3,  # Request 3 samples
         )
@@ -111,12 +122,18 @@ class TestLLMIntegrationVCR:
     @vcr_config.use_cassette("llm_complex_position.yaml")
     def test_llm_complex_position__with_vcr__then_finds_good_move(self):
         """Test LLM on complex middlegame position with recording."""
-        connector = LLMConnector(model="gpt-4o-mini", temperature=0.0)
+        connector = LLMConnector(
+            model="gpt-4o-mini",
+            temperature=0.0,
+            max_num_tokens=500,
+            request_timeout_in_seconds=30.0,
+            max_api_request_retries=3,
+        )
         handler = GameArenaLLMMoveHandler()
         player = LLMPlayer(
             connector=connector,
             handler=handler,
-            player_color="white",
+            color="white",
             max_move_retries=3,
             num_votes=1,
         )
@@ -136,12 +153,18 @@ class TestLLMIntegrationVCR:
     @vcr_config.use_cassette("llm_endgame_position.yaml")
     def test_llm_endgame__with_vcr__then_handles_correctly(self):
         """Test LLM in endgame position with recording."""
-        connector = LLMConnector(model="gpt-4o-mini", temperature=0.0)
+        connector = LLMConnector(
+            model="gpt-4o-mini",
+            temperature=0.0,
+            max_num_tokens=500,
+            request_timeout_in_seconds=30.0,
+            max_api_request_retries=3,
+        )
         handler = GameArenaLLMMoveHandler()
         player = LLMPlayer(
             connector=connector,
             handler=handler,
-            player_color="white",
+            color="white",
             max_move_retries=3,
             num_votes=1,
         )
@@ -170,13 +193,16 @@ class TestLLMErrorHandlingVCR:
         """Test timeout handling with recorded response."""
         connector = LLMConnector(
             model="gpt-4o-mini",
+            temperature=0.7,
+            max_num_tokens=500,
             request_timeout_in_seconds=1,  # Very short timeout
+            max_api_request_retries=3,
         )
         handler = GameArenaLLMMoveHandler()
         player = LLMPlayer(
             connector=connector,
             handler=handler,
-            player_color="white",
+            color="white",
             max_move_retries=3,
             num_votes=1,
         )
@@ -201,12 +227,18 @@ class TestLLMErrorHandlingVCR:
         """Test handling of malformed LLM responses."""
         # This would need a cassette with actual malformed responses
         # For now, we test the retry mechanism
-        connector = LLMConnector(model="gpt-4o-mini", temperature=1.0)
+        connector = LLMConnector(
+            model="gpt-4o-mini",
+            temperature=1.0,
+            max_num_tokens=500,
+            request_timeout_in_seconds=30.0,
+            max_api_request_retries=3,
+        )
         handler = GameArenaLLMMoveHandler()
         player = LLMPlayer(
             connector=connector,
             handler=handler,
-            player_color="white",
+            color="white",
             max_move_retries=3,
             num_votes=1,
         )
@@ -228,12 +260,18 @@ def vcr_cassette_name(request):
 def llm_player_vcr(vcr_cassette_name):
     """Create LLM player with VCR recording."""
     with vcr_config.use_cassette(vcr_cassette_name):
-        connector = LLMConnector(model="gpt-4o-mini", temperature=0.0)
+        connector = LLMConnector(
+            model="gpt-4o-mini",
+            temperature=0.0,
+            max_num_tokens=500,
+            request_timeout_in_seconds=30.0,
+            max_api_request_retries=3,
+        )
         handler = GameArenaLLMMoveHandler()
         player = LLMPlayer(
             connector=connector,
             handler=handler,
-            player_color="white",
+            color="white",
             max_move_retries=3,
             num_votes=1,
         )
@@ -248,7 +286,7 @@ class TestLLMGamesVCR:
         from llm_chess_arena.player.random_player import RandomPlayer
         from llm_chess_arena.game import Game
 
-        random_player = RandomPlayer(name="Black", player_color="black", seed=42)
+        random_player = RandomPlayer(name="Black", color="black", seed=42)
         game = Game(
             llm_player_vcr,
             random_player,
@@ -269,21 +307,33 @@ class TestLLMGamesVCR:
     @vcr_config.use_cassette("llm_vs_llm_short.yaml")
     def test_llm_vs_llm__with_vcr__then_plays_moves(self):
         """Test LLM vs LLM with recording."""
-        connector1 = LLMConnector(model="gpt-4o-mini", temperature=0.0)
-        connector2 = LLMConnector(model="gpt-4o-mini", temperature=0.3)
+        connector1 = LLMConnector(
+            model="gpt-4o-mini",
+            temperature=0.0,
+            max_num_tokens=500,
+            request_timeout_in_seconds=30.0,
+            max_api_request_retries=3,
+        )
+        connector2 = LLMConnector(
+            model="gpt-4o-mini",
+            temperature=0.3,
+            max_num_tokens=500,
+            request_timeout_in_seconds=30.0,
+            max_api_request_retries=3,
+        )
         handler = GameArenaLLMMoveHandler()
 
         white = LLMPlayer(
             connector=connector1,
             handler=handler,
-            player_color="white",
+            color="white",
             max_move_retries=3,
             num_votes=1,
         )
         black = LLMPlayer(
             connector=connector2,
             handler=handler,
-            player_color="black",
+            color="black",
             max_move_retries=3,
             num_votes=1,
         )
@@ -320,7 +370,7 @@ class TestLLMGamesVCR:
         white_player = LLMPlayer(
             connector=connector,
             handler=handler,
-            player_color="white",
+            color="white",
             max_move_retries=5,
             num_votes=1,
         )

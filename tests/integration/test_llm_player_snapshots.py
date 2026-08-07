@@ -12,7 +12,7 @@ from llm_chess_arena.player.llm import (
     LLMPlayer,
 )
 from llm_chess_arena.types import PlayerDecisionContext
-from llm_chess_arena.config import load_app_config
+from llm_chess_arena.config import load_app_cfg
 from llm_chess_arena.tournament.types import TournamentConfig
 from llm_chess_arena.tournament.executor import TournamentRunner
 from pathlib import Path
@@ -46,7 +46,7 @@ class TestLLMPlayerBehaviorSnapshots:
         )
 
         player = LLMPlayer(
-            player_color="white",
+            color="white",
             connector=connector,
             handler=GameArenaLLMMoveHandler(),
             max_move_retries=2,
@@ -77,7 +77,7 @@ class TestLLMPlayerBehaviorSnapshots:
         )
 
         player = LLMPlayer(
-            player_color="white",
+            color="white",
             connector=connector,
             handler=GameArenaLLMMoveHandler(),
             max_move_retries=3,
@@ -106,7 +106,7 @@ class TestLLMPlayerBehaviorSnapshots:
         )
 
         player = LLMPlayer(
-            player_color="white",
+            color="white",
             connector=connector,
             handler=GameArenaLLMMoveHandler(),
             max_move_retries=2,
@@ -142,14 +142,14 @@ def test_hydra_config_loading_smoke_test() -> None:
     ]
 
     for config_name, overrides in configs_to_test:
-        app_config = load_app_config(config_name, overrides)
+        app_config = load_app_cfg(config_name, overrides)
         assert app_config.players.white is not None
         assert app_config.players.black is not None
 
 
 def test_end_to_end_game_with_metrics() -> None:
     """Full game run should complete whether metrics are enabled or not."""
-    app_config = load_app_config(
+    app_config = load_app_cfg(
         "config",
         [
             "game.max_num_moves=10",
@@ -178,7 +178,7 @@ def test_end_to_end_game_with_metrics() -> None:
     assert result.games[0].total_moves > 0  # At least one move played
     assert result.games[0].total_moves <= 10
 
-    app_config_no_metrics = load_app_config(
+    app_config_no_metrics = load_app_cfg(
         "config",
         [
             "game.max_num_moves=10",

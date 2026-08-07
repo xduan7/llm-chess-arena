@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 import platform
 import sys
-from datetime import datetime
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -42,6 +42,7 @@ class RecordCollector:
             "end_timestamp": None,
             "outcome": None,
             "termination_label_override": None,
+            "termination_metadata": None,
         }
 
     def set_start_timestamp(self, timestamp: str) -> None:
@@ -51,6 +52,10 @@ class RecordCollector:
             timestamp: ISO-8601 formatted timestamp.
         """
         self.game_record["start_timestamp"] = timestamp
+
+    def has_start_timestamp(self) -> bool:
+        """Return whether a start timestamp has already been recorded."""
+        return self.game_record["start_timestamp"] is not None
 
     def add_move(self, move_data: dict[str, Any]) -> None:
         """Add a move record to the collection.
@@ -85,6 +90,14 @@ class RecordCollector:
         """
         self.game_record["termination_label_override"] = override_label
 
+    def set_termination_metadata(self, metadata: dict[str, Any] | None) -> None:
+        """Store structured termination metadata for resume capability.
+
+        Args:
+            metadata: Structured metadata dict with resumable flag, error details, etc., or None.
+        """
+        self.game_record["termination_metadata"] = metadata
+
     def set_end_timestamp(self, timestamp: str) -> None:
         """Record when the game ended.
 
@@ -100,6 +113,14 @@ class RecordCollector:
             Dict containing all collected game data.
         """
         return self.game_record
+
+    def load_existing_moves(self, moves: list[dict[str, Any]]) -> None:
+        """Load existing moves from a saved game record (for resume functionality).
+
+        Args:
+            moves: List of move dictionaries from a previously saved game record.
+        """
+        self.game_record["moves"] = moves.copy()
 
 
 class RecordWriter:
@@ -126,8 +147,18 @@ class RecordWriter:
             Dict containing summary statistics.
         """
 
-        white_player_name = str(white_player) if white_player else "White"
-        black_player_name = str(black_player) if black_player else "Black"
+        # Plain names keep record summaries consistent with tournament
+        # aggregation, which is keyed by player name without the color suffix
+        white_player_name = (
+            getattr(white_player, "name", str(white_player))
+            if white_player
+            else "White"
+        )
+        black_player_name = (
+            getattr(black_player, "name", str(black_player))
+            if black_player
+            else "Black"
+        )
 
         summary = build_game_summary_from_data(
             outcome=outcome,
@@ -223,6 +254,8 @@ class RecordWriter:
         white_player: Any = None,
         black_player: Any = None,
         game_summary: GameSummary | None = None,
+        resumed_from: Path | None = None,
+        original_termination_metadata: dict[str, Any] | None = None,
     ) -> None:
         """Write complete game record to JSON file.
 
@@ -234,6 +267,8 @@ class RecordWriter:
             white_player: Real white player object with name and metadata.
             black_player: Real black player object with name and metadata.
             game_summary: Optional pre-computed game summary to avoid redundant calculation.
+            resumed_from: Optional path to the original game record if this is a resumed game.
+            original_termination_metadata: Original termination metadata from pre-resume state.
         """
         collected_game_record = collector.get_data()
         moves = collected_game_record["moves"]
@@ -243,6 +278,7 @@ class RecordWriter:
         termination_label_override = collected_game_record.get(
             "termination_label_override"
         )
+        termination_metadata = collected_game_record.get("termination_metadata")
 
         if game_summary is not None:
             summary_data = game_summary.to_json_dict()
@@ -274,6 +310,21 @@ class RecordWriter:
                 black_player,
             ),
         }
+
+        # Add termination_metadata if present (for resume capability)
+        if termination_metadata is not None:
+            record["termination_metadata"] = termination_metadata
+
+        # Add resumption metadata if this is a resumed game
+        if resumed_from is not None:
+            record["resumption_metadata"] = {
+                "resumed_from_file": str(resumed_from),
+                "resumed_at": iso_timestamp(datetime.now(UTC)),
+            }
+            if original_termination_metadata is not None:
+                record["resumption_metadata"][
+                    "original_termination"
+                ] = original_termination_metadata
 
         if start_timestamp:
             record["environment"]["timestamp_start"] = start_timestamp

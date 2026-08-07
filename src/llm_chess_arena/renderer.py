@@ -992,7 +992,7 @@ def _build_tournament_results_panel(
     def _format_line(text: str, style: str | None = None) -> Text:
         if inner_width is not None and inner_width > 0:
             text = text.center(inner_width)
-        return Text(text, style=style)
+        return Text(text, style=style or "")
 
     content_lines: list[Text] = []
 

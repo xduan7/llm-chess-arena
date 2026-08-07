@@ -33,7 +33,7 @@ def llm_player(mock_connector, handler):
     return LLMPlayer(
         connector=mock_connector,
         handler=handler,
-        player_color="white",
+        color="white",
         name="TestPlayer",
         max_move_retries=3,
         num_votes=1,
@@ -53,7 +53,7 @@ class TestLLMPlayerInitialization:
         configured_player = LLMPlayer(
             connector=test_connector,
             handler=game_arena_handler,
-            player_color="black",
+            color="black",
             name="CustomName",
             max_move_retries=5,
             num_votes=3,
@@ -75,7 +75,7 @@ class TestLLMPlayerInitialization:
             LLMPlayer(
                 connector=test_connector,
                 handler=game_arena_handler,
-                player_color="white",
+                color="white",
                 max_move_retries=3,
                 num_votes=0,
             )
@@ -84,7 +84,7 @@ class TestLLMPlayerInitialization:
             LLMPlayer(
                 connector=test_connector,
                 handler=game_arena_handler,
-                player_color="white",
+                color="white",
                 max_move_retries=3,
                 num_votes=-1,
             )
@@ -143,7 +143,7 @@ class TestLLMPlayerMoveGeneration:
         llm_player = LLMPlayer(
             connector=connector,
             handler=handler,
-            player_color="white",
+            color="white",
             name="UsageTester",
             max_move_retries=3,
             num_votes=1,
@@ -184,7 +184,7 @@ class TestLLMPlayerMoveGeneration:
         llm_player = LLMPlayer(
             connector=connector,
             handler=handler,
-            player_color="white",
+            color="white",
             name="ResetTester",
             max_move_retries=3,
             num_votes=1,
@@ -216,7 +216,7 @@ class TestLLMPlayerMoveGeneration:
         llm_player = LLMPlayer(
             connector=connector,
             handler=handler,
-            player_color="white",
+            color="white",
             name="EmptyResponseTester",
             max_move_retries=3,
             num_votes=1,
@@ -241,7 +241,7 @@ class TestLLMPlayerMoveGeneration:
         llm_player = LLMPlayer(
             connector=connector,
             handler=handler,
-            player_color="white",
+            color="white",
             name="ScopingTester",
             max_move_retries=3,
             num_votes=1,
@@ -271,7 +271,7 @@ class TestLLMPlayerRetryLogic:
         player_with_limited_retries = LLMPlayer(
             connector=failing_connector,
             handler=game_arena_handler,
-            player_color="white",
+            color="white",
             max_move_retries=2,
             num_votes=1,
         )
@@ -280,8 +280,9 @@ class TestLLMPlayerRetryLogic:
         resignation_decision = player_with_limited_retries(starting_board)
         assert resignation_decision.action == "resign"
 
-        # (3rd response "also invalid" fails to parse and results in immediate resignation)
-        assert failing_connector.query_count == 2
+        # Unparseable responses now consume the retry budget instead of
+        # resigning immediately: max_move_retries=2 allows 3 total attempts.
+        assert failing_connector.query_count == 3
 
     def test_player_successfully_recovers_on_second_attempt_after_initial_invalid_move(
         self,
@@ -295,7 +296,7 @@ class TestLLMPlayerRetryLogic:
         player_with_retry_capability = LLMPlayer(
             connector=connector_with_retry_scenario,
             handler=game_arena_handler,
-            player_color="white",
+            color="white",
             max_move_retries=3,
             num_votes=1,
         )
@@ -320,7 +321,7 @@ class TestLLMPlayerRetryLogic:
         player_needing_retry = LLMPlayer(
             connector=connector_with_invalid_first_response,
             handler=game_arena_handler,
-            player_color="white",
+            color="white",
             max_move_retries=3,
             num_votes=1,
         )
@@ -353,7 +354,7 @@ class TestLLMPlayerRetryLogic:
         player_recovering_from_illegal = LLMPlayer(
             connector=connector_with_illegal_then_legal,
             handler=game_arena_handler,
-            player_color="white",
+            color="white",
             max_move_retries=3,
             num_votes=1,
         )
@@ -372,10 +373,10 @@ class TestLLMPlayerRetryLogic:
 
 
 class TestLLMPlayerNetworkErrors:
-    """Network failure handling for immediate resignation scenarios."""
+    """Network failures propagate so the game can be saved as resumable."""
 
-    def test_network_timeout_error_resigns_immediately(self):
-        """TimeoutError should trigger an immediate resignation."""
+    def test_network_timeout_error_propagates(self):
+        """TimeoutError should propagate instead of turning into a resignation."""
         timeout_connector = MockLLMConnector()
         timeout_connector.query = Mock(side_effect=TimeoutError("API timeout"))
         game_arena_handler = GameArenaLLMMoveHandler()
@@ -383,21 +384,20 @@ class TestLLMPlayerNetworkErrors:
         player_experiencing_timeout = LLMPlayer(
             connector=timeout_connector,
             handler=game_arena_handler,
-            player_color="white",
+            color="white",
             max_move_retries=3,
             num_votes=1,
         )
 
         starting_board = chess.Board()
-        decision = player_experiencing_timeout(starting_board)
-
-        assert decision.action == "resign"
+        with pytest.raises(TimeoutError, match="API timeout"):
+            player_experiencing_timeout(starting_board)
 
         # Connector already exhausted its own retries; player should not loop further.
         assert timeout_connector.query.call_count == 1
 
-    def test_connection_error_resigns_immediately(self):
-        """ConnectionError should also trigger an immediate resignation."""
+    def test_connection_error_propagates(self):
+        """ConnectionError should also propagate for game-level resume handling."""
         connection_error_connector = MockLLMConnector()
         connection_error_connector.query = Mock(
             side_effect=ConnectionError("Network unavailable")
@@ -407,18 +407,41 @@ class TestLLMPlayerNetworkErrors:
         player_with_connection_issue = LLMPlayer(
             connector=connection_error_connector,
             handler=game_arena_handler,
-            player_color="black",
+            color="black",
             max_move_retries=3,
             num_votes=1,
         )
 
         mid_game_board = chess.Board()
-        decision = player_with_connection_issue(mid_game_board)
+        with pytest.raises(ConnectionError, match="Network unavailable"):
+            player_with_connection_issue(mid_game_board)
 
-        assert decision.action == "resign"
-
-        # Only the initial attempt should occur before resignation.
+        # Only the initial attempt should occur before the error propagates.
         assert connection_error_connector.query.call_count == 1
+
+    def test_network_error_records_decision_artifacts(self):
+        """Artifacts should capture the network failure before propagation."""
+        failing_connector = MockLLMConnector()
+        failing_connector.query = Mock(side_effect=ConnectionError("API down"))
+
+        player = LLMPlayer(
+            connector=failing_connector,
+            handler=GameArenaLLMMoveHandler(),
+            color="white",
+            max_move_retries=1,
+            num_votes=1,
+        )
+
+        with pytest.raises(ConnectionError):
+            player(chess.Board())
+
+        artifacts = player.get_last_decision_artifacts()
+        assert artifacts is not None
+        assert artifacts.decision_process["network_errors"]
+        assert (
+            artifacts.decision_process["network_errors"][0]["error_message"]
+            == "API down"
+        )
 
 
 class TestLLMPlayerMajorityVoting:
@@ -435,7 +458,7 @@ class TestLLMPlayerMajorityVoting:
         player_using_majority_vote = LLMPlayer(
             connector=voting_connector,
             handler=game_arena_handler,
-            player_color="white",
+            color="white",
             max_move_retries=3,
             num_votes=3,
         )
@@ -462,7 +485,7 @@ class TestLLMPlayerMajorityVoting:
         player_with_tied_votes = LLMPlayer(
             connector=tie_scenario_connector,
             handler=game_arena_handler,
-            player_color="white",
+            color="white",
             max_move_retries=3,
             num_votes=3,
         )
@@ -488,7 +511,7 @@ class TestLLMPlayerMajorityVoting:
         player_filtering_invalid_votes = LLMPlayer(
             connector=mixed_validity_connector,
             handler=game_arena_handler,
-            player_color="white",
+            color="white",
             max_move_retries=3,
             num_votes=3,
         )
@@ -512,7 +535,7 @@ class TestLLMPlayerMajorityVoting:
         player_recovering_from_all_invalid = LLMPlayer(
             connector=connector_needing_full_retry,
             handler=game_arena_handler,
-            player_color="white",
+            color="white",
             num_votes=3,
             max_move_retries=2,
         )
@@ -542,7 +565,7 @@ class TestLLMPlayerMajorityVoting:
         player_handling_notation_variance = LLMPlayer(
             connector=notation_mixing_connector,
             handler=game_arena_handler,
-            player_color="white",
+            color="white",
             max_move_retries=3,
             num_votes=3,
         )
@@ -553,8 +576,8 @@ class TestLLMPlayerMajorityVoting:
         assert normalized_notation_decision.action == "move"
         assert normalized_notation_decision.attempted_move == "e2e4"
 
-    def test_network_error_during_voting_resigns_immediately(self):
-        """Network errors during voting should cause an immediate resignation."""
+    def test_network_error_during_voting_propagates(self):
+        """Network errors during voting should propagate for resume handling."""
         error_during_voting_connector = MockLLMConnector()
         error_during_voting_connector.query = Mock(
             side_effect=ConnectionError("API down")
@@ -564,15 +587,15 @@ class TestLLMPlayerMajorityVoting:
         player_with_voting_network_error = LLMPlayer(
             connector=error_during_voting_connector,
             handler=game_arena_handler,
-            player_color="white",
+            color="white",
             num_votes=3,
             max_move_retries=3,
         )
 
         starting_board = chess.Board()
-        decision = player_with_voting_network_error(starting_board)
+        with pytest.raises(ConnectionError, match="API down"):
+            player_with_voting_network_error(starting_board)
 
-        assert decision.action == "resign"
         assert player_with_voting_network_error.last_move_attempts == 1
         assert error_during_voting_connector.query.call_count == 1
 
@@ -596,7 +619,7 @@ class TestLLMPlayerIntegration:
         white_player_in_game = LLMPlayer(
             connector=full_game_connector,
             handler=game_arena_handler,
-            player_color="white",
+            color="white",
             max_move_retries=3,
             num_votes=1,
         )
@@ -639,7 +662,7 @@ class TestLLMPlayerIntegration:
         player_without_custom_name = LLMPlayer(
             connector=test_connector,
             handler=game_arena_handler,
-            player_color="white",
+            color="white",
             max_move_retries=3,
             num_votes=1,
         )
@@ -656,7 +679,7 @@ class TestLLMPlayerIntegration:
         black_player = LLMPlayer(
             connector=black_perspective_connector,
             handler=game_arena_handler,
-            player_color="black",
+            color="black",
             max_move_retries=3,
             num_votes=1,
         )

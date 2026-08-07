@@ -42,10 +42,11 @@ connector:
                                      # - DEPENDENCY: Longer timeouts needed for complex positions
 
   # NETWORK RESILIENCE - Balances reliability with speed
-  max_api_request_retries: 3    # Retries for transient network/API errors
-                               # - Too low (0-1): May fail on temporary outages
-                               # - Too high (>5): Delays game completion unnecessarily
-                               # - Does NOT retry for permanent errors (auth, rate limits)
+  max_api_request_retries: 10   # Retries for transient network/API errors (timeouts, 503, etc)
+                               # - Uses exponential backoff: 1m, 2m, 4m, 8m, 16m (capped)
+                               # - 10 retries = up to ~2 hours total (16+16+16+... minutes)
+                               # - Recommended: 5-10 for long-running research experiments
+                               # - Does NOT retry for permanent errors (auth, invalid requests)
 
   provider: null                # Optional: Override LiteLLM provider detection
                                # - Usually auto-detected from model name

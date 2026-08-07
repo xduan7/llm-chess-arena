@@ -27,3 +27,15 @@ class LLMPermanentError(Exception):
 
 class LLMEmptyResponseError(Exception):
     """LLM returned a response but content was empty (usually insufficient max_num_tokens)."""
+
+
+class GameRecordError(Exception):
+    """Base exception for game record loading and validation errors."""
+
+
+class InvalidGameRecordError(GameRecordError):
+    """Game record file is malformed or missing required fields."""
+
+
+class GameNotResumableError(GameRecordError):
+    """Game record is not marked as resumable or is already finished."""

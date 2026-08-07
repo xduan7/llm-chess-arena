@@ -5,6 +5,8 @@ from __future__ import annotations
 from datetime import datetime, UTC
 from typing import Any
 
+from loguru import logger
+
 from llm_chess_arena.tournament.types import (
     GameResult,
     TournamentResult,
@@ -30,6 +32,14 @@ def aggregate_tournament_results(
     Returns:
         TournamentResult: Aggregated tournament results.
     """
+    if player1_name == player2_name:
+        logger.warning(
+            "Both players are named '{}' - per-player aggregates will merge and "
+            "draws will be double-counted. Give the players distinct names "
+            "(e.g. via players.white.name) for meaningful statistics.",
+            player1_name,
+        )
+
     player_stats: dict[str, dict[str, Any]] = {
         player1_name: {
             "wins": 0,

@@ -9,7 +9,7 @@ from typing import Any, Mapping
 import litellm
 from loguru import logger
 
-from llm_chess_arena.types import Color
+from llm_chess_arena.types import PlayerColor
 
 
 @dataclass(slots=True, frozen=True)
@@ -59,7 +59,7 @@ class PlayerConfigBase:
     """Base configuration shared by all player implementations."""
 
     kind: str
-    color: Color | None = None
+    color: PlayerColor | None = None
     name: str | None = None
 
 
@@ -272,7 +272,12 @@ def _get_cached_model_info(model: str) -> Mapping[str, Any]:
         Dictionary of model metadata from LiteLLM.
     """
     if model not in _MODEL_METADATA_CACHE:
-        _MODEL_METADATA_CACHE[model] = litellm.get_model_info(model)
+        # litellm does not re-export get_model_info in its type stubs; resolve
+        # it dynamically like the connector does for other litellm attributes
+        get_model_info = getattr(litellm, "get_model_info", None)
+        if not callable(get_model_info):
+            raise RuntimeError("litellm.get_model_info is unavailable")
+        _MODEL_METADATA_CACHE[model] = get_model_info(model)
     return _MODEL_METADATA_CACHE[model]
 
 
@@ -344,13 +349,13 @@ def compute_fractional_tokens(token_limit: int, fractional_ratio: float) -> int:
     return num_tokens
 
 
-def normalize_llm_player_config(
-    player_config: PlayerConfig, player_color: str
+def normalize_llm_player_cfg(
+    player_cfg: PlayerConfig, player_color: str
 ) -> PlayerConfig:
-    """Return player config with deterministic max_num_tokens handling and defaults.
+    """Return player configuration with deterministic max_num_tokens handling and defaults.
 
     Args:
-        player_config: Player configuration to normalize.
+        player_cfg: Player configuration to normalize.
         player_color: Color of the player (for error messages).
 
     Returns:
@@ -359,26 +364,26 @@ def normalize_llm_player_config(
     Raises:
         ValueError: If model is not recognized or token limits cannot be determined.
     """
-    if not isinstance(player_config, LLMPlayerConfig):
-        return player_config
+    if not isinstance(player_cfg, LLMPlayerConfig):
+        return player_cfg
 
-    if player_config.max_move_retries is None:
+    if player_cfg.max_move_retries is None:
         raise ValueError(
             f"max_move_retries must be specified in LLM {player_color} player configuration. "
             "See configs/players/llm/default.yaml for recommended defaults."
         )
-    if player_config.num_votes is None:
+    if player_cfg.num_votes is None:
         raise ValueError(
             f"num_votes must be specified in LLM {player_color} player configuration. "
             "See configs/players/llm/default.yaml for recommended defaults."
         )
 
-    normalized_player_config = player_config
+    normalized_player_cfg = player_cfg
 
-    if normalized_player_config.connector is None:
-        return normalized_player_config
+    if normalized_player_cfg.connector is None:
+        return normalized_player_cfg
 
-    model_name = normalized_player_config.connector.model
+    model_name = normalized_player_cfg.connector.model
     model_recognized, model_token_limit = resolve_model_limit(model_name)
 
     if not model_recognized:
@@ -395,8 +400,8 @@ def normalize_llm_player_config(
             f"or use a model with known token limits."
         )
 
-    connector = normalized_player_config.connector
-    max_num_tokens = connector.max_num_tokens
+    connector_cfg = normalized_player_cfg.connector
+    max_num_tokens = connector_cfg.max_num_tokens
 
     if max_num_tokens is None:
         recommended_token_count = compute_fractional_tokens(
@@ -410,8 +415,8 @@ def normalize_llm_player_config(
             DEFAULT_MAX_NUM_TOKENS_RATIO,
             model_token_limit,
         )
-        connector = replace(connector, max_num_tokens=recommended_token_count)
-        return replace(normalized_player_config, connector=connector)
+        connector_cfg = replace(connector_cfg, max_num_tokens=recommended_token_count)
+        return replace(normalized_player_cfg, connector=connector_cfg)
 
     if isinstance(max_num_tokens, float):
         if not 0 < max_num_tokens <= 1:
@@ -429,40 +434,40 @@ def normalize_llm_player_config(
             model_name,
             model_token_limit,
         )
-        connector = replace(connector, max_num_tokens=resolved_token_count)
-        return replace(normalized_player_config, connector=connector)
+        connector_cfg = replace(connector_cfg, max_num_tokens=resolved_token_count)
+        return replace(normalized_player_cfg, connector=connector_cfg)
 
     if max_num_tokens > model_token_limit:
         raise ValueError(
             f"{player_color} player connector.max_num_tokens ({max_num_tokens}) exceeds limit ({model_token_limit}) for model '{model_name}'"
         )
 
-    return normalized_player_config
+    return normalized_player_cfg
 
 
 def _ensure_player_color(
-    player_config: PlayerConfig, default_player_color: Color
+    player_cfg: PlayerConfig, default_player_color: PlayerColor
 ) -> PlayerConfig:
-    """Ensure each player config declares a color.
+    """Ensure each player configuration declares a color.
 
     Args:
-        player_config: Player configuration to update.
+        player_cfg: Player configuration to update.
         default_player_color: Color to assign if not already set.
 
     Returns:
         Player configuration with color assigned.
     """
-    return replace(player_config, color=default_player_color)
+    return replace(player_cfg, color=default_player_color)
 
 
-def parse_player_config(
-    raw_config: Mapping[str, Any], fallback_player_color: Color
+def parse_player_cfg(
+    raw_cfg: Mapping[str, Any], fallback_player_color: PlayerColor
 ) -> PlayerConfig:
-    """Convert raw player configuration mapping into strongly typed player config.
+    """Convert raw player configuration mapping into strongly typed player configuration.
 
     Args:
-        raw_config: Raw configuration dictionary from Hydra.
-        fallback_player_color: Color to assign if not specified in config.
+        raw_cfg: Raw configuration dictionary from Hydra.
+        fallback_player_color: Color to assign if not specified in configuration.
 
     Returns:
         Typed player configuration (Random, Stockfish, or LLM).
@@ -470,23 +475,23 @@ def parse_player_config(
     Raises:
         ValueError: If configuration is invalid or unsupported player kind.
     """
-    if not isinstance(raw_config, Mapping):
+    if not isinstance(raw_cfg, Mapping):
         raise ValueError(
-            f"Expected mapping for player config, got {type(raw_config)}: {raw_config}"
+            f"Expected mapping for player configuration, got {type(raw_cfg)}: {raw_cfg}"
         )
 
-    kind = raw_config.get("kind")
-    player_config: PlayerConfig
+    kind = raw_cfg.get("kind")
+    player_cfg: PlayerConfig
     if kind == "random":
-        player_config = RandomPlayerConfig(**raw_config)
+        player_cfg = RandomPlayerConfig(**raw_cfg)
     elif kind == "stockfish":
-        player_config = StockfishPlayerConfig(**raw_config)
+        player_cfg = StockfishPlayerConfig(**raw_cfg)
     elif kind == "llm":
-        connector_config = raw_config.get("connector")
-        if connector_config is None:
-            raise ValueError("LLM player config requires 'connector' section")
+        connector_cfg_dict = raw_cfg.get("connector")
+        if connector_cfg_dict is None:
+            raise ValueError("LLM player configuration requires 'connector' section")
 
-        model_name = connector_config.get("model")
+        model_name = connector_cfg_dict.get("model")
         if model_name is None:
             raise ValueError(
                 "LLM player connector.model cannot be null. "
@@ -495,29 +500,29 @@ def parse_player_config(
                 "or players.black.connector.model=claude-3-5-sonnet-20241022"
             )
 
-        handler_config = raw_config.get("handler", {})
-        connector = LLMConnectorConfig(**connector_config)
-        handler = LLMHandlerConfig(**handler_config)
-        player_config = LLMPlayerConfig(
+        handler_cfg_dict = raw_cfg.get("handler", {})
+        connector_cfg = LLMConnectorConfig(**connector_cfg_dict)
+        handler_cfg = LLMHandlerConfig(**handler_cfg_dict)
+        player_cfg = LLMPlayerConfig(
             **{
-                config_key: config_value
-                for config_key, config_value in raw_config.items()
-                if config_key not in {"connector", "handler"}
+                cfg_key: cfg_value
+                for cfg_key, cfg_value in raw_cfg.items()
+                if cfg_key not in {"connector", "handler"}
             },
-            connector=connector,
-            handler=handler,
+            connector=connector_cfg,
+            handler=handler_cfg,
         )
     else:
         raise ValueError(f"Unsupported player kind: {kind}")
 
-    return _ensure_player_color(player_config, fallback_player_color)
+    return _ensure_player_color(player_cfg, fallback_player_color)
 
 
-def parse_players_config(raw_config: Mapping[str, Any]) -> PlayersConfig:
+def parse_players_cfg(raw_cfg: Mapping[str, Any]) -> PlayersConfig:
     """Parse both player configurations with enforced colors from raw Hydra mapping.
 
     Args:
-        raw_config: Raw configuration dictionary containing white and black player configs.
+        raw_cfg: Raw configuration dictionary containing white and black player configurations.
 
     Returns:
         Normalized configuration for both players.
@@ -525,22 +530,24 @@ def parse_players_config(raw_config: Mapping[str, Any]) -> PlayersConfig:
     Raises:
         ValueError: If white or black player configuration is missing.
     """
-    white_config = raw_config.get("white")
-    black_config = raw_config.get("black")
-    if white_config is None or black_config is None:
-        raise ValueError("Players config requires both 'white' and 'black' sections")
+    white_cfg_dict = raw_cfg.get("white")
+    black_cfg_dict = raw_cfg.get("black")
+    if white_cfg_dict is None or black_cfg_dict is None:
+        raise ValueError(
+            "Players configuration requires both 'white' and 'black' sections"
+        )
 
-    white_player_config = parse_player_config(white_config, "white")
-    black_player_config = parse_player_config(black_config, "black")
-    players_config = PlayersConfig(white=white_player_config, black=black_player_config)
-    return _normalize_players_config(players_config)
+    white_player_cfg = parse_player_cfg(white_cfg_dict, "white")
+    black_player_cfg = parse_player_cfg(black_cfg_dict, "black")
+    players_cfg = PlayersConfig(white=white_player_cfg, black=black_player_cfg)
+    return _normalize_players_cfg(players_cfg)
 
 
-def _normalize_players_config(players_config: PlayersConfig) -> PlayersConfig:
+def _normalize_players_cfg(players_cfg: PlayersConfig) -> PlayersConfig:
     """Apply normalization to both white and black player configurations."""
     return PlayersConfig(
-        white=normalize_llm_player_config(players_config.white, "white"),
-        black=normalize_llm_player_config(players_config.black, "black"),
+        white=normalize_llm_player_cfg(players_cfg.white, "white"),
+        black=normalize_llm_player_cfg(players_cfg.black, "black"),
     )
 
 
@@ -559,10 +566,10 @@ __all__ = [
     "RandomPlayerConfig",
     "StockfishPlayerConfig",
     "DEFAULT_MAX_NUM_TOKENS_RATIO",
-    "_normalize_players_config",
+    "_normalize_players_cfg",
     "compute_fractional_tokens",
-    "normalize_llm_player_config",
-    "parse_player_config",
-    "parse_players_config",
+    "normalize_llm_player_cfg",
+    "parse_player_cfg",
+    "parse_players_cfg",
     "resolve_model_limit",
 ]

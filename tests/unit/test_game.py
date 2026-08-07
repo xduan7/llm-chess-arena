@@ -24,7 +24,7 @@ class AlwaysResignPlayer(BasePlayer):
 
     def __init__(self, name: str, player_color: str) -> None:
         """Store identifying metadata for the stub player."""
-        super().__init__(name=name, player_color=player_color)
+        super().__init__(name=name, color=player_color)
 
     def _make_decision(
         self, context: PlayerDecisionContext
@@ -107,7 +107,7 @@ class TestGameFlow:
     ):
         """Illegal moves from players propagate as IllegalMoveError."""
         illegal_move_player = IllegalMovePlayer(
-            name="Illegal", player_color="white", illegal_move_uci="b1e4"
+            name="Illegal", color="white", illegal_move_uci="b1e4"
         )
         game = Game(
             illegal_move_player,
@@ -413,7 +413,7 @@ class TestGameHistory:
         """Abortive games should not emit record files."""
         white_player = FailingPlayer(
             name="Failing",
-            player_color="white",
+            color="white",
             fail_after_moves=1,
             seed=1,
         )

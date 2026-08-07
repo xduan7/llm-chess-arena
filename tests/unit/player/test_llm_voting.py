@@ -1,6 +1,7 @@
 """Comprehensive tests for LLM voting logic edge cases."""
 
 import chess
+import pytest
 from unittest.mock import Mock
 
 from llm_chess_arena.player.llm import LLMPlayer, GameArenaLLMMoveHandler
@@ -28,7 +29,7 @@ class TestLLMVotingEdgeCases:
         player = LLMPlayer(
             connector=connector,
             handler=handler,
-            player_color="white",
+            color="white",
             num_votes=3,
             max_move_retries=1,
         )
@@ -54,7 +55,7 @@ class TestLLMVotingEdgeCases:
         player = LLMPlayer(
             connector=connector,
             handler=handler,
-            player_color="white",
+            color="white",
             num_votes=5,
             max_move_retries=1,
         )
@@ -81,7 +82,7 @@ class TestLLMVotingEdgeCases:
         player = LLMPlayer(
             connector=connector,
             handler=handler,
-            player_color="white",
+            color="white",
             num_votes=5,
             max_move_retries=1,
         )
@@ -108,7 +109,7 @@ class TestLLMVotingEdgeCases:
         player = LLMPlayer(
             connector=connector,
             handler=handler,
-            player_color="white",
+            color="white",
             num_votes=5,
             max_move_retries=1,
         )
@@ -139,7 +140,7 @@ class TestLLMVotingEdgeCases:
         player = LLMPlayer(
             connector=connector,
             handler=handler,
-            player_color="white",
+            color="white",
             num_votes=5,
             max_move_retries=1,
         )
@@ -186,7 +187,7 @@ class TestLLMVotingEdgeCases:
         player = LLMPlayer(
             connector=connector,
             handler=handler,
-            player_color="white",
+            color="white",
             num_votes=3,
             max_move_retries=2,
         )
@@ -214,7 +215,7 @@ class TestLLMVotingEdgeCases:
         player = LLMPlayer(
             connector=connector,
             handler=handler,
-            player_color="white",
+            color="white",
             num_votes=5,
             max_move_retries=1,
         )
@@ -226,7 +227,7 @@ class TestLLMVotingEdgeCases:
         assert decision.attempted_move == "e2e4"
 
     def test_voting_with_network_error_during_sampling(self):
-        """Network errors during sampling should resign immediately."""
+        """Network errors during sampling should propagate for resume handling."""
 
         def raise_timeout(*args, **kwargs):
             """Simulate a connector timeout for retry testing."""
@@ -239,15 +240,15 @@ class TestLLMVotingEdgeCases:
         player = LLMPlayer(
             connector=connector,
             handler=handler,
-            player_color="white",
+            color="white",
             num_votes=3,
             max_move_retries=2,
         )
 
         board = chess.Board()
 
-        decision = player(board)
-        assert decision.action == "resign"
+        with pytest.raises(TimeoutError, match="Network timeout"):
+            player(board)
         assert player.last_move_attempts == 1
         assert connector.query.call_count == 1
 
@@ -272,7 +273,7 @@ class TestLLMVotingEdgeCases:
         player = LLMPlayer(
             connector=connector,
             handler=handler,
-            player_color="white",
+            color="white",
             num_votes=3,
             max_move_retries=2,
         )
@@ -296,7 +297,7 @@ class TestLLMVotingEdgeCases:
         player = LLMPlayer(
             connector=connector,
             handler=handler,
-            player_color="white",
+            color="white",
             num_votes=3,
             max_move_retries=1,
         )
@@ -315,7 +316,7 @@ class TestLLMVotingEdgeCases:
         player = LLMPlayer(
             connector=connector,
             handler=handler,
-            player_color="white",
+            color="white",
             num_votes=1,
             max_move_retries=1,
         )
@@ -347,7 +348,7 @@ class TestVotingPerformance:
         player = LLMPlayer(
             connector=connector,
             handler=handler,
-            player_color="white",
+            color="white",
             num_votes=5,
             max_move_retries=1,
         )
@@ -367,7 +368,7 @@ class TestVotingPerformance:
         player = LLMPlayer(
             connector=connector,
             handler=handler,
-            player_color="white",
+            color="white",
             num_votes=100,
             max_move_retries=1,
         )

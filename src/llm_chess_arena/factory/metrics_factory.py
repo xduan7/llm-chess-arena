@@ -17,32 +17,32 @@ class MetricsFactory:
     @staticmethod
     @config_operation
     def create_metrics_tracker(
-        metrics_config: "MetricsConfig",
+        metrics_cfg: "MetricsConfig",
     ) -> MetricsTracker:
         """Create a Stockfish-based metrics tracker from configuration.
 
         Args:
-            metrics_config: Metrics configuration containing Stockfish settings and quality thresholds.
+            metrics_cfg: Metrics configuration containing Stockfish settings and quality thresholds.
 
         Returns:
             MetricsTracker: Configured metrics tracker for move evaluation.
         """
         engine_options: Mapping[str, Any] | None = None
-        if metrics_config.stockfish_engine_options:
-            engine_options = dict(metrics_config.stockfish_engine_options)
+        if metrics_cfg.stockfish_engine_options:
+            engine_options = dict(metrics_cfg.stockfish_engine_options)
 
-        thresholds_config = metrics_config.quality_thresholds
+        thresholds_cfg = metrics_cfg.quality_thresholds
         thresholds = MoveQualityThresholds(
-            excellent=thresholds_config.excellent,
-            good=thresholds_config.good,
-            inaccuracy=thresholds_config.inaccuracy,
-            mistake=thresholds_config.mistake,
+            excellent=thresholds_cfg.excellent,
+            good=thresholds_cfg.good,
+            inaccuracy=thresholds_cfg.inaccuracy,
+            mistake=thresholds_cfg.mistake,
         )
 
         return MetricsTracker.from_stockfish(
-            depth=metrics_config.stockfish_depth,
-            binary_path=metrics_config.stockfish_binary_path,
+            depth=metrics_cfg.stockfish_depth,
+            binary_path=metrics_cfg.stockfish_binary_path,
             engine_options=engine_options,
             thresholds=thresholds,
-            max_centipawn_loss=metrics_config.max_centipawn_loss_per_move,
+            max_centipawn_loss=metrics_cfg.max_centipawn_loss_per_move,
         )

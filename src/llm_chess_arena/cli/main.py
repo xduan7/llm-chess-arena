@@ -3,11 +3,12 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Any, cast
 
 from hydra import main
 from omegaconf import DictConfig, OmegaConf
 
-from llm_chess_arena.config.loader import apply_env_config, app_config_from_dictconfig
+from llm_chess_arena.config.loader import apply_env_cfg, app_cfg_from_dictconfig
 from llm_chess_arena.tournament.types import TournamentConfig
 from llm_chess_arena.tournament.executor import TournamentRunner
 from llm_chess_arena.tournament.export import ResultsExporter
@@ -18,24 +19,25 @@ HYDRA_CONFIG_DIR = str(Path(__file__).resolve().parents[3] / "configs")
 
 
 @main(version_base="1.3", config_path=HYDRA_CONFIG_DIR, config_name="config")  # type: ignore[misc, unused-ignore]
-def run_tournament_cli(hydra_config: DictConfig) -> None:
+def run_tournament_cli(hydra_cfg: DictConfig) -> None:
     """Run a tournament with multiple games using the same player matchup.
 
     Args:
-        hydra_config: Composed Hydra configuration for the tournament.
+        hydra_cfg: Composed Hydra configuration for the tournament.
     """
-    app_config = app_config_from_dictconfig(hydra_config)
-    apply_env_config(app_config.env)
+    app_cfg = app_cfg_from_dictconfig(hydra_cfg)
+    apply_env_cfg(app_cfg.env)
 
-    config_dict = OmegaConf.to_container(hydra_config, resolve=True)
-    if not isinstance(config_dict, dict):
+    raw_cfg_container = OmegaConf.to_container(hydra_cfg, resolve=True)
+    if not isinstance(raw_cfg_container, dict):
         raise ValueError("Expected dict at root of configuration")
+    cfg_dict = cast("dict[str, Any]", raw_cfg_container)
 
-    tournament_dict = config_dict.get("tournament", {})
+    tournament_dict = cfg_dict.get("tournament", {})
     if not isinstance(tournament_dict, dict):
         raise ValueError("Tournament section must be a dict")
 
-    tournament_config = TournamentConfig(
+    tournament_cfg = TournamentConfig(
         match_name=tournament_dict["match_name"],
         num_games=tournament_dict["num_games"],
         parallel_games=tournament_dict["parallel_games"],
@@ -46,21 +48,21 @@ def run_tournament_cli(hydra_config: DictConfig) -> None:
     )
 
     runner = TournamentRunner(
-        tournament_cfg=tournament_config,
-        game_cfg=app_config.game,
-        metrics_cfg=app_config.metrics,
-        white_player_cfg=app_config.players.white,
-        black_player_cfg=app_config.players.black,
-        hydra_cfg=config_dict,
+        tournament_cfg=tournament_cfg,
+        game_cfg=app_cfg.game,
+        metrics_cfg=app_cfg.metrics,
+        white_player_cfg=app_cfg.players.white,
+        black_player_cfg=app_cfg.players.black,
+        hydra_cfg=cfg_dict,
     )
 
     result = runner.run()
 
-    output_dir = tournament_config.output_dir / tournament_config.match_name
+    output_dir = tournament_cfg.output_dir / tournament_cfg.match_name
     ResultsExporter.export_json(result, output_dir / "results.json")
     ResultsExporter.export_csv(result, output_dir / "results.csv")
 
-    if tournament_config.display_summary:
+    if tournament_cfg.display_summary:
         display_tournament_summary(
             match_name=result.match_name,
             player1=result.player1_name,

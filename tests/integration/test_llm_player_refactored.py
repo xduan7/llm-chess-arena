@@ -29,7 +29,7 @@ def test_refactored_player_single_vote() -> None:
     )
 
     player = LLMPlayer(
-        player_color="white",
+        color="white",
         connector=connector,
         handler=GameArenaLLMMoveHandler(),
         max_move_retries=1,
@@ -58,7 +58,7 @@ def test_refactored_player_voting() -> None:
     )
 
     player = LLMPlayer(
-        player_color="white",
+        color="white",
         connector=connector,
         handler=GameArenaLLMMoveHandler(),
         max_move_retries=3,
@@ -86,7 +86,7 @@ def test_refactored_player_retry_flow() -> None:
     )
 
     player = LLMPlayer(
-        player_color="white",
+        color="white",
         connector=connector,
         handler=GameArenaLLMMoveHandler(),
         max_move_retries=1,
