@@ -430,3 +430,25 @@ class TestEnsurePlayerColor:
         assert new_config.color == "white"
 
         assert new_config is not original_config
+
+
+class TestArgoTokenLimitPrecedence:
+    """Argo platform constraints must beat vendor limits from LiteLLM."""
+
+    def test_argo_claude_uses_platform_cap_not_vendor_limit(self) -> None:
+        """Argo caps Claude output at 21k (streaming constraint); LiteLLM's
+        vendor registry may report far larger limits and must not win."""
+        from llm_chess_arena.config.schema import resolve_model_limit
+
+        recognized, limit = resolve_model_limit("argo:claude-opus-5")
+
+        assert recognized
+        assert limit == 21_000
+
+    def test_argo_model_absent_from_tables_falls_through(self) -> None:
+        """Unknown argo aliases still fall through to the normal lookup."""
+        from llm_chess_arena.config.schema import resolve_model_limit
+
+        recognized, limit = resolve_model_limit("argo:definitely-not-a-model")
+
+        assert limit is None

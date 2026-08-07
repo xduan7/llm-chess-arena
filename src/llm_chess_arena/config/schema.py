@@ -160,6 +160,17 @@ BASE_MODEL_OUTPUT_TOKEN_LIMITS: dict[str, int] = {
     "gpt-5": 128_000,
     "gpt-5-mini": 128_000,
     "gpt-5-nano": 128_000,
+    # gpt-5.1+ limits assume the family's 128k output cap - verify when
+    # vendor documentation for these releases is available
+    "gpt-5.1": 128_000,
+    "gpt-5.2": 128_000,
+    "gpt-5.4": 128_000,
+    "gpt-5.4-mini": 128_000,
+    "gpt-5.4-nano": 128_000,
+    "gpt-5.5": 128_000,
+    "gpt-5.6-sol": 128_000,
+    "gpt-5.6-luna": 128_000,
+    "gpt-5.6-terra": 128_000,
     "gpt-o3": 100_000,
     "o3": 100_000,
     "gpt-o3-mini": 100_000,
@@ -180,6 +191,32 @@ BASE_MODEL_OUTPUT_TOKEN_LIMITS: dict[str, int] = {
     "claude-sonnet-3.5-v2": 8_000,
     "gemini-2.5-pro": 65_536,
     "gemini-2.5-flash": 65_536,
+    # gemini-3.x limits assume the family's 64k output cap - verify when
+    # vendor documentation for these releases is available
+    "gemini-3.5-flash": 65_536,
+    "gemini-3.1-flash-lite": 65_536,
+    # Claude 4.5+ tiers: 64k output like Sonnet 4.5 (Argo overrides cap
+    # these at 21k regardless); newer-than-4.5 values are assumptions
+    "claude-4.5-opus": 64_000,
+    "claude-opus-4.5": 64_000,
+    "claude-4.6-opus": 64_000,
+    "claude-opus-4.6": 64_000,
+    "claude-4.7-opus": 64_000,
+    "claude-opus-4.7": 64_000,
+    "claude-4.8-opus": 64_000,
+    "claude-opus-4.8": 64_000,
+    "claude-5-opus": 64_000,
+    "claude-opus-5": 64_000,
+    "claude-4.6-sonnet": 64_000,
+    "claude-sonnet-4.6": 64_000,
+    "claude-5-sonnet": 64_000,
+    "claude-sonnet-5": 64_000,
+    "claude-4.5-haiku": 64_000,
+    "claude-haiku-4.5": 64_000,
+    # Argonne-internal test models: conservative floor until limits are known
+    "laguna-s-2.1-[test]": 8_192,
+    "laguna-xs-2.1-[test]": 8_192,
+    "gemma-4-31b-[test]": 8_192,
 }
 
 
@@ -200,6 +237,22 @@ ARGO_MODEL_OUTPUT_TOKEN_OVERRIDES: dict[str, int] = {
     "claude-sonnet-3.7": 21_000,
     "claude-3.5-sonnet-v2": 8_000,
     "claude-sonnet-3.5-v2": 8_000,
+    "claude-4.5-opus": 21_000,
+    "claude-opus-4.5": 21_000,
+    "claude-4.6-opus": 21_000,
+    "claude-opus-4.6": 21_000,
+    "claude-4.7-opus": 21_000,
+    "claude-opus-4.7": 21_000,
+    "claude-4.8-opus": 21_000,
+    "claude-opus-4.8": 21_000,
+    "claude-5-opus": 21_000,
+    "claude-opus-5": 21_000,
+    "claude-4.6-sonnet": 21_000,
+    "claude-sonnet-4.6": 21_000,
+    "claude-5-sonnet": 21_000,
+    "claude-sonnet-5": 21_000,
+    "claude-4.5-haiku": 21_000,
+    "claude-haiku-4.5": 21_000,
 }
 
 
@@ -229,8 +282,19 @@ ARGO_MODEL_CANONICAL_NAMES: dict[str, str] = {
     "argo:gpt-5": "gpt-5",
     "argo:gpt-5-mini": "gpt-5-mini",
     "argo:gpt-5-nano": "gpt-5-nano",
+    "argo:gpt-5.1": "gpt-5.1",
+    "argo:gpt-5.2": "gpt-5.2",
+    "argo:gpt-5.4": "gpt-5.4",
+    "argo:gpt-5.4-mini": "gpt-5.4-mini",
+    "argo:gpt-5.4-nano": "gpt-5.4-nano",
+    "argo:gpt-5.5": "gpt-5.5",
+    "argo:gpt-5.6-sol": "gpt-5.6-sol",
+    "argo:gpt-5.6-luna": "gpt-5.6-luna",
+    "argo:gpt-5.6-terra": "gpt-5.6-terra",
     "argo:gemini-2.5-pro": "gemini-2.5-pro",
     "argo:gemini-2.5-flash": "gemini-2.5-flash",
+    "argo:gemini-3.5-flash": "gemini-3.5-flash",
+    "argo:gemini-3.1-flash-lite": "gemini-3.1-flash-lite",
     "argo:claude-4.1-opus": "claude-4.1-opus",
     "argo:claude-opus-4.1": "claude-opus-4.1",
     "argo:claude-4-opus": "claude-4-opus",
@@ -243,6 +307,25 @@ ARGO_MODEL_CANONICAL_NAMES: dict[str, str] = {
     "argo:claude-sonnet-3.7": "claude-sonnet-3.7",
     "argo:claude-3.5-sonnet-v2": "claude-3.5-sonnet-v2",
     "argo:claude-sonnet-3.5-v2": "claude-sonnet-3.5-v2",
+    "argo:claude-4.5-opus": "claude-4.5-opus",
+    "argo:claude-opus-4.5": "claude-opus-4.5",
+    "argo:claude-4.6-opus": "claude-4.6-opus",
+    "argo:claude-opus-4.6": "claude-opus-4.6",
+    "argo:claude-4.7-opus": "claude-4.7-opus",
+    "argo:claude-opus-4.7": "claude-opus-4.7",
+    "argo:claude-4.8-opus": "claude-4.8-opus",
+    "argo:claude-opus-4.8": "claude-opus-4.8",
+    "argo:claude-5-opus": "claude-5-opus",
+    "argo:claude-opus-5": "claude-opus-5",
+    "argo:claude-4.6-sonnet": "claude-4.6-sonnet",
+    "argo:claude-sonnet-4.6": "claude-sonnet-4.6",
+    "argo:claude-5-sonnet": "claude-5-sonnet",
+    "argo:claude-sonnet-5": "claude-sonnet-5",
+    "argo:claude-4.5-haiku": "claude-4.5-haiku",
+    "argo:claude-haiku-4.5": "claude-haiku-4.5",
+    "argo:laguna-s-2.1-[test]": "laguna-s-2.1-[test]",
+    "argo:laguna-xs-2.1-[test]": "laguna-xs-2.1-[test]",
+    "argo:gemma-4-31b-[test]": "gemma-4-31b-[test]",
     "argo:text-embedding-ada-002": "text-embedding-ada-002",
     "argo:text-embedding-3-small": "text-embedding-3-small",
     "argo:text-embedding-3-large": "text-embedding-3-large",
@@ -297,6 +380,14 @@ def resolve_model_limit(model: str | None) -> tuple[bool, int | None]:
     model_candidates = [model]
     if model.startswith("argo:"):
         model_candidates.append(model.split(":", 1)[1])
+        # Argo platform constraints trump vendor limits: the curated table
+        # (with ARGO_MODEL_OUTPUT_TOKEN_OVERRIDES merged under the argo: key)
+        # must win over LiteLLM's registry, otherwise e.g. Claude models get
+        # vendor-sized max_tokens that Argo rejects without streaming
+        argo_token_limit = MODEL_OUTPUT_TOKEN_LIMITS.get(model)
+        if argo_token_limit is not None:
+            logger.debug("Using Argo token limit for {}: {}", model, argo_token_limit)
+            return True, int(argo_token_limit)
 
     for candidate_model_name in model_candidates:
         try:

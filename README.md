@@ -67,6 +67,34 @@ python -m llm_chess_arena.cli.main --multirun \
 Hydra configs live under `configs/` with groups for `game/`, `players/`, and `metrics/`. Stockfish presets cover ELO 1320/1600/2000/2400/2800 (e.g. `players@players.white=stockfish/elo_2000`); mix and match these or author new YAML files to capture research settings.
 Move-quality thresholds are configurable via `configs/metrics/default.yaml`, and metrics are always enabled by default.
 
+### Using Argo (Argonne internal gateway)
+
+Models with the `argo:` prefix go through an OpenAI-compatible Argo proxy that
+runs on a CELS machine and is reached via an SSH port-forward:
+
+```bash
+# 1. Forward the proxy port (the proxy must be running on the remote host)
+autossh -f -M 0 -N -L 60761:localhost:60761 <cels-host>
+
+# 2. Point the arena at the tunnel (in .env)
+ARGO_API_BASE=http://127.0.0.1:60761/v1
+
+# 3. Verify connectivity before running games
+curl http://127.0.0.1:60761/v1/models
+
+# 4. Play
+python -m llm_chess_arena.cli.main \
+  players@players.white=llm/default \
+  players.white.connector.model=argo:gpt-4o \
+  players@players.black=random
+```
+
+Usable `argo:*` models are validated client-side against
+`ARGO_MODEL_CANONICAL_NAMES` in `src/llm_chess_arena/config/schema.py`; when the
+proxy adds new models, extend that map and the output-token-limit tables next
+to it. If a game is interrupted by the tunnel dropping, it is saved as
+resumable (see below).
+
 ### Resume Interrupted Games
 
 Games interrupted by network errors can be resumed from their saved state:
