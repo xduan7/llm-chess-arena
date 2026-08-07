@@ -149,6 +149,23 @@ class TestTournamentRunner:
         assert schedule[2] == (black_player_config, white_player_config)
         assert schedule[3] == (black_player_config, white_player_config)
 
+    def test_generate_schedule__odd_games_with_alternation__keeps_configured_colors_first(
+        self,
+        tournament_config: TournamentConfig,
+        white_player_config: PlayerConfig,
+        black_player_config: PlayerConfig,
+    ) -> None:
+        """A single-game tournament must not swap the configured colors."""
+        single_game_config = replace(tournament_config, num_games=1)
+
+        schedule = _generate_game_schedule(
+            single_game_config,
+            white_player_config,
+            black_player_config,
+        )
+
+        assert schedule == [(white_player_config, black_player_config)]
+
     def test_generate_schedule__given_no_alternation__then_same_colors(
         self,
         tournament_config: TournamentConfig,

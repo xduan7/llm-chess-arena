@@ -40,12 +40,14 @@ def _generate_game_schedule(
         List of (white_player_cfg, black_player_cfg) tuples for each game.
     """
     schedule = []
-    half = tournament_cfg.num_games // 2
+    swapped_half = tournament_cfg.num_games // 2
 
     if tournament_cfg.alternate_colors:
-        for _ in range(half):
+        # Configured colors play first; for odd game counts the extra game
+        # keeps the configured assignment (so a 1-game run is never swapped)
+        for _ in range(tournament_cfg.num_games - swapped_half):
             schedule.append((white_player_cfg, black_player_cfg))
-        for _ in range(tournament_cfg.num_games - half):
+        for _ in range(swapped_half):
             schedule.append((black_player_cfg, white_player_cfg))
     else:
         for _ in range(tournament_cfg.num_games):

@@ -14,11 +14,12 @@ force_unlock: false
 # Only validate without resuming (default: false)
 validate_only: false
 
-# Hydra runtime configuration
+# Hydra runtime configuration (same disabled logging as the main CLI;
+# colorlog would require the optional hydra-colorlog plugin)
 defaults:
   - _self_
-  - override hydra/job_logging: colorlog
-  - override hydra/hydra_logging: colorlog
+  - override hydra/job_logging: disabled
+  - override hydra/hydra_logging: disabled
 
 hydra:
   run:
