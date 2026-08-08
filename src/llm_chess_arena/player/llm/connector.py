@@ -13,7 +13,7 @@ from loguru import logger
 import litellm
 from litellm import exceptions as litellm_exceptions
 
-from llm_chess_arena.config.schema import ARGO_MODEL_CANONICAL_NAMES
+from llm_chess_arena.config.model_registry import ARGO_MODEL_CANONICAL_NAMES
 from llm_chess_arena.exceptions import LLMPermanentError, LLMEmptyResponseError
 
 if TYPE_CHECKING:

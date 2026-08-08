@@ -216,7 +216,7 @@ class TestDemoScriptConfigurations:
         self, model_name: str, expected_limit: int
     ) -> None:
         """Verify common models have defined token limits."""
-        from llm_chess_arena.config.schema import BASE_MODEL_OUTPUT_TOKEN_LIMITS
+        from llm_chess_arena.config.model_registry import BASE_MODEL_OUTPUT_TOKEN_LIMITS
 
         assert model_name in BASE_MODEL_OUTPUT_TOKEN_LIMITS
         assert BASE_MODEL_OUTPUT_TOKEN_LIMITS[model_name] == expected_limit
