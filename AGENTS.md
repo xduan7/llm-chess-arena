@@ -94,26 +94,27 @@ src/
     │   └── resume.py           # Hydra CLI: resume interrupted tournaments
     ├── config/
     │   ├── loader.py           # Hydra composition & env setup
+    │   ├── model_registry.py   # Token-limit tables & Argo model allowlist
     │   └── schema.py           # Dataclass config schemas & normalization
-    ├── core/
-    │   └── policies.py         # Centralized error-handling decorators
+    ├── engine.py               # Stockfish binary discovery & engine init
     ├── exceptions.py
-    ├── factory/                # Object construction helpers
-    │   ├── metrics_factory.py
-    │   └── player_factory.py
-    ├── game.py                 # Game loop, recording, resume-from-record
+    ├── factory.py              # Player/metrics construction; resume from records
+    ├── game.py                 # Game loop, move handling, recording hooks
     ├── metrics.py              # Stockfish-based move evaluation
-    ├── record.py               # Game record collection & JSON serialization
+    ├── moves.py                # Move parsing & UCI/SAN normalization
+    ├── policies.py             # Centralized error-handling decorators
+    ├── rate_limiter.py         # Global RPM limiter for parallel tournaments
+    ├── record.py               # game.json read/write; owns the record format
     ├── renderer.py             # Rich terminal board visualization
+    ├── summary.py              # Game summary domain model & builders
     ├── tournament/
     │   ├── aggregator.py       # Pure aggregation of game results
     │   ├── executor.py         # TournamentRunner (sequential/parallel)
     │   ├── export.py           # results.json / results.csv export
-    │   ├── loader.py           # Tournament state loading & resumability checks
+    │   ├── loader.py           # Game-result loading & resumability checks
     │   ├── resume.py           # TournamentResumer with locking & archival
     │   └── types.py            # TournamentConfig, GameResult, TournamentResult
     ├── types.py
-    ├── utils.py
     └── player/
         ├── base_player.py
         ├── random_player.py
@@ -122,12 +123,8 @@ src/
             ├── connector.py       # LiteLLM wrapper for testing isolation
             ├── player.py          # Orchestrates prompting, voting, retries
             ├── types.py           # Vote/decision artifact dataclasses
-            ├── prompting/
-            │   ├── handlers.py    # Move parsing and templating
-            │   └── session.py     # Prompt generation & retry context
-            └── decision/
-                ├── retry.py       # Retry budgeting & resignation helpers
-                └── voting.py      # Majority voting with tie-breaking
+            ├── prompting.py       # Prompt building, response parsing, retry context
+            └── decision.py        # Majority voting & retry budgeting
 
 configs/
 ├── config.yaml               # Hydra composition root
@@ -185,17 +182,17 @@ tests/
 
 5. **Componentized LLM Player Architecture**:
    - LLM player logic decomposed into dedicated collaborators (`PromptSession`, `VoteAggregator`, `RetryController`).
-   - Prompting utilities live under `player.llm.prompting`, while decision-making utilities reside in `player.llm.decision` for clearer navigation.
+   - Prompt construction/parsing lives in `player/llm/prompting.py`; voting and retry budgeting in `player/llm/decision.py` — flat modules, no subpackages.
    - Each component has focused responsibilities and targeted unit tests.
    - Public API of `LLMPlayer` remains unchanged for backwards compatibility.
 
 6. **Standardized Error Handling Policies**:
-   - Decorator-based policies (`move_validation`, `network_operation`, `config_operation`, `metrics_operation`) capture consistent behavior.
+   - Decorator-based policies (`move_validation`, `config_operation`, `metrics_operation`) in `policies.py` capture consistent behavior.
    - Move parsing always raises typed `MoveError` subclasses, network errors bubble to experiment orchestration, metrics degrade gracefully.
 
 7. **Factory-Based Configuration Assembly**:
-   - Player, metrics, and game instantiation moved to `llm_chess_arena.factory` package.
-   - `config.py` now focuses on schema composition and Hydra wiring, improving readability and testability.
+   - Player and metrics instantiation, plus game resumption from records, live in the `factory.py` module.
+   - The `config/` package focuses on schema composition (`schema.py`), model capability tables (`model_registry.py`), and Hydra wiring (`loader.py`).
 
 8. **Separation of Concerns**:
    - Core chess logic remains independent of player implementations.
@@ -216,10 +213,15 @@ tests/
    - **Future extensibility**: Designed for additional LLM-specific metrics (legal move rate, retry count, prompt efficiency)
 
 11. **Hydra Configuration System**:
-    - **Structured schema**: Dataclass-backed config parsing in `config.py` with runtime helpers colocated in `config.py` to instantiate players and metrics safely.
+    - **Structured schema**: Dataclass-backed config parsing in `config/schema.py`, with player/metrics instantiation in `factory.py` and Hydra composition in `config/loader.py`.
     - **Composable YAML groups**: Presets in `configs/` for game modes, players (including LLM connectors and Stockfish ELO tiers (1320/1400/1600/2000/2400/2800)), metrics defaults (with configurable thresholds), and Hydra runtime settings.
     - **Unified execution**: Hydra CLI runner (`python -m llm_chess_arena.cli.main`) and demo wrappers share the same configuration pipeline with override support.
     - **Sweep readiness**: Supports Hydra multirun parameter sweeps and reproducible output directories.
+
+12. **Single-Owner Record Schema & Flat Module Layout** (2026-08 structure cleanup):
+    - `record.py` is the sole owner of the game.json format: it writes records and provides the read/validate/replay helpers used by game resumption (`factory.resume_game_from_file`) and tournament aggregation (`tournament/loader.py`). No other module hard-codes record field paths.
+    - Single-module packages were flattened (`core/`, `factory/`, `player/llm/prompting/`, `player/llm/decision/`) and the `utils.py` grab-bag was split into `moves.py`, `engine.py`, `summary.py`, and `rate_limiter.py` — one concern per module, no compatibility shims.
+    - `renderer.py` is display-only leaf code and deliberately frozen; future visualization work should be offline analysis over records, not more terminal UI.
 
 ---
 
@@ -302,10 +304,15 @@ tests/
   - How: Per-game counters for illegal/parsing errors, emit summary at game_end
   - Scope: Updates to game.py and metrics.py
 
-- [ ] **Batch experiment runner**
+- [x] **Batch experiment runner**
   - Why: Execute hundreds of games with different configurations automatically
-  - How: CLI interface with Hydra configs, parallel execution, results aggregation
-  - Scope: New cli/experiment.py with statistical analysis output
+  - How: TournamentRunner (sequential/parallel with rate limiting) + Hydra CLI/multirun, results aggregation and JSON/CSV export, resumable after network failures
+  - Scope: Implemented via `tournament/` + `cli.main`; statistical analysis beyond W/D/L and move-quality aggregates belongs to the records-analysis layer below
+
+- [ ] **Records-analysis layer**
+  - Why: The research experiments above are answered by statistics over saved game records (opening entropy, move distributions, learning curves), which no current module computes
+  - How: Offline records-in → stats-out module(s) following the pure-aggregator pattern; reads game.json via the record helpers, no coupling to the game loop
+  - Scope: New analysis package/scripts consuming saved game records
 
 - [x] **Configurable PGN history export**
   - Why: Persist completed games for downstream analysis and replay
@@ -340,7 +347,8 @@ tests/
 <summary>Advanced Features</summary>
 
 #### Tournament System
-- Round-robin and Swiss tournaments
+- (A pairwise batch runner with color alternation, parallel execution, and resume already exists in `tournament/`; the items below are what remains)
+- Round-robin and Swiss tournaments across more than two players
 - ELO rating persistence
 - Match scheduling and results database
 

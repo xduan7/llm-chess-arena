@@ -1,9 +1,9 @@
-"""Unit tests for chess utility helper functions."""
+"""Unit tests for chess move parsing helpers."""
 
 import chess
 import pytest
 
-from llm_chess_arena.utils import (
+from llm_chess_arena.moves import (
     get_legal_moves_in_uci,
     get_move_history_in_uci,
     parse_attempted_move_to_uci,

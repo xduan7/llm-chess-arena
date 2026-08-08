@@ -17,9 +17,8 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from llm_chess_arena.exceptions import InvalidGameRecordError
-from llm_chess_arena.tournament.loader import TournamentLoader
+from llm_chess_arena.tournament.loader import TournamentLoader, load_game_result
 from llm_chess_arena.tournament.resume import LockInfo, TournamentResumer
-from llm_chess_arena.tournament.types import GameResult
 
 STARTING_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
 
@@ -91,7 +90,7 @@ def _completed_game_json(result: str = "1-0") -> dict:
 
 
 class TestGameResultDeserializer:
-    """Test suite for GameResult.load_from_game_json()."""
+    """Test suite for load_game_result()."""
 
     @pytest.fixture
     def valid_game_json(self, tmp_path: Path) -> Path:
@@ -155,7 +154,7 @@ class TestGameResultDeserializer:
         self, valid_game_json: Path
     ) -> None:
         """Load a complete game.json successfully."""
-        result = GameResult.load_from_game_json(valid_game_json, game_id=1)
+        result = load_game_result(valid_game_json, game_id=1)
 
         assert result.game_id == 1
         assert result.white_player_name == "Player1"
@@ -199,7 +198,7 @@ class TestGameResultDeserializer:
         json_path = tmp_path / "game.json"
         json_path.write_text(json.dumps(game_data))
 
-        result = GameResult.load_from_game_json(json_path, game_id=3)
+        result = load_game_result(json_path, game_id=3)
 
         assert result.white_thinking_time_in_sec == 1.5
         assert result.black_thinking_time_in_sec == 2.5
@@ -218,7 +217,7 @@ class TestGameResultDeserializer:
             json.dump(incomplete_data, f)
 
         with pytest.raises(InvalidGameRecordError, match="Missing required field"):
-            GameResult.load_from_game_json(json_path, game_id=1)
+            load_game_result(json_path, game_id=1)
 
     def test_load_from_game_json__resumed_game__sets_was_resumed_flag(
         self, tmp_path: Path
@@ -247,7 +246,7 @@ class TestGameResultDeserializer:
         with json_path.open("w") as f:
             json.dump(resumed_data, f)
 
-        result = GameResult.load_from_game_json(json_path, game_id=1)
+        result = load_game_result(json_path, game_id=1)
 
         assert result.was_resumed is True
         assert result.original_termination_reason == "TimeoutError"
@@ -273,7 +272,7 @@ class TestGameResultDeserializer:
         with json_path.open("w") as f:
             json.dump(minimal_data, f)
 
-        result = GameResult.load_from_game_json(json_path, game_id=2)
+        result = load_game_result(json_path, game_id=2)
 
         assert result.white_centipawn_loss is None
         assert result.black_centipawn_loss is None
@@ -288,7 +287,7 @@ class TestGameResultDeserializer:
         bad_json.write_text("not valid json {")
 
         with pytest.raises(InvalidGameRecordError, match="Invalid JSON"):
-            GameResult.load_from_game_json(bad_json, game_id=1)
+            load_game_result(bad_json, game_id=1)
 
 
 class TestTournamentLoader:
@@ -620,7 +619,7 @@ class TestInterruptedResume:
 
         return tournament
 
-    @patch("llm_chess_arena.tournament.resume.Game.resume_from_file")
+    @patch("llm_chess_arena.tournament.resume.resume_game_from_file")
     def test_resume_interrupted_again__archives_and_raises(
         self, mock_resume: MagicMock, tournament_with_resumable_game: Path
     ) -> None:

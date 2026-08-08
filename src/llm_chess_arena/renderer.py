@@ -13,7 +13,7 @@ from rich.table import Table
 from rich.text import Text
 
 from llm_chess_arena.metrics import MOVE_QUALITY_ORDER, MetricsSummary, MoveQuality
-from llm_chess_arena.utils import GameOutcomeSummary
+from llm_chess_arena.summary import GameOutcomeSummary
 
 console = Console()
 
@@ -775,16 +775,6 @@ def _build_outcome_panel(
         _format_line(summary.outcome_line, style=outcome_style, justify="center")
     )
     content_lines.append(_format_line(summary.termination_line, justify="center"))
-
-    if summary.winner_line:
-        content_lines.append(
-            _format_line(
-                summary.winner_line,
-                style=WIN_TEXT_STYLE,
-                justify="center",
-            )
-        )
-
     content_lines.append(_format_line(summary.total_moves_line, justify="center"))
 
     text_block = Text()

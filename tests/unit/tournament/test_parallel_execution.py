@@ -22,7 +22,7 @@ from llm_chess_arena.config import (
 )
 from llm_chess_arena.tournament.types import TournamentConfig, GameResult
 from llm_chess_arena.tournament.executor import TournamentRunner
-from llm_chess_arena.utils import TokenBucketRateLimiter
+from llm_chess_arena.rate_limiter import TokenBucketRateLimiter
 
 
 class TestParallelExecution:

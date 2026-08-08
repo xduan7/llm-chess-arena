@@ -1,14 +1,15 @@
-"""Utilities for parsing chess moves from language model outputs."""
+"""Prompt construction, response parsing, and retry context for LLM players."""
 
 from __future__ import annotations
 
 import re
 from abc import ABC, abstractmethod
+from dataclasses import dataclass
 from typing import Any
 
 from llm_chess_arena.exceptions import ParseMoveError
-from llm_chess_arena.types import PlayerDecision
-from llm_chess_arena.utils import normalize_castling_notation
+from llm_chess_arena.types import PlayerDecision, PlayerDecisionContext
+from llm_chess_arena.moves import normalize_castling_notation
 
 FINAL_ANSWER_MARKERS: tuple[str, ...] = (
     "Final Answer:",
@@ -362,3 +363,58 @@ def _strip_model_formatting(raw_text: str) -> str:
         cleaned = cleaned.replace(formatting_artifact, "")
     cleaned = cleaned.replace("\n", " ")
     return cleaned
+
+
+@dataclass
+class PromptSession:
+    """Generate initial and retry prompts while preserving context."""
+
+    handler: BaseLLMMoveHandler
+    context: PlayerDecisionContext
+    _current_prompt: str | None = None
+
+    def ensure_initial_prompt(self) -> str:
+        """Generate and return the initial prompt for the session.
+
+        Returns:
+            str: The initial prompt generated from the context, cached for reuse.
+        """
+        if self._current_prompt is None:
+            self._current_prompt = self.handler.get_prompt(**self.context.model_dump())
+        return self._current_prompt
+
+    def build_retry_prompt(
+        self,
+        *,
+        exception_name: str,
+        last_response: str | None,
+        last_attempted_move: str | None,
+    ) -> str:
+        """Generate a retry prompt incorporating failure context.
+
+        Args:
+            exception_name: Name of the exception that triggered the retry.
+            last_response: The previous LLM response that failed to parse.
+            last_attempted_move: The move that was attempted from the response.
+
+        Returns:
+            str: Retry prompt with context about the previous failure.
+        """
+        base_prompt = self._current_prompt or self.ensure_initial_prompt()
+        self._current_prompt = self.handler.get_retry_prompt(
+            exception_name=exception_name,
+            last_prompt=base_prompt,
+            last_response=last_response,
+            last_attempted_move=last_attempted_move,
+            **self.context.model_dump(),
+        )
+        return self._current_prompt
+
+    @property
+    def current_prompt(self) -> str | None:
+        """Get the most recent prompt used for the session.
+
+        Returns:
+            str | None: Current prompt text, or None if no prompt has been generated.
+        """
+        return self._current_prompt

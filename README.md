@@ -90,9 +90,9 @@ python -m llm_chess_arena.cli.main \
 ```
 
 Usable `argo:*` models are validated client-side against
-`ARGO_MODEL_CANONICAL_NAMES` in `src/llm_chess_arena/config/schema.py`; when the
-proxy adds new models, extend that map and the output-token-limit tables next
-to it. If a game is interrupted by the tunnel dropping, it is saved as
+`ARGO_MODEL_CANONICAL_NAMES` in `src/llm_chess_arena/config/model_registry.py`;
+when the proxy adds new models, extend that map and the output-token-limit
+tables next to it. If a game is interrupted by the tunnel dropping, it is saved as
 resumable (see below).
 
 ### Resume Interrupted Games

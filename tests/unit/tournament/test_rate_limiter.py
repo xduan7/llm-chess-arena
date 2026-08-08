@@ -3,7 +3,7 @@
 import time
 
 
-from llm_chess_arena.utils import TokenBucketRateLimiter
+from llm_chess_arena.rate_limiter import TokenBucketRateLimiter
 
 
 class TestTokenBucketRateLimiter:

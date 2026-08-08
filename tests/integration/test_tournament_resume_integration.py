@@ -22,9 +22,8 @@ from llm_chess_arena.player.llm import GameArenaLLMMoveHandler, LLMPlayer
 from llm_chess_arena.player.random_player import RandomPlayer
 from llm_chess_arena.tournament.aggregator import aggregate_tournament_results
 from llm_chess_arena.tournament.export import ResultsExporter
-from llm_chess_arena.tournament.loader import TournamentLoader
+from llm_chess_arena.tournament.loader import TournamentLoader, load_game_result
 from llm_chess_arena.tournament.resume import TournamentResumer
-from llm_chess_arena.tournament.types import GameResult
 from llm_chess_arena.types import PlayerColor, PlayerDecision, PlayerDecisionContext
 from tests.fixtures.mock_llm_connector import MockLLMConnector
 
@@ -124,8 +123,8 @@ def interrupted_tournament(tmp_path: Path) -> Path:
     assert completed_game.finished
 
     game_results = [
-        GameResult.load_from_game_json(tournament / "game_001" / "game.json", 1),
-        GameResult.load_from_game_json(tournament / "game_002" / "game.json", 2),
+        load_game_result(tournament / "game_001" / "game.json", 1),
+        load_game_result(tournament / "game_002" / "game.json", 2),
     ]
     tournament_result = aggregate_tournament_results(
         match_name="match",

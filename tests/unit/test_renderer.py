@@ -5,7 +5,7 @@ from rich.console import Console
 from unittest.mock import patch
 
 from llm_chess_arena.renderer import display_board_with_context, display_game_summary
-from llm_chess_arena.utils import GameOutcomeSummary
+from llm_chess_arena.summary import GameOutcomeSummary
 
 
 class TestRenderer:
@@ -38,12 +38,9 @@ class TestRenderer:
         """Test game summary displays outcome information."""
 
         outcome = GameOutcomeSummary(
-            outcome_line="Outcome: 1-0",
+            outcome_line="Outcome: TestWhite (White) wins",
             termination_line="Termination: checkmate",
             total_moves_line="Total moves: 42",
-            winner_line="Winner: White",
-            winner_name="TestWhite",
-            winner_color=chess.WHITE,
         )
 
         capture_console = Console(record=True, width=80)
@@ -59,12 +56,9 @@ class TestRenderer:
 
             output = capture_console.export_text()
 
-            assert "1-0" in output
+            assert "TestWhite (White) wins" in output
             assert "checkmate" in output
             assert "42" in output
-            assert (
-                "Winner: White" in output
-            )  # Outcome summary shows winner, not player names
             assert result is True  # Function returns success boolean
 
     def test_display_board_with_context__should_highlight_last_move__when_move_provided(

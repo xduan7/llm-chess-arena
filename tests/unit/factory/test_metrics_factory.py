@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from llm_chess_arena.config import MetricsConfig, MoveQualityThresholdsConfig
-from llm_chess_arena.factory.metrics_factory import MetricsFactory
+from llm_chess_arena.factory import MetricsFactory
 from llm_chess_arena.metrics import MetricsTracker
 
 

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from llm_chess_arena.config.model_registry import resolve_model_limit
 from llm_chess_arena.config.schema import (
     AppConfig,
     EnvConfig,
@@ -19,7 +20,6 @@ from llm_chess_arena.config.schema import (
     normalize_llm_player_cfg,
     parse_player_cfg,
     parse_players_cfg,
-    resolve_model_limit,
 )
 from llm_chess_arena.config.loader import (
     app_cfg_from_dictconfig,

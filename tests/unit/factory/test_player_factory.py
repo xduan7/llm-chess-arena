@@ -13,7 +13,7 @@ from llm_chess_arena.config import (
     RandomPlayerConfig,
     StockfishPlayerConfig,
 )
-from llm_chess_arena.factory.player_factory import PlayerFactory
+from llm_chess_arena.factory import PlayerFactory
 from llm_chess_arena.player.llm import LLMPlayer
 from llm_chess_arena.player.random_player import RandomPlayer
 from llm_chess_arena.player.stockfish_player import StockfishPlayer

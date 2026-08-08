@@ -265,7 +265,7 @@ class TestHydraConfig:
             == default_connector_settings.temperature
         )
         # max_num_tokens should be resolved from fractional (0.8) to actual tokens
-        from llm_chess_arena.config.schema import (
+        from llm_chess_arena.config.model_registry import (
             resolve_model_limit as _resolve_model_limit,
         )
 
@@ -438,7 +438,7 @@ class TestArgoTokenLimitPrecedence:
     def test_argo_claude_uses_platform_cap_not_vendor_limit(self) -> None:
         """Argo caps Claude output at 21k (streaming constraint); LiteLLM's
         vendor registry may report far larger limits and must not win."""
-        from llm_chess_arena.config.schema import resolve_model_limit
+        from llm_chess_arena.config.model_registry import resolve_model_limit
 
         recognized, limit = resolve_model_limit("argo:claude-opus-5")
 
@@ -447,7 +447,7 @@ class TestArgoTokenLimitPrecedence:
 
     def test_argo_model_absent_from_tables_falls_through(self) -> None:
         """Unknown argo aliases still fall through to the normal lookup."""
-        from llm_chess_arena.config.schema import resolve_model_limit
+        from llm_chess_arena.config.model_registry import resolve_model_limit
 
         recognized, limit = resolve_model_limit("argo:definitely-not-a-model")
 
