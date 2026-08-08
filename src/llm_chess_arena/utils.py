@@ -8,7 +8,7 @@ import time
 from dataclasses import dataclass
 from pathlib import Path
 from threading import Lock
-from typing import Final, Any, Protocol
+from typing import Final, Any
 
 import chess
 import chess.engine
@@ -283,28 +283,6 @@ class GameSummary:
     termination_label_override: str | None = None
     termination_note: str | None = None
 
-    def to_cli_lines(self) -> list[str]:
-        """Generate CLI display lines."""
-        outcome_summary = build_game_outcome_summary(
-            outcome=self._to_chess_outcome(),
-            white_player_name=self.white_player.name,
-            black_player_name=self.black_player.name,
-            total_moves=self.total_moves,
-            termination_label_override=self.termination_label_override,
-            termination_note=self.termination_note,
-        )
-
-        lines = [
-            outcome_summary.outcome_line,
-            outcome_summary.termination_line,
-            outcome_summary.total_moves_line,
-        ]
-
-        if outcome_summary.winner_line:
-            lines.insert(2, outcome_summary.winner_line)
-
-        return lines
-
     def to_json_dict(self) -> dict[str, Any]:
         """Generate JSON export dictionary."""
         winner_color_string = None
@@ -421,46 +399,6 @@ class GameSummary:
                             player_summary.name,
                             player_summary.average_response_length,
                         )
-
-    def _to_chess_outcome(self) -> chess.Outcome | None:
-        """Convert summary data back to chess.Outcome for compatibility."""
-        if self.result == "1/2-1/2":
-            winner = None
-        elif self.result == "1-0":
-            winner = chess.WHITE
-        elif self.result == "0-1":
-            winner = chess.BLACK
-        else:
-            return None
-
-        termination_map = {
-            "checkmate": chess.Termination.CHECKMATE,
-            "stalemate": chess.Termination.STALEMATE,
-            "insufficient_material": chess.Termination.INSUFFICIENT_MATERIAL,
-            "75_moves": chess.Termination.SEVENTYFIVE_MOVES,
-            "fivefold_repetition": chess.Termination.FIVEFOLD_REPETITION,
-            "50_moves": chess.Termination.FIFTY_MOVES,
-            "threefold_repetition": chess.Termination.THREEFOLD_REPETITION,
-            "variant_win": chess.Termination.VARIANT_WIN,
-            "variant_loss": chess.Termination.VARIANT_LOSS,
-            "max_num_moves": chess.Termination.VARIANT_DRAW,
-        }
-
-        termination = termination_map.get(
-            self.termination, chess.Termination.VARIANT_DRAW
-        )
-        return chess.Outcome(termination=termination, winner=winner)
-
-    def to_game_outcome_summary(self) -> GameOutcomeSummary:
-        """Convert to legacy GameOutcomeSummary format for backward compatibility."""
-        return build_game_outcome_summary(
-            outcome=self._to_chess_outcome(),
-            white_player_name=self.white_player.name,
-            black_player_name=self.black_player.name,
-            total_moves=self.total_moves,
-            termination_label_override=self.termination_label_override,
-            termination_note=self.termination_note,
-        )
 
 
 def _extract_game_outcome_info(
@@ -716,9 +654,6 @@ class GameOutcomeSummary:
     outcome_line: str
     termination_line: str
     total_moves_line: str
-    winner_line: str | None
-    winner_name: str | None
-    winner_color: chess.Color | None
 
 
 def humanize_termination(termination: chess.Termination | None) -> str:
@@ -769,9 +704,6 @@ def build_game_outcome_summary(
             outcome_line="Outcome: Game did not finish",
             termination_line="Termination: Unknown",
             total_moves_line=f"Total moves: {total_moves}",
-            winner_line=None,
-            winner_name=None,
-            winner_color=None,
         )
 
     winner_color = outcome.winner
@@ -782,56 +714,20 @@ def build_game_outcome_summary(
     if termination_note:
         termination_line = f"{termination_line} ({termination_note})"
 
-    is_draw = winner_color is None
-    if is_draw:
+    if winner_color is None:
         outcome_line = "Outcome: Draw"
-        winner_name: str | None = None
-        winner_line = None
     else:
         winner_name = (
             white_player_name if winner_color == chess.WHITE else black_player_name
         )
         color_label = "White" if winner_color == chess.WHITE else "Black"
         outcome_line = f"Outcome: {winner_name} ({color_label}) wins"
-        winner_line = None
-
-    total_moves_line = f"Total moves: {total_moves}"
 
     return GameOutcomeSummary(
         outcome_line=outcome_line,
         termination_line=termination_line,
-        total_moves_line=total_moves_line,
-        winner_line=winner_line,
-        winner_name=winner_name,
-        winner_color=winner_color,
+        total_moves_line=f"Total moves: {total_moves}",
     )
-
-
-class RateLimiter(Protocol):
-    """Protocol for rate limiting implementations."""
-
-    def acquire_permit(self, provider_name: str, timeout_in_sec: float) -> bool:
-        """Try to acquire a permit.
-
-        Args:
-            provider_name: API provider name (ignored in simple implementation).
-            timeout_in_sec: Maximum time to wait for a permit.
-
-        Returns:
-            bool: True if permit acquired, False if timeout.
-        """
-        ...
-
-    def report_rate_limit_error(
-        self, provider_name: str, _retry_after: float | None
-    ) -> None:
-        """Report a rate limit error (ignored in simple implementation).
-
-        Args:
-            provider_name: API provider that returned the rate limit error.
-            _retry_after: Optional retry-after value from API (in seconds).
-        """
-        ...
 
 
 class TokenBucketRateLimiter:

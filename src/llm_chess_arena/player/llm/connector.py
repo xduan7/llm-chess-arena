@@ -13,12 +13,11 @@ from loguru import logger
 import litellm
 from litellm import exceptions as litellm_exceptions
 
-from llm_chess_arena.core.policies import network_operation
 from llm_chess_arena.config.schema import ARGO_MODEL_CANONICAL_NAMES
 from llm_chess_arena.exceptions import LLMPermanentError, LLMEmptyResponseError
 
 if TYPE_CHECKING:
-    from llm_chess_arena.utils import RateLimiter
+    from llm_chess_arena.utils import TokenBucketRateLimiter
 
 litellm.suppress_debug_info = True
 
@@ -50,7 +49,7 @@ class LLMConnector:
         max_api_request_retries: int,
         provider: str | None = None,
         api_base: str | None = None,
-        rate_limiter: RateLimiter | None = None,
+        rate_limiter: TokenBucketRateLimiter | None = None,
     ) -> None:
         """Configure a LiteLLM-backed connector for querying language models.
 
@@ -63,7 +62,7 @@ class LLMConnector:
             provider: Optional LiteLLM provider override (e.g., "anthropic").
             api_base: Optional custom API base URL for self-hosted endpoints.
             rate_limiter: Optional shared rate limiter (typically tournament-level) for
-                coordinated throttling across multiple players/games. See RateLimiter protocol.
+                coordinated throttling across multiple players/games.
         """
         self.model = model
         self.temperature = temperature
@@ -179,7 +178,6 @@ class LLMConnector:
         self._default_request_parameters.setdefault("custom_llm_provider", "openai")
         logger.debug("Configured Argo model {} via {}", alias, self.api_base)
 
-    @network_operation
     def query(
         self,
         prompt: str,

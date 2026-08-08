@@ -34,18 +34,6 @@ def test_move_validation_policy_converts_unexpected_errors() -> None:
         validator()
 
 
-def test_network_policy_bubbles_errors() -> None:
-    """Network policy must allow errors to bubble up."""
-
-    @ErrorPolicy.handle_network_error
-    def flaky() -> None:
-        """Simulate a network failure that should bubble up unchanged."""
-        raise ConnectionError("no network")
-
-    with pytest.raises(ConnectionError, match="no network"):
-        flaky()
-
-
 def test_config_policy_wraps_errors() -> None:
     """Configuration policy should wrap errors as ValueError."""
 

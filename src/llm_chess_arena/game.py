@@ -37,6 +37,7 @@ from llm_chess_arena.types import PlayerDecision
 from llm_chess_arena.metrics import MOVE_QUALITY_ORDER, MetricsTracker, MoveQuality
 from llm_chess_arena.utils import (
     GameSummary,
+    build_game_outcome_summary,
     build_game_summary,
     parse_attempted_move_to_uci,
 )
@@ -756,7 +757,7 @@ class Game:
             self._log_llm_usage_summary(game_summary)
             self._save_history_if_configured(game_summary)
             if self.metrics_tracker is not None:
-                self._log_metrics_summary(game_summary)
+                self._log_metrics_summary()
             self._cleanup_players()
 
     def _record_move_if_configured(
@@ -864,7 +865,7 @@ class Game:
             except Exception as close_error:  # pragma: no cover
                 logger.warning("Error closing metrics tracker: {}", close_error)
 
-    def _log_metrics_summary(self, game_summary: GameSummary | None = None) -> None:
+    def _log_metrics_summary(self) -> None:
         """Display aggregated metrics for each player after the game."""
         if self.metrics_tracker is None:
             return
@@ -873,10 +874,14 @@ class Game:
         white_summary = summary_by_player_color.get("white")
         black_summary = summary_by_player_color.get("black")
 
-        resolved_game_summary = (
-            game_summary if game_summary is not None else build_game_summary(self)
+        outcome_summary = build_game_outcome_summary(
+            outcome=self.outcome,
+            white_player_name=self.white_player.name,
+            black_player_name=self.black_player.name,
+            total_moves=len(self.board.move_stack),
+            termination_label_override=self._termination_label_override,
+            termination_note=self._termination_note,
         )
-        outcome_summary = resolved_game_summary.to_game_outcome_summary()
 
         if self.display_summary:
             rendered = display_game_summary(

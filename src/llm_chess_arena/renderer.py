@@ -775,16 +775,6 @@ def _build_outcome_panel(
         _format_line(summary.outcome_line, style=outcome_style, justify="center")
     )
     content_lines.append(_format_line(summary.termination_line, justify="center"))
-
-    if summary.winner_line:
-        content_lines.append(
-            _format_line(
-                summary.winner_line,
-                style=WIN_TEXT_STYLE,
-                justify="center",
-            )
-        )
-
     content_lines.append(_format_line(summary.total_moves_line, justify="center"))
 
     text_block = Text()

@@ -9,7 +9,7 @@ from llm_chess_arena.exceptions import IllegalMoveError
 from llm_chess_arena.metrics import MetricsTracker, MoveMetrics, MoveQuality
 from llm_chess_arena.player.base_player import BasePlayer
 from llm_chess_arena.types import PlayerDecision, PlayerDecisionContext
-from llm_chess_arena.utils import build_game_summary
+from llm_chess_arena.utils import build_game_outcome_summary, build_game_summary
 from tests.conftest import (
     FailingPlayer,
     IllegalMovePlayer,
@@ -246,13 +246,17 @@ class TestGameResignation:
         game.play(max_num_moves=1)
 
         game_summary = build_game_summary(game)
-        summary_lines = game_summary.to_cli_lines()
-        termination_lines = [
-            line for line in summary_lines if line.startswith("Termination:")
-        ]
+        assert game_summary.termination_label_override == "Resignation"
 
-        assert termination_lines, "Expected a termination line in the summary"
-        assert "Resignation" in termination_lines[0]
+        outcome_summary = build_game_outcome_summary(
+            outcome=game.outcome,
+            white_player_name=white_player.name,
+            black_player_name=black_player.name,
+            total_moves=len(game.board.move_stack),
+            termination_label_override=game_summary.termination_label_override,
+            termination_note=game_summary.termination_note,
+        )
+        assert "Resignation" in outcome_summary.termination_line
 
 
 class RecordingEvaluator:

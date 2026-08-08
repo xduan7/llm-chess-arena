@@ -5,7 +5,6 @@ from .policies import (
     config_operation,
     metrics_operation,
     move_validation,
-    network_operation,
 )
 
 __all__ = [
@@ -13,5 +12,4 @@ __all__ = [
     "config_operation",
     "metrics_operation",
     "move_validation",
-    "network_operation",
 ]

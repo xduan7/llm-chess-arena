@@ -23,7 +23,7 @@ if TYPE_CHECKING:  # pragma: no cover
         RandomPlayerConfig,
         StockfishPlayerConfig,
     )
-    from llm_chess_arena.utils import RateLimiter
+    from llm_chess_arena.utils import TokenBucketRateLimiter
 
 
 class PlayerFactory:
@@ -32,7 +32,7 @@ class PlayerFactory:
     @staticmethod
     @config_operation
     def create_player(
-        player_cfg: "PlayerConfig", rate_limiter: "RateLimiter | None" = None
+        player_cfg: "PlayerConfig", rate_limiter: "TokenBucketRateLimiter | None" = None
     ) -> BasePlayer:
         """Create a player implementation from its configuration dataclass.
 
@@ -107,7 +107,8 @@ class PlayerFactory:
 
     @staticmethod
     def _create_llm_player(
-        llm_player_cfg: "LLMPlayerConfig", rate_limiter: "RateLimiter | None" = None
+        llm_player_cfg: "LLMPlayerConfig",
+        rate_limiter: "TokenBucketRateLimiter | None" = None,
     ) -> LLMPlayer:
         """Create LLM player from configuration.
 
@@ -146,7 +147,7 @@ class PlayerFactory:
     @staticmethod
     def _create_llm_connector(
         connector_cfg: "LLMConnectorConfig",
-        rate_limiter: "RateLimiter | None" = None,
+        rate_limiter: "TokenBucketRateLimiter | None" = None,
     ) -> LLMConnector:
         """Create LLM connector from configuration.
 

@@ -54,25 +54,6 @@ class ErrorPolicy:
         return wrapped_function
 
     @staticmethod
-    def handle_network_error(
-        target_callable: Callable[..., ReturnType],
-    ) -> Callable[..., ReturnType]:
-        """Allow network-layer errors to propagate without alteration.
-
-        Args:
-            target_callable: Callable performing a network operation.
-
-        Returns:
-            Wrapped function that executes the target callable unchanged.
-        """
-
-        @functools.wraps(target_callable)
-        def wrapped_function(*args: Any, **kwargs: Any) -> ReturnType:
-            return target_callable(*args, **kwargs)
-
-        return wrapped_function
-
-    @staticmethod
     def handle_config_error(
         target_callable: Callable[..., ReturnType],
     ) -> Callable[..., ReturnType]:
@@ -136,6 +117,5 @@ class ErrorPolicy:
 
 
 move_validation = ErrorPolicy.handle_move_validation_error
-network_operation = ErrorPolicy.handle_network_error
 config_operation = ErrorPolicy.handle_config_error
 metrics_operation = ErrorPolicy.handle_metrics_error
