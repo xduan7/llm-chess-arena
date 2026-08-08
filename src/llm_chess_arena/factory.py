@@ -2,11 +2,26 @@
 
 from __future__ import annotations
 
+from datetime import UTC, datetime
+from pathlib import Path
 from typing import TYPE_CHECKING, Any, Mapping, cast
 
+from loguru import logger
+
+from llm_chess_arena.config.schema import normalize_llm_player_cfg, parse_player_cfg
+from llm_chess_arena.exceptions import (
+    GameNotResumableError,
+    InvalidGameRecordError,
+)
+from llm_chess_arena.game import Game
 from llm_chess_arena.policies import config_operation
 from llm_chess_arena.metrics import MetricsTracker, MoveQualityThresholds
 from llm_chess_arena.player.base_player import BasePlayer
+from llm_chess_arena.record import (
+    get_record_moves_and_fen,
+    load_game_record,
+    replay_board_from_record,
+)
 from llm_chess_arena.player.random_player import RandomPlayer
 from llm_chess_arena.player.stockfish_player import StockfishPlayer
 from llm_chess_arena.player.llm import (
@@ -232,3 +247,145 @@ class MetricsFactory:
             thresholds=thresholds,
             max_centipawn_loss=metrics_cfg.max_centipawn_loss_per_move,
         )
+
+
+def resume_game_from_file(
+    record_path: str | Path,
+    white_player: BasePlayer | None = None,
+    black_player: BasePlayer | None = None,
+    display_board: bool = True,
+    display_summary: bool = True,
+    enable_metrics: bool = False,
+    metrics_tracker: MetricsTracker | None = None,
+    record_dir: str | Path | None = None,
+    record_name: str | None = None,
+) -> Game:
+    """Rebuild a Game from a saved record file so it can continue playing.
+
+    Args:
+        record_path: Path to the JSON record file to resume from.
+        white_player: Optional white player instance. If None, recreated from
+            the record's hydra_config.players section.
+        black_player: Optional black player instance. If None, recreated from
+            the record's hydra_config.players section.
+        display_board: Whether to display the board after each move.
+        display_summary: Whether to display game summary at end.
+        enable_metrics: Whether to compute move quality metrics.
+        metrics_tracker: Optional preconfigured metrics tracker.
+        record_dir: Optional directory for saving the resumed game. If None,
+            uses the same directory as record_path.
+        record_name: Optional custom name for the resumed game record. If
+            None, generates one from the original name and a timestamp.
+
+    Returns:
+        Game: Resumed game instance ready to continue playing.
+
+    Raises:
+        FileNotFoundError: If the record file doesn't exist.
+        InvalidGameRecordError: If the record file is malformed or missing required fields.
+        GameNotResumableError: If the game is not marked as resumable or is already finished.
+        ValueError: If players are not provided and cannot be recreated from config.
+    """
+    record_path = Path(record_path).expanduser()
+
+    logger.info("Loading game record from {}", record_path)
+    record_data = load_game_record(record_path)
+
+    # Validate resumability
+    termination_metadata = record_data.get("termination_metadata")
+    if termination_metadata is None:
+        raise InvalidGameRecordError("Game record missing termination_metadata field")
+
+    if not termination_metadata.get("resumable", False):
+        raise GameNotResumableError(
+            f"Game is not marked as resumable (resumable={termination_metadata.get('resumable')})"
+        )
+
+    game_outcome = record_data.get("game_outcome", {}).get("result")
+    if game_outcome is not None and game_outcome != "Unfinished":
+        raise GameNotResumableError(
+            f"Game is already finished with result: {game_outcome}"
+        )
+
+    moves, initial_fen = get_record_moves_and_fen(record_data)
+
+    # Handle player creation/validation
+    if white_player is None or black_player is None:
+        hydra_cfg = record_data.get("hydra_config") or {}
+        players_cfg_dict = hydra_cfg.get("players") or {}
+        if not players_cfg_dict:
+            raise ValueError(
+                "Players must be provided when resuming games whose record "
+                "lacks a hydra_config.players section"
+            )
+
+        logger.info("Recreating players from saved configuration")
+        try:
+            if white_player is None:
+                white_cfg_dict = players_cfg_dict.get("white")
+                if white_cfg_dict is None:
+                    raise InvalidGameRecordError(
+                        "Missing players.white in hydra_config"
+                    )
+                white_cfg = normalize_llm_player_cfg(
+                    parse_player_cfg(white_cfg_dict, "white"), "white"
+                )
+                white_player = PlayerFactory.create_player(white_cfg)
+
+            if black_player is None:
+                black_cfg_dict = players_cfg_dict.get("black")
+                if black_cfg_dict is None:
+                    raise InvalidGameRecordError(
+                        "Missing players.black in hydra_config"
+                    )
+                black_cfg = normalize_llm_player_cfg(
+                    parse_player_cfg(black_cfg_dict, "black"), "black"
+                )
+                black_player = PlayerFactory.create_player(black_cfg)
+
+        except Exception as e:
+            raise InvalidGameRecordError(
+                f"Failed to recreate players from config: {e}"
+            ) from e
+
+    logger.info(
+        "Resuming game: {} (White) vs {} (Black) from move {}",
+        white_player.name,
+        black_player.name,
+        termination_metadata.get("fullmove_number", "unknown"),
+    )
+
+    board = replay_board_from_record(initial_fen, moves)
+    logger.info("Restored board position after {} moves", len(board.move_stack))
+
+    if record_dir is None:
+        record_dir = record_path.parent
+
+    # Generate resume-specific record name
+    if record_name is None:
+        timestamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
+        record_name = f"{record_path.stem}-resumed-{timestamp}"
+
+    game = Game(
+        white_player=white_player,
+        black_player=black_player,
+        display_board=display_board,
+        display_summary=display_summary,
+        enable_metrics=enable_metrics,
+        metrics_tracker=metrics_tracker,
+        record_dir=record_dir,
+        record_name=record_name,
+        hydra_cfg=record_data.get("hydra_config", {}),
+    )
+
+    game._restore_resumed_state(
+        board=board,
+        initial_fen=initial_fen,
+        moves=moves,
+        start_timestamp=record_data.get("environment", {}).get("timestamp_start"),
+        resumed_from=record_path,
+        original_termination_metadata=termination_metadata,
+    )
+
+    logger.info("Game successfully loaded and ready to resume")
+    return game

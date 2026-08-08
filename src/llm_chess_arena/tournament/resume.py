@@ -16,11 +16,11 @@ from typing import Any
 from loguru import logger
 
 from llm_chess_arena.exceptions import InvalidGameRecordError
-from llm_chess_arena.game import Game
+from llm_chess_arena.factory import resume_game_from_file
 from llm_chess_arena.metrics import MetricsTracker, MoveQualityThresholds
 from llm_chess_arena.tournament.aggregator import aggregate_tournament_results
 from llm_chess_arena.tournament.export import ResultsExporter
-from llm_chess_arena.tournament.loader import TournamentLoader
+from llm_chess_arena.tournament.loader import TournamentLoader, load_game_result
 from llm_chess_arena.tournament.types import GameResult, TournamentResult
 
 # Cross-host locks cannot be PID-checked, so they only expire on age. Chess
@@ -368,7 +368,7 @@ class TournamentResumer:
         # Step 3: Resume and play. record_dir/record_name target game.json
         # itself, so Game auto-saves the updated record on completion AND on a
         # repeat interruption (keeping it resumable with the new moves).
-        resumed_game = Game.resume_from_file(
+        resumed_game = resume_game_from_file(
             record_path=game_json_path,
             white_player=None,  # Recreated from hydra_config.players
             black_player=None,  # Recreated from hydra_config.players
@@ -393,7 +393,7 @@ class TournamentResumer:
         logger.info(f"Game {game_id} resumed and completed")
 
         # Step 4: Load the new game result from the rewritten record
-        return GameResult.load_from_game_json(game_json_path, game_id)
+        return load_game_result(game_json_path, game_id)
 
     @staticmethod
     def _build_metrics_tracker(hydra_config: dict[str, Any]) -> MetricsTracker | None:
@@ -470,7 +470,7 @@ class TournamentResumer:
             game_id = int(match.group(1))
 
             try:
-                games.append(GameResult.load_from_game_json(game_json, game_id))
+                games.append(load_game_result(game_json, game_id))
             except InvalidGameRecordError as e:
                 logger.warning(f"Failed to load game {game_id}: {e}")
                 continue

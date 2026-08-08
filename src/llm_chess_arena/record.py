@@ -1,4 +1,9 @@
-"""Game record collection and JSON serialization for research analysis."""
+"""Game record reading, collection, and JSON serialization.
+
+This module owns the game.json record format: RecordWriter produces it and
+the read helpers below are the single place that encodes its field layout
+for resuming games and aggregating tournament results.
+"""
 
 from __future__ import annotations
 
@@ -7,12 +12,13 @@ import platform
 import sys
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any
+from typing import Any, Mapping
 
 import chess
 from loguru import logger
 
 from llm_chess_arena.engine import is_stockfish_available
+from llm_chess_arena.exceptions import InvalidGameRecordError
 from llm_chess_arena.summary import GameSummary, build_game_summary_from_data
 
 
@@ -340,3 +346,134 @@ class RecordWriter:
             logger.warning(
                 "Failed to save game record to {}: {}", output_path, file_write_error
             )
+
+
+def load_game_record(record_path: Path) -> dict[str, Any]:
+    """Load a game.json record from disk.
+
+    Args:
+        record_path: Path to the game record JSON file.
+
+    Returns:
+        dict[str, Any]: Parsed record data.
+
+    Raises:
+        FileNotFoundError: If the record file doesn't exist.
+        InvalidGameRecordError: If the file contains malformed JSON.
+    """
+    if not record_path.exists():
+        raise FileNotFoundError(f"Game record not found at: {record_path}")
+
+    try:
+        with record_path.open("r", encoding="utf-8") as f:
+            record: dict[str, Any] = json.load(f)
+            return record
+    except json.JSONDecodeError as e:
+        raise InvalidGameRecordError(f"Invalid JSON in game record: {e}") from e
+
+
+def get_record_moves_and_fen(
+    record: Mapping[str, Any],
+) -> tuple[list[dict[str, Any]], str]:
+    """Extract the move list and initial FEN from a game record.
+
+    Args:
+        record: Parsed game record data.
+
+    Returns:
+        Tuple of (move dictionaries, initial FEN string).
+
+    Raises:
+        InvalidGameRecordError: If either field is missing.
+    """
+    try:
+        initial_fen: str = record["game_setup"]["initial_fen"]
+        moves: list[dict[str, Any]] = record["moves"]
+    except KeyError as e:
+        raise InvalidGameRecordError(f"Game record missing required field: {e}") from e
+    return moves, initial_fen
+
+
+def replay_board_from_record(
+    initial_fen: str, moves: list[dict[str, Any]]
+) -> chess.Board:
+    """Rebuild the board position by replaying a record's move entries.
+
+    Args:
+        initial_fen: FEN of the position the game started from.
+        moves: Move dictionaries from the game record.
+
+    Returns:
+        chess.Board: Board with all recorded moves applied.
+
+    Raises:
+        InvalidGameRecordError: If any recorded move is invalid or illegal,
+            which indicates a corrupted record.
+    """
+    board = chess.Board(initial_fen)
+    for move_index, move_record in enumerate(moves):
+        final_decision = move_record.get("final_decision", {})
+        if final_decision.get("action") != "move":
+            continue
+        move_uci = final_decision.get("attempted_move_in_uci")
+        if not move_uci:
+            continue
+        try:
+            move = chess.Move.from_uci(move_uci)
+            # Verify move is legal before applying to prevent board state corruption
+            if move not in board.legal_moves:
+                raise InvalidGameRecordError(
+                    f"Cannot resume game: illegal move '{move_uci}' at index {move_index} "
+                    f"in move history. Record may be corrupted."
+                )
+            board.push(move)
+        except (ValueError, chess.IllegalMoveError) as e:
+            raise InvalidGameRecordError(
+                f"Cannot resume game: invalid move '{move_uci}' at index {move_index} "
+                f"in move history. Record may be corrupted. Error: {e}"
+            ) from e
+    return board
+
+
+def validate_record_resumable(record: Mapping[str, Any]) -> tuple[bool, str]:
+    """Check whether a loaded record can be resumed with recreated players.
+
+    Requirements: termination_metadata marked resumable, game_outcome.result
+    still "Unfinished" (a game that was resumed and interrupted again stays
+    resumable; a completed one does not), and hydra_config.players.white/black
+    present for player recreation.
+
+    Args:
+        record: Parsed game record data.
+
+    Returns:
+        Tuple of (can_resume: bool, reason_if_not: str).
+        If can_resume is True, reason will be empty string.
+    """
+    if "termination_metadata" not in record:
+        return False, "missing termination_metadata"
+
+    term_meta = record["termination_metadata"]
+    if not isinstance(term_meta, dict):
+        return False, "termination_metadata is not a dictionary"
+
+    if not term_meta.get("resumable", False):
+        error_type = term_meta.get("error_type", "unknown")
+        return False, f"not marked as resumable (error: {error_type})"
+
+    result = record.get("game_outcome", {}).get("result")
+    if result != "Unfinished":
+        return False, f"already finished (result: {result})"
+
+    hydra_config = record.get("hydra_config")
+    if not isinstance(hydra_config, dict):
+        return False, "missing hydra_config (cannot recreate players)"
+
+    players_cfg = hydra_config.get("players")
+    if not isinstance(players_cfg, dict):
+        return False, "hydra_config missing players section"
+
+    if "white" not in players_cfg or "black" not in players_cfg:
+        return False, "hydra_config.players missing white/black configurations"
+
+    return True, ""

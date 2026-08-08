@@ -12,7 +12,6 @@ Module Organization:
 
 from __future__ import annotations
 
-import json
 import re
 from datetime import UTC, datetime
 from pathlib import Path
@@ -25,9 +24,7 @@ from loguru import logger
 
 from llm_chess_arena.exceptions import (
     AmbiguousMoveError,
-    GameNotResumableError,
     IllegalMoveError,
-    InvalidGameRecordError,
     InvalidMoveError,
     LLMPermanentError,
 )
@@ -132,193 +129,38 @@ class Game:
         self._resumed_from: Path | None = None
         self._original_termination_metadata: dict[str, Any] | None = None
 
-    @staticmethod
-    def resume_from_file(
-        record_path: str | Path,
-        white_player: BasePlayer | None = None,
-        black_player: BasePlayer | None = None,
-        display_board: bool = True,
-        display_summary: bool = True,
-        enable_metrics: bool = False,
-        metrics_tracker: MetricsTracker | None = None,
-        record_dir: str | Path | None = None,
-        record_name: str | None = None,
-    ) -> Game:
-        """Resume a game from a saved record file.
+    def _restore_resumed_state(
+        self,
+        *,
+        board: chess.Board,
+        initial_fen: str,
+        moves: list[dict[str, Any]],
+        start_timestamp: str | None,
+        resumed_from: Path,
+        original_termination_metadata: dict[str, Any] | None,
+    ) -> None:
+        """Install replayed state when resuming from a saved record.
+
+        Called by ``factory.resume_game_from_file`` after constructing the
+        Game; keeps all mutation of game internals inside the class.
 
         Args:
-            record_path: Path to the JSON record file to resume from.
-            white_player: Optional white player instance. If None and hydra_config is present,
-                attempts to recreate from config. If None and no config, raises error.
-            black_player: Optional black player instance. If None and hydra_config is present,
-                attempts to recreate from config. If None and no config, raises error.
-            display_board: Whether to display the board after each move.
-            display_summary: Whether to display game summary at end.
-            enable_metrics: Whether to compute move quality metrics.
-            metrics_tracker: Optional preconfigured metrics tracker.
-            record_dir: Optional directory for saving the resumed game. If None, uses same dir as record_path.
-            record_name: Optional custom name for resumed game record. If None, generates one.
-
-        Returns:
-            Game: Resumed game instance ready to continue playing.
-
-        Raises:
-            FileNotFoundError: If the record file doesn't exist.
-            InvalidGameRecordError: If the record file is malformed or missing required fields.
-            GameNotResumableError: If the game is not marked as resumable or is already finished.
-            ValueError: If players are not provided and cannot be recreated from config.
+            board: Board with the recorded moves already applied.
+            initial_fen: FEN the original game started from.
+            moves: Move dictionaries from the saved record.
+            start_timestamp: Original start timestamp to preserve, if any.
+            resumed_from: Path of the record this game was resumed from.
+            original_termination_metadata: Termination metadata of the
+                interrupted run, kept for resumption bookkeeping.
         """
-        record_path = Path(record_path).expanduser()
-        if not record_path.exists():
-            raise FileNotFoundError(f"Game record not found at: {record_path}")
+        self.board = board
+        self._initial_fen = initial_fen
 
-        logger.info("Loading game record from {}", record_path)
-
-        try:
-            with record_path.open("r", encoding="utf-8") as f:
-                record_data = json.load(f)
-        except json.JSONDecodeError as e:
-            raise InvalidGameRecordError(f"Invalid JSON in game record: {e}") from e
-
-        # Validate resumability
-        termination_metadata = record_data.get("termination_metadata")
-        if termination_metadata is None:
-            raise InvalidGameRecordError(
-                "Game record missing termination_metadata field"
-            )
-
-        if not termination_metadata.get("resumable", False):
-            raise GameNotResumableError(
-                f"Game is not marked as resumable (resumable={termination_metadata.get('resumable')})"
-            )
-
-        game_outcome = record_data.get("game_outcome", {}).get("result")
-        if game_outcome is not None and game_outcome != "Unfinished":
-            raise GameNotResumableError(
-                f"Game is already finished with result: {game_outcome}"
-            )
-
-        # Extract required fields
-        try:
-            initial_fen = record_data["game_setup"]["initial_fen"]
-            moves = record_data["moves"]
-        except KeyError as e:
-            raise InvalidGameRecordError(
-                f"Game record missing required field: {e}"
-            ) from e
-
-        # Handle player creation/validation
-        if white_player is None or black_player is None:
-            hydra_cfg = record_data.get("hydra_config") or {}
-            players_cfg_dict = hydra_cfg.get("players") or {}
-            if not players_cfg_dict:
-                raise ValueError(
-                    "Players must be provided when resuming games whose record "
-                    "lacks a hydra_config.players section"
-                )
-
-            logger.info("Recreating players from saved configuration")
-            try:
-                # Import at runtime to avoid circular dependency
-                from llm_chess_arena.factory import PlayerFactory
-                from llm_chess_arena.config.schema import (
-                    normalize_llm_player_cfg,
-                    parse_player_cfg,
-                )
-
-                if white_player is None:
-                    white_cfg_dict = players_cfg_dict.get("white")
-                    if white_cfg_dict is None:
-                        raise InvalidGameRecordError(
-                            "Missing players.white in hydra_config"
-                        )
-                    white_cfg = normalize_llm_player_cfg(
-                        parse_player_cfg(white_cfg_dict, "white"), "white"
-                    )
-                    white_player = PlayerFactory.create_player(white_cfg)
-
-                if black_player is None:
-                    black_cfg_dict = players_cfg_dict.get("black")
-                    if black_cfg_dict is None:
-                        raise InvalidGameRecordError(
-                            "Missing players.black in hydra_config"
-                        )
-                    black_cfg = normalize_llm_player_cfg(
-                        parse_player_cfg(black_cfg_dict, "black"), "black"
-                    )
-                    black_player = PlayerFactory.create_player(black_cfg)
-
-            except Exception as e:
-                raise InvalidGameRecordError(
-                    f"Failed to recreate players from config: {e}"
-                ) from e
-
-        logger.info(
-            "Resuming game: {} (White) vs {} (Black) from move {}",
-            white_player.name,
-            black_player.name,
-            termination_metadata.get("fullmove_number", "unknown"),
-        )
-
-        # Restore board state by replaying moves
-        board = chess.Board(initial_fen)
-        for move_index, move_record in enumerate(moves):
-            final_decision = move_record.get("final_decision", {})
-            if final_decision.get("action") == "move":
-                move_uci = final_decision.get("attempted_move_in_uci")
-                if move_uci:
-                    try:
-                        move = chess.Move.from_uci(move_uci)
-                        # Verify move is legal before applying to prevent board state corruption
-                        if move not in board.legal_moves:
-                            raise InvalidGameRecordError(
-                                f"Cannot resume game: illegal move '{move_uci}' at index {move_index} "
-                                f"in move history. Record may be corrupted."
-                            )
-                        board.push(move)
-                    except (ValueError, chess.IllegalMoveError) as e:
-                        # Fail hard on invalid moves to prevent board state corruption
-                        raise InvalidGameRecordError(
-                            f"Cannot resume game: invalid move '{move_uci}' at index {move_index} "
-                            f"in move history. Record may be corrupted. Error: {e}"
-                        ) from e
-
-        logger.info("Restored board position after {} moves", len(board.move_stack))
-
-        # Set up record directory
-        if record_dir is None:
-            record_dir = record_path.parent
-
-        # Generate resume-specific record name
-        if record_name is None:
-            timestamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
-            original_name = record_path.stem
-            record_name = f"{original_name}-resumed-{timestamp}"
-
-        # Create new Game instance with restored state
-        game = Game(
-            white_player=white_player,
-            black_player=black_player,
-            display_board=display_board,
-            display_summary=display_summary,
-            enable_metrics=enable_metrics,
-            metrics_tracker=metrics_tracker,
-            record_dir=record_dir,
-            record_name=record_name,
-            hydra_cfg=record_data.get("hydra_config", {}),
-        )
-
-        # Override the board with restored state
-        game.board = board
-        game._initial_fen = initial_fen
-
-        # Load existing moves into record collector
-        if game._record_collector is not None:
-            game._record_collector.load_existing_moves(moves)
+        if self._record_collector is not None:
+            self._record_collector.load_existing_moves(moves)
             # Preserve original start timestamp
-            original_start = record_data.get("environment", {}).get("timestamp_start")
-            if original_start:
-                game._record_collector.set_start_timestamp(original_start)
+            if start_timestamp:
+                self._record_collector.set_start_timestamp(start_timestamp)
 
         # Restore cumulative thinking time so resumed summaries stay accurate
         for move_record in moves:
@@ -326,16 +168,12 @@ class Game:
             if not recorded_thinking_time:
                 continue
             if move_record.get("player") == "white":
-                game._white_thinking_time_in_sec += recorded_thinking_time
+                self._white_thinking_time_in_sec += recorded_thinking_time
             else:
-                game._black_thinking_time_in_sec += recorded_thinking_time
+                self._black_thinking_time_in_sec += recorded_thinking_time
 
-        # Track resumption metadata
-        game._resumed_from = record_path
-        game._original_termination_metadata = termination_metadata
-
-        logger.info("Game successfully loaded and ready to resume")
-        return game
+        self._resumed_from = resumed_from
+        self._original_termination_metadata = original_termination_metadata
 
     @property
     def current_player(self) -> BasePlayer:

@@ -13,12 +13,12 @@ from llm_chess_arena.exceptions import (
     GameNotResumableError,
     InvalidGameRecordError,
 )
-from llm_chess_arena.game import Game
+from llm_chess_arena.factory import resume_game_from_file
 from llm_chess_arena.player.random_player import RandomPlayer
 
 
 class TestGameResume:
-    """Test suite for Game.resume_from_file() functionality."""
+    """Test suite for resume_game_from_file() functionality."""
 
     @pytest.fixture
     def temp_record_file(self, tmp_path: Path) -> Path:
@@ -89,7 +89,7 @@ class TestGameResume:
         missing_file = tmp_path / "nonexistent.json"
 
         with pytest.raises(FileNotFoundError, match="Game record not found"):
-            Game.resume_from_file(
+            resume_game_from_file(
                 record_path=missing_file,
                 white_player=RandomPlayer(name="White", color="white"),
                 black_player=RandomPlayer(name="Black", color="black"),
@@ -103,7 +103,7 @@ class TestGameResume:
         bad_json.write_text("not valid json {")
 
         with pytest.raises(InvalidGameRecordError, match="Invalid JSON"):
-            Game.resume_from_file(
+            resume_game_from_file(
                 record_path=bad_json,
                 white_player=RandomPlayer(name="White", color="white"),
                 black_player=RandomPlayer(name="Black", color="black"),
@@ -120,7 +120,7 @@ class TestGameResume:
         with pytest.raises(
             InvalidGameRecordError, match="missing termination_metadata"
         ):
-            Game.resume_from_file(
+            resume_game_from_file(
                 record_path=incomplete_record,
                 white_player=RandomPlayer(name="White", color="white"),
                 black_player=RandomPlayer(name="Black", color="black"),
@@ -131,7 +131,7 @@ class TestGameResume:
     ) -> None:
         """Test that non-resumable game raises GameNotResumableError."""
         with pytest.raises(GameNotResumableError, match="not marked as resumable"):
-            Game.resume_from_file(
+            resume_game_from_file(
                 record_path=non_resumable_record_file,
                 white_player=RandomPlayer(name="White", color="white"),
                 black_player=RandomPlayer(name="Black", color="black"),
@@ -152,7 +152,7 @@ class TestGameResume:
             json.dump(record, f)
 
         with pytest.raises(InvalidGameRecordError, match="missing required field"):
-            Game.resume_from_file(
+            resume_game_from_file(
                 record_path=bad_record,
                 white_player=RandomPlayer(name="White", color="white"),
                 black_player=RandomPlayer(name="Black", color="black"),
@@ -165,7 +165,7 @@ class TestGameResume:
         white_player = RandomPlayer(name="White", color="white")
         black_player = RandomPlayer(name="Black", color="black")
 
-        game = Game.resume_from_file(
+        game = resume_game_from_file(
             record_path=temp_record_file,
             white_player=white_player,
             black_player=black_player,
@@ -190,7 +190,7 @@ class TestGameResume:
         black_player = RandomPlayer(name="Wrong", color="white")  # Should be black
 
         with pytest.raises(ValueError, match="wrong color"):
-            Game.resume_from_file(
+            resume_game_from_file(
                 record_path=temp_record_file,
                 white_player=white_player,
                 black_player=black_player,
@@ -203,7 +203,7 @@ class TestGameResume:
         white_player = RandomPlayer(name="White", color="white")
         black_player = RandomPlayer(name="Black", color="black")
 
-        game = Game.resume_from_file(
+        game = resume_game_from_file(
             record_path=temp_record_file,
             white_player=white_player,
             black_player=black_player,
@@ -225,7 +225,7 @@ class TestGameResume:
         white_player = RandomPlayer(name="White", color="white")
         black_player = RandomPlayer(name="Black", color="black")
 
-        game = Game.resume_from_file(
+        game = resume_game_from_file(
             record_path=temp_record_file,
             white_player=white_player,
             black_player=black_player,
@@ -239,7 +239,7 @@ class TestGameResume:
     ) -> None:
         """Test that resuming without players requires hydra_config."""
         with pytest.raises(ValueError, match="Players must be provided"):
-            Game.resume_from_file(
+            resume_game_from_file(
                 record_path=temp_record_file,
                 white_player=None,  # No players provided
                 black_player=None,
@@ -284,7 +284,7 @@ class TestGameResume:
         black_mock = RandomPlayer(name="Black", color="black")
         mock_create_player.side_effect = [white_mock, black_mock]
 
-        game = Game.resume_from_file(
+        game = resume_game_from_file(
             record_path=record_file,
             white_player=None,  # Should be created from config
             black_player=None,  # Should be created from config
@@ -303,7 +303,7 @@ class TestGameResume:
         white_player = RandomPlayer(name="White", color="white")
         black_player = RandomPlayer(name="Black", color="black")
 
-        game = Game.resume_from_file(
+        game = resume_game_from_file(
             record_path=temp_record_file,
             white_player=white_player,
             black_player=black_player,
@@ -351,7 +351,7 @@ class TestGameResume:
 
         # Should raise InvalidGameRecordError due to corrupted move history
         with pytest.raises(InvalidGameRecordError, match="invalid move.*at index 1"):
-            Game.resume_from_file(
+            resume_game_from_file(
                 record_path=record_file,
                 white_player=RandomPlayer(name="White", color="white"),
                 black_player=RandomPlayer(name="Black", color="black"),
@@ -362,7 +362,7 @@ class TestGameResume:
         self, temp_record_file: Path
     ) -> None:
         """Test that original start timestamp is preserved."""
-        game = Game.resume_from_file(
+        game = resume_game_from_file(
             record_path=temp_record_file,
             white_player=RandomPlayer(name="White", color="white"),
             black_player=RandomPlayer(name="Black", color="black"),
@@ -382,7 +382,7 @@ class TestGameResume:
         white_player = RandomPlayer(name="White", color="white", seed=42)
         black_player = RandomPlayer(name="Black", color="black", seed=43)
 
-        game = Game.resume_from_file(
+        game = resume_game_from_file(
             record_path=temp_record_file,
             white_player=white_player,
             black_player=black_player,
