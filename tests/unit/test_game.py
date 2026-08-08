@@ -9,7 +9,7 @@ from llm_chess_arena.exceptions import IllegalMoveError
 from llm_chess_arena.metrics import MetricsTracker, MoveMetrics, MoveQuality
 from llm_chess_arena.player.base_player import BasePlayer
 from llm_chess_arena.types import PlayerDecision, PlayerDecisionContext
-from llm_chess_arena.utils import build_game_outcome_summary, build_game_summary
+from llm_chess_arena.summary import build_game_outcome_summary, build_game_summary
 from tests.conftest import (
     FailingPlayer,
     IllegalMovePlayer,

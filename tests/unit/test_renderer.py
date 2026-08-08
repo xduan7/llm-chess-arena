@@ -5,7 +5,7 @@ from rich.console import Console
 from unittest.mock import patch
 
 from llm_chess_arena.renderer import display_board_with_context, display_game_summary
-from llm_chess_arena.utils import GameOutcomeSummary
+from llm_chess_arena.summary import GameOutcomeSummary
 
 
 class TestRenderer:

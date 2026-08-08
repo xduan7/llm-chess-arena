@@ -13,7 +13,7 @@ from rich.table import Table
 from rich.text import Text
 
 from llm_chess_arena.metrics import MOVE_QUALITY_ORDER, MetricsSummary, MoveQuality
-from llm_chess_arena.utils import GameOutcomeSummary
+from llm_chess_arena.summary import GameOutcomeSummary
 
 console = Console()
 

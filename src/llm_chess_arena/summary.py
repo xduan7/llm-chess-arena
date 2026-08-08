@@ -1,227 +1,12 @@
-"""Utility helpers for chess move serialization, validation, and system utilities."""
+"""Game summary domain model shared by records, rendering, and logging."""
 
 from __future__ import annotations
 
-import os
-import shutil
-import time
 from dataclasses import dataclass
-from pathlib import Path
-from threading import Lock
 from typing import Final, Any
 
 import chess
-import chess.engine
 from loguru import logger
-
-from llm_chess_arena.core.policies import move_validation
-from llm_chess_arena.exceptions import (
-    IllegalMoveError,
-    InvalidMoveError,
-    AmbiguousMoveError,
-)
-
-
-def get_legal_moves_in_uci(board: chess.Board) -> list[str]:
-    """Get all legal moves in UCI format from the current board state.
-
-    Args:
-        board: Current chess board state.
-
-    Returns:
-        list[str]: Legal moves in UCI notation (e.g., ["e2e4", "g1f3"]).
-    """
-    return [move.uci() for move in board.legal_moves]
-
-
-def get_move_history_in_uci(board: chess.Board) -> list[str]:
-    """Get the move history in UCI format from the current board state.
-
-    Args:
-        board: Current chess board state with move history.
-
-    Returns:
-        list[str]: Moves in UCI notation (e.g., ["e2e4", "e7e5", "g1f3"]).
-    """
-    return [move.uci() for move in board.move_stack]
-
-
-@move_validation
-def parse_attempted_move_to_uci(attempted_move: str, board_in_fen: str) -> str:
-    """Parse a move string to UCI format, trying UCI first then SAN.
-
-    Args:
-        attempted_move: Move text in UCI (e2e4) or SAN (Nf3, O-O).
-        board_in_fen: FEN string representing the position.
-
-    Returns:
-        str: Move in UCI format (e.g., "e2e4").
-
-    Raises:
-        InvalidMoveError: If notation is syntactically invalid.
-        AmbiguousMoveError: If SAN is ambiguous in this position.
-        IllegalMoveError: If move is not legal in this position.
-    """
-    board = chess.Board(fen=board_in_fen)
-
-    attempted_move_normalized = normalize_castling_notation(attempted_move)
-
-    try:
-        move = chess.Move.from_uci(attempted_move_normalized)
-        if move not in board.legal_moves:
-            raise IllegalMoveError(
-                f"Illegal move in current position: '{attempted_move}'"
-            )
-        return str(move.uci())
-    except ValueError:
-        try:
-            move = board.parse_san(attempted_move_normalized)
-            return str(move.uci())
-        except chess.AmbiguousMoveError as ambiguous_move_error:
-            raise AmbiguousMoveError(
-                f"Ambiguous SAN move: '{attempted_move}'"
-            ) from ambiguous_move_error
-        except chess.InvalidMoveError as invalid_move_error:
-            raise InvalidMoveError(
-                f"Invalid move notation: '{attempted_move}'"
-            ) from invalid_move_error
-        except chess.IllegalMoveError as illegal_move_error:
-            raise IllegalMoveError(
-                f"Illegal move in current position: '{attempted_move}'"
-            ) from illegal_move_error
-
-
-# Common platform-specific locations checked after PATH lookup.
-# Cache for Stockfish availability check to avoid repeated filesystem calls
-_stockfish_availability_cache: bool | None = None
-
-COMMON_STOCKFISH_PATHS: tuple[str, ...] = (
-    "/usr/local/bin/stockfish",
-    "/usr/bin/stockfish",
-    "/opt/homebrew/bin/stockfish",
-    "C:/Program Files/Stockfish/stockfish.exe",
-    "C:/Program Files (x86)/Stockfish/stockfish.exe",
-)
-
-
-def find_stockfish_binary(explicit_path: str | None = None) -> str:
-    """Resolve a usable Stockfish executable path.
-
-    Args:
-        explicit_path: Optional user-supplied path to the Stockfish binary.
-
-    Returns:
-        str: Absolute path to the executable.
-
-    Raises:
-        FileNotFoundError: If no executable binary can be located.
-    """
-    if explicit_path:
-        candidate_path = Path(explicit_path)
-        if not candidate_path.exists():
-            raise FileNotFoundError(f"Stockfish binary not found at: {candidate_path}")
-        if not os.access(str(candidate_path), os.X_OK):
-            raise FileNotFoundError(
-                "Stockfish binary exists but is not executable at: "
-                f"{candidate_path}\n"
-                f"Try: chmod +x {candidate_path}"
-            )
-        return str(candidate_path.resolve())
-
-    env_path_str = os.getenv("STOCKFISH_BINARY_PATH")
-    if env_path_str:
-        env_path = Path(env_path_str)
-        if not env_path.exists():
-            logger.warning(
-                "Environment variable STOCKFISH_BINARY_PATH set to {} but file does not exist",
-                env_path,
-            )
-        elif not os.access(str(env_path), os.X_OK):
-            logger.warning(
-                "Stockfish binary from STOCKFISH_BINARY_PATH exists but is not executable: {}",
-                env_path,
-            )
-        else:
-            logger.debug(
-                "Found Stockfish binary from STOCKFISH_BINARY_PATH: {}",
-                env_path,
-            )
-            return str(env_path.resolve())
-
-    system_path = shutil.which("stockfish")
-    if system_path:
-        logger.debug("Found Stockfish binary in PATH: {}", system_path)
-        return system_path
-
-    for potential_path in COMMON_STOCKFISH_PATHS:
-        candidate_path = Path(potential_path)
-        if candidate_path.exists() and os.access(str(candidate_path), os.X_OK):
-            logger.debug("Found Stockfish binary in common path: {}", candidate_path)
-            return str(candidate_path.resolve())
-
-    raise FileNotFoundError(
-        "Stockfish not found. Please install it or provide the binary path.\n"
-        "You can either:\n"
-        "  1. Set STOCKFISH_BINARY_PATH in your .env file\n"
-        "  2. Pass binary_path parameter when creating StockfishPlayer\n"
-        "  3. Install Stockfish:\n"
-        "     macOS: brew install stockfish\n"
-        "     Ubuntu/Debian: apt-get install stockfish\n"
-        "     Windows: Download from https://stockfishchess.org/download/"
-    )
-
-
-def is_stockfish_available() -> bool:
-    """Check if Stockfish is available on the system.
-
-    This function caches the result to avoid repeated filesystem calls.
-    Uses the same logic as find_stockfish_binary but returns a boolean
-    instead of raising exceptions.
-
-    Returns:
-        bool: True if Stockfish is available, False otherwise.
-    """
-    global _stockfish_availability_cache
-
-    if _stockfish_availability_cache is not None:
-        return _stockfish_availability_cache
-
-    try:
-        find_stockfish_binary()
-        _stockfish_availability_cache = True
-        return True
-    except FileNotFoundError:
-        _stockfish_availability_cache = False
-        return False
-
-
-def initialize_stockfish_engine(
-    binary_path: str, engine_options: dict[str, Any] | None = None
-) -> chess.engine.SimpleEngine:
-    """Initialize and configure a Stockfish engine instance.
-
-    Provides shared initialization logic for both StockfishPlayer and
-    StockfishMetricsEvaluator to eliminate code duplication.
-
-    Args:
-        binary_path: Path to the Stockfish executable.
-        engine_options: Optional UCI engine configuration options.
-
-    Returns:
-        chess.engine.SimpleEngine: Configured Stockfish engine instance.
-
-    Raises:
-        Exception: If engine initialization or configuration fails.
-    """
-    stockfish_engine = chess.engine.SimpleEngine.popen_uci(binary_path)
-    try:
-        if engine_options:
-            stockfish_engine.configure(engine_options)
-        return stockfish_engine
-    except Exception:
-        stockfish_engine.quit()
-        raise
-
 
 TERMINATION_LABELS: Final[dict[chess.Termination, str]] = {
     chess.Termination.CHECKMATE: "Checkmate",
@@ -235,6 +20,89 @@ TERMINATION_LABELS: Final[dict[chess.Termination, str]] = {
     chess.Termination.VARIANT_LOSS: "Variant-specific loss",
     chess.Termination.VARIANT_DRAW: "Variant-specific draw",
 }
+
+
+def humanize_termination(termination: chess.Termination | None) -> str:
+    """Convert a python-chess termination enum to a readable label.
+
+    Args:
+        termination: Termination enum from python-chess, or ``None`` if the game
+            is in progress.
+
+    Returns:
+        str: Human-friendly description of the termination state.
+    """
+
+    if termination is None:
+        return "Game in progress"
+
+    result = TERMINATION_LABELS.get(termination)
+    if result is not None:
+        return result
+    # Explicit type annotation to help mypy
+    termination_name: str = termination.name
+    return termination_name.replace("_", " ").title()
+
+
+@dataclass(slots=True)
+class GameOutcomeSummary:
+    """Structured outcome data for post-game displays and logging."""
+
+    outcome_line: str
+    termination_line: str
+    total_moves_line: str
+
+
+def build_game_outcome_summary(
+    outcome: chess.Outcome | None,
+    white_player_name: str,
+    black_player_name: str,
+    total_moves: int,
+    *,
+    termination_label_override: str | None = None,
+    termination_note: str | None = None,
+) -> GameOutcomeSummary:
+    """Create human-friendly summary strings for a finished game.
+
+    Args:
+        outcome: python-chess outcome information, or ``None`` if unavailable.
+        white_player_name: Display name for the white player.
+        black_player_name: Display name for the black player.
+        total_moves: Number of moves played in the game.
+
+    Returns:
+        GameOutcomeSummary: Structured summary fields for logs and rendering.
+    """
+
+    if outcome is None:
+        return GameOutcomeSummary(
+            outcome_line="Outcome: Game did not finish",
+            termination_line="Termination: Unknown",
+            total_moves_line=f"Total moves: {total_moves}",
+        )
+
+    winner_color = outcome.winner
+    termination_label = termination_label_override or humanize_termination(
+        outcome.termination
+    )
+    termination_line = f"Termination: {termination_label}"
+    if termination_note:
+        termination_line = f"{termination_line} ({termination_note})"
+
+    if winner_color is None:
+        outcome_line = "Outcome: Draw"
+    else:
+        winner_name = (
+            white_player_name if winner_color == chess.WHITE else black_player_name
+        )
+        color_label = "White" if winner_color == chess.WHITE else "Black"
+        outcome_line = f"Outcome: {winner_name} ({color_label}) wins"
+
+    return GameOutcomeSummary(
+        outcome_line=outcome_line,
+        termination_line=termination_line,
+        total_moves_line=f"Total moves: {total_moves}",
+    )
 
 
 @dataclass(slots=True)
@@ -626,175 +494,3 @@ def build_game_summary_from_data(
         termination_label_override=termination_label_override,
         termination_note=termination_note,
     )
-
-
-def normalize_castling_notation(move_text: str) -> str:
-    """Normalize castling notation to standard format.
-
-    Args:
-        move_text: Move text that may contain castling notation.
-
-    Returns:
-        str: Move text with normalized castling notation.
-    """
-    move_normalized = move_text.strip()
-
-    if move_normalized.lower() in ["o-o", "0-0"]:
-        return "O-O"
-    elif move_normalized.lower() in ["o-o-o", "0-0-0"]:
-        return "O-O-O"
-
-    return move_normalized
-
-
-@dataclass(slots=True)
-class GameOutcomeSummary:
-    """Structured outcome data for post-game displays and logging."""
-
-    outcome_line: str
-    termination_line: str
-    total_moves_line: str
-
-
-def humanize_termination(termination: chess.Termination | None) -> str:
-    """Convert a python-chess termination enum to a readable label.
-
-    Args:
-        termination: Termination enum from python-chess, or ``None`` if the game
-            is in progress.
-
-    Returns:
-        str: Human-friendly description of the termination state.
-    """
-
-    if termination is None:
-        return "Game in progress"
-
-    result = TERMINATION_LABELS.get(termination)
-    if result is not None:
-        return result
-    # Explicit type annotation to help mypy
-    termination_name: str = termination.name
-    return termination_name.replace("_", " ").title()
-
-
-def build_game_outcome_summary(
-    outcome: chess.Outcome | None,
-    white_player_name: str,
-    black_player_name: str,
-    total_moves: int,
-    *,
-    termination_label_override: str | None = None,
-    termination_note: str | None = None,
-) -> GameOutcomeSummary:
-    """Create human-friendly summary strings for a finished game.
-
-    Args:
-        outcome: python-chess outcome information, or ``None`` if unavailable.
-        white_player_name: Display name for the white player.
-        black_player_name: Display name for the black player.
-        total_moves: Number of moves played in the game.
-
-    Returns:
-        GameOutcomeSummary: Structured summary fields for logs and rendering.
-    """
-
-    if outcome is None:
-        return GameOutcomeSummary(
-            outcome_line="Outcome: Game did not finish",
-            termination_line="Termination: Unknown",
-            total_moves_line=f"Total moves: {total_moves}",
-        )
-
-    winner_color = outcome.winner
-    termination_label = termination_label_override or humanize_termination(
-        outcome.termination
-    )
-    termination_line = f"Termination: {termination_label}"
-    if termination_note:
-        termination_line = f"{termination_line} ({termination_note})"
-
-    if winner_color is None:
-        outcome_line = "Outcome: Draw"
-    else:
-        winner_name = (
-            white_player_name if winner_color == chess.WHITE else black_player_name
-        )
-        color_label = "White" if winner_color == chess.WHITE else "Black"
-        outcome_line = f"Outcome: {winner_name} ({color_label}) wins"
-
-    return GameOutcomeSummary(
-        outcome_line=outcome_line,
-        termination_line=termination_line,
-        total_moves_line=f"Total moves: {total_moves}",
-    )
-
-
-class TokenBucketRateLimiter:
-    """Simple global rate limiter enforcing requests per minute (RPM).
-
-    Dead simple:
-    - Enforces GLOBAL limit on API CALLS per minute
-    - rate_limit_rpm: 60 = max 60 API requests per minute total
-    - Blocks until request slot available or timeout
-    - Thread-safe
-    """
-
-    def __init__(self, requests_per_minute: float) -> None:
-        """Initialize rate limiter.
-
-        Args:
-            requests_per_minute: Max API CALLS per minute (global limit).
-        """
-        self.rpm = requests_per_minute
-        self.requests_per_second = requests_per_minute / 60.0
-
-        # Track available request slots
-        self.available_requests = 1.0
-        self.last_update = time.time()
-        self.lock = Lock()
-
-    def acquire_permit(self, provider_name: str, timeout_in_sec: float) -> bool:
-        """Try to acquire permission for one API call.
-
-        Args:
-            provider_name: Ignored (global limit).
-            timeout_in_sec: Max wait time.
-
-        Returns:
-            bool: True if permit acquired, False if timeout.
-        """
-        deadline = time.time() + timeout_in_sec
-
-        while time.time() < deadline:
-            with self.lock:
-                now = time.time()
-
-                # Refill request slots based on time elapsed
-                elapsed = now - self.last_update
-                self.available_requests = min(
-                    1.0, self.available_requests + elapsed * self.requests_per_second
-                )
-                self.last_update = now
-
-                if self.available_requests >= 1.0:
-                    # Have a slot - use it
-                    self.available_requests -= 1.0
-                    return True
-
-                # Calculate wait time until we have a slot
-                wait_in_sec = (1.0 - self.available_requests) / self.requests_per_second
-                sleep_time = min(wait_in_sec, 0.1)
-
-            # Sleep outside lock
-            if time.time() + sleep_time > deadline:
-                return False
-            time.sleep(sleep_time)
-
-        return False
-
-    def report_rate_limit_error(
-        self, provider_name: str, _retry_after: float | None
-    ) -> None:
-        """Ignored - if you hit limits, configure lower RPM."""
-        pass

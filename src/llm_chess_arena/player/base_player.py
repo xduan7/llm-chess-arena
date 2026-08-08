@@ -6,7 +6,7 @@ from typing import Any
 import chess
 
 from llm_chess_arena.types import PlayerDecisionContext, PlayerDecision, PlayerColor
-from llm_chess_arena.utils import get_legal_moves_in_uci, get_move_history_in_uci
+from llm_chess_arena.moves import get_legal_moves_in_uci, get_move_history_in_uci
 
 
 class BasePlayer(ABC):

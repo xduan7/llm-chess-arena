@@ -12,11 +12,8 @@ from typing import Any
 import chess
 from loguru import logger
 
-from llm_chess_arena.utils import (
-    GameSummary,
-    build_game_summary_from_data,
-    is_stockfish_available,
-)
+from llm_chess_arena.engine import is_stockfish_available
+from llm_chess_arena.summary import GameSummary, build_game_summary_from_data
 
 
 def iso_timestamp(datetime_object: datetime) -> str:

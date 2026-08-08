@@ -18,7 +18,8 @@ from llm_chess_arena.tournament.types import (
     TournamentResult,
 )
 from llm_chess_arena.tournament.aggregator import aggregate_tournament_results
-from llm_chess_arena.utils import build_game_summary, TokenBucketRateLimiter
+from llm_chess_arena.rate_limiter import TokenBucketRateLimiter
+from llm_chess_arena.summary import build_game_summary
 
 if TYPE_CHECKING:
     from llm_chess_arena.config import PlayerConfig, GameConfig, MetricsConfig

@@ -35,11 +35,11 @@ from llm_chess_arena.player.base_player import BasePlayer
 from llm_chess_arena.renderer import display_board_with_context, display_game_summary
 from llm_chess_arena.types import PlayerDecision
 from llm_chess_arena.metrics import MOVE_QUALITY_ORDER, MetricsTracker, MoveQuality
-from llm_chess_arena.utils import (
+from llm_chess_arena.moves import parse_attempted_move_to_uci
+from llm_chess_arena.summary import (
     GameSummary,
     build_game_outcome_summary,
     build_game_summary,
-    parse_attempted_move_to_uci,
 )
 from llm_chess_arena.record import RecordCollector, RecordWriter, iso_timestamp
 

@@ -17,7 +17,7 @@ from llm_chess_arena.config.schema import ARGO_MODEL_CANONICAL_NAMES
 from llm_chess_arena.exceptions import LLMPermanentError, LLMEmptyResponseError
 
 if TYPE_CHECKING:
-    from llm_chess_arena.utils import TokenBucketRateLimiter
+    from llm_chess_arena.rate_limiter import TokenBucketRateLimiter
 
 litellm.suppress_debug_info = True
 

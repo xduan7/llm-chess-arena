@@ -12,7 +12,7 @@ import chess.engine
 from loguru import logger
 
 from llm_chess_arena.core.policies import metrics_operation
-from llm_chess_arena.utils import find_stockfish_binary, initialize_stockfish_engine
+from llm_chess_arena.engine import find_stockfish_binary, initialize_stockfish_engine
 from llm_chess_arena.types import PlayerColor
 
 MATE_SCORE = 100_000

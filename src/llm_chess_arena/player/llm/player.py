@@ -24,7 +24,7 @@ from llm_chess_arena.player.llm.types import (
     DecisionArtifacts,
     VoteMetadata,
 )
-from llm_chess_arena.utils import parse_attempted_move_to_uci
+from llm_chess_arena.moves import parse_attempted_move_to_uci
 from llm_chess_arena.record import iso_timestamp
 from llm_chess_arena.types import PlayerColor, PlayerDecision, PlayerDecisionContext
 

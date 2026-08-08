@@ -9,7 +9,7 @@ import chess.engine
 from loguru import logger
 
 from llm_chess_arena.player.base_player import BasePlayer
-from llm_chess_arena.utils import find_stockfish_binary, initialize_stockfish_engine
+from llm_chess_arena.engine import find_stockfish_binary, initialize_stockfish_engine
 from llm_chess_arena.types import PlayerColor, PlayerDecisionContext, PlayerDecision
 
 # Default depth prevents infinite analysis when limits not specified

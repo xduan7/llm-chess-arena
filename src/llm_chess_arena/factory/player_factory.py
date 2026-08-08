@@ -23,7 +23,7 @@ if TYPE_CHECKING:  # pragma: no cover
         RandomPlayerConfig,
         StockfishPlayerConfig,
     )
-    from llm_chess_arena.utils import TokenBucketRateLimiter
+    from llm_chess_arena.rate_limiter import TokenBucketRateLimiter
 
 
 class PlayerFactory:

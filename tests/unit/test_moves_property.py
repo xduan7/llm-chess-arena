@@ -1,11 +1,11 @@
-"""Property-based tests for utils module using Hypothesis."""
+"""Property-based tests for move parsing helpers using Hypothesis."""
 
 import chess
 import pytest
 from hypothesis import given, strategies as st, assume, settings
 from hypothesis.stateful import RuleBasedStateMachine, rule, invariant, initialize
 
-from llm_chess_arena.utils import (
+from llm_chess_arena.moves import (
     get_legal_moves_in_uci,
     get_move_history_in_uci,
     parse_attempted_move_to_uci,

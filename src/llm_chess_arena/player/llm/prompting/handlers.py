@@ -8,7 +8,7 @@ from typing import Any
 
 from llm_chess_arena.exceptions import ParseMoveError
 from llm_chess_arena.types import PlayerDecision
-from llm_chess_arena.utils import normalize_castling_notation
+from llm_chess_arena.moves import normalize_castling_notation
 
 FINAL_ANSWER_MARKERS: tuple[str, ...] = (
     "Final Answer:",
