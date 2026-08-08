@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import chess
 
-from llm_chess_arena.core.policies import move_validation
+from llm_chess_arena.policies import move_validation
 from llm_chess_arena.exceptions import (
     IllegalMoveError,
     InvalidMoveError,

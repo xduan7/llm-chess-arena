@@ -171,7 +171,7 @@ class TestDemoScriptConfigurations:
 
         with (
             patch(
-                "llm_chess_arena.factory.player_factory.LLMConnector",
+                "llm_chess_arena.factory.LLMConnector",
                 return_value=mock_connector,
             ),
             patch("llm_chess_arena.game.Game.play"),

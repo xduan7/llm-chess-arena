@@ -9,8 +9,7 @@ from typing import TYPE_CHECKING, Any
 
 from loguru import logger
 
-from llm_chess_arena.factory.player_factory import PlayerFactory
-from llm_chess_arena.factory.metrics_factory import MetricsFactory
+from llm_chess_arena.factory import MetricsFactory, PlayerFactory
 from llm_chess_arena.game import Game
 from llm_chess_arena.tournament.types import (
     TournamentConfig,

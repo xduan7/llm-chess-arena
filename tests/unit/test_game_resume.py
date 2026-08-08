@@ -246,7 +246,7 @@ class TestGameResume:
                 display_board=False,
             )
 
-    @patch("llm_chess_arena.factory.player_factory.PlayerFactory.create_player")
+    @patch("llm_chess_arena.factory.PlayerFactory.create_player")
     def test_resume_from_file__recreates_players_from_config(
         self, mock_create_player: MagicMock, tmp_path: Path
     ) -> None:

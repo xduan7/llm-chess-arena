@@ -6,14 +6,18 @@ from unittest.mock import Mock, patch
 
 import pytest
 
-from llm_chess_arena.core.policies import ErrorPolicy
+from llm_chess_arena.policies import (
+    config_operation,
+    metrics_operation,
+    move_validation,
+)
 from llm_chess_arena.exceptions import InvalidMoveError, MoveError
 
 
 def test_move_validation_policy_preserves_move_errors() -> None:
     """MoveError subclasses should propagate unchanged."""
 
-    @ErrorPolicy.handle_move_validation_error
+    @move_validation
     def validator() -> None:
         """Raise InvalidMoveError to ensure policy leaves it untouched."""
         raise InvalidMoveError("bad move")
@@ -25,7 +29,7 @@ def test_move_validation_policy_preserves_move_errors() -> None:
 def test_move_validation_policy_converts_unexpected_errors() -> None:
     """Unexpected exceptions should convert into MoveError."""
 
-    @ErrorPolicy.handle_move_validation_error
+    @move_validation
     def validator() -> None:
         """Raise RuntimeError to confirm conversion into MoveError."""
         raise RuntimeError("boom")
@@ -37,7 +41,7 @@ def test_move_validation_policy_converts_unexpected_errors() -> None:
 def test_config_policy_wraps_errors() -> None:
     """Configuration policy should wrap errors as ValueError."""
 
-    @ErrorPolicy.handle_config_error
+    @config_operation
     def builder() -> None:
         """Raise a generic runtime error to test config wrapping."""
         raise RuntimeError("bad config")
@@ -49,13 +53,13 @@ def test_config_policy_wraps_errors() -> None:
 def test_metrics_policy_logs_and_returns_none() -> None:
     """Metrics policy should log and return None on failure."""
 
-    @ErrorPolicy.handle_metrics_error
+    @metrics_operation
     def metrics() -> None:
         """Trigger an error so the metrics policy can swallow it."""
         raise RuntimeError("stockfish unavailable")
 
     mock_logger = Mock()
-    with patch("llm_chess_arena.core.policies.logger", mock_logger):
+    with patch("llm_chess_arena.policies.logger", mock_logger):
         result = metrics()
 
     assert result is None

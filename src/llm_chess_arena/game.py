@@ -220,7 +220,7 @@ class Game:
             logger.info("Recreating players from saved configuration")
             try:
                 # Import at runtime to avoid circular dependency
-                from llm_chess_arena.factory.player_factory import PlayerFactory
+                from llm_chess_arena.factory import PlayerFactory
                 from llm_chess_arena.config.schema import (
                     normalize_llm_player_cfg,
                     parse_player_cfg,
